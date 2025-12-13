@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Code Vault 🚀
 
-## Getting Started
+Code Vault is the ultimate spaced-repetition based code tracking system designed for developers mastering Data Structures and Algorithms (DSA). It helps you track your journey, review problems at optimal intervals, and visualize your progress with detailed analytics.
 
-First, run the development server:
+## ✨ Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Spaced Repetition System (SRS)**: Smart review scheduling (3, 7, 15, 30 days) to combat the forgetting curve.
+- **Problem & Solution Management**:
+  - Add problems with links, difficulty, topics, and tags.
+  - Write and store multiple solutions (Brute Force, Optimized) for each problem.
+  - Syntax highlighting for multiple languages (JS, Python, C++, Java, etc.).
+- **Detailed Analytics**:
+  - Visualize difficulty distribution (Easy/Medium/Hard).
+  - Track topic mastery (Arrays, DP, Graphs, etc.).
+  - View activity and submission history.
+- **Advanced Dashboard**:
+  - Filter by difficulty, topic, tag, or search by name.
+  - Quick status updates and "Mark as Reviewed" functionality.
+- **Profile Management**:
+  - Update username and changes reflect instantly across the app.
+  - Reset progress ("Danger Zone") with confirmation for a fresh start.
+- **Modern UI/UX**:
+  - Premium Glassmorphism design with dark mode.
+  - Responsive layout for mobile and desktop.
+  - Real-time notifications for due reviews.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
+- **Database**: [MongoDB](https://www.mongodb.com/) (Mongoose)
+- **Authentication**: [NextAuth.js](https://next-auth.js.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) + Lucide Icons
+- **Language**: TypeScript
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🚀 Getting Started
 
-## Learn More
+1. **Clone the repository**:
 
-To learn more about Next.js, take a look at the following resources:
+   ```bash
+   git clone https://github.com/yourusername/code-vault.git
+   cd code-vault
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+2. **Install dependencies**:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   ```bash
+   npm install
+   ```
 
-## Deploy on Vercel
+3. **Set up Environment Variables**:
+   Create a `.env` file in the root directory and add:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```env
+   MONGODB_URI=your_mongodb_connection_string
+   NEXTAUTH_SECRET=your_nextauth_secret
+   NEXTAUTH_URL=http://localhost:3000
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. **Run the development server**:
+
+   ```bash
+   npm run dev
+   ```
+
+5. **Open the app**:
+   Visit [http://localhost:3000](http://localhost:3000) to start tracking!
