@@ -12,7 +12,19 @@ export default async function StatsPage() {
     redirect("/login");
   }
 
-  const stats = await getUserStats();
+  let stats: any = await getUserStats();
+
+  if (stats?.error) {
+      stats = {
+          total: 0,
+          solved: 0,
+          byDifficulty: [],
+          byTopic: [],
+          byTag: [],
+          distinctTopics: [],
+          distinctTags: []
+      };
+  }
 
   return (
     <div className="min-h-screen p-4 sm:p-8">

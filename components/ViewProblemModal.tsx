@@ -129,21 +129,21 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
 
       if (confirmModal.type === 'solution' && confirmModal.id) {
         const res = await deleteSolution(confirmModal.id);
-        if (res.success) {
-            toast.success("Solution deleted");
-            const freshData = await getProblemDetails(problemId);
-            setData(freshData);
+        if ('error' in res) {
+             toast.error(res.error || "Failed to delete");
         } else {
-            toast.error(res.error || "Failed to delete");
+             toast.success("Solution deleted");
+             const freshData = await getProblemDetails(problemId);
+             setData(freshData);
         }
       } else if (confirmModal.type === 'problem') {
         const res = await deleteProblem(problemId);
-        if (res.success) {
-            toast.success("Problem deleted");
-            onClose();
-            router.refresh();
+        if ('error' in res) {
+             toast.error(res.error || "Failed to delete problem");
         } else {
-            toast.error(res.error || "Failed to delete problem");
+             toast.success("Problem deleted");
+             onClose();
+             router.refresh();
         }
       }
       setConfirmModal({ isOpen: false, type: null, id: null });

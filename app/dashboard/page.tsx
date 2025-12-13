@@ -6,7 +6,20 @@ export default async function DashboardPage(props: {
 }) {
   const searchParams = await props.searchParams;
   const problems = await getProblems(searchParams);
-  const stats = await getUserStats();
+  let stats: any = await getUserStats();
+
+  if (stats?.error) {
+      // Fallback empty stats or handle error
+      stats = {
+          total: 0,
+          solved: 0,
+          byDifficulty: [],
+          byTopic: [],
+          byTag: [],
+          distinctTopics: [],
+          distinctTags: []
+      };
+  }
 
   return (
     <div className="min-h-screen p-4 sm:p-8">

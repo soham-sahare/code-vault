@@ -75,10 +75,10 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
     if (!confirmModal.id) return;
     
     const res = await deleteProblem(confirmModal.id);
-    if (res.success) {
-        toast.success("Problem deleted");
+    if ('error' in res) {
+        toast.error(res.error || "Failed to delete problem");
     } else {
-        toast.error("Failed to delete problem");
+        toast.success("Problem deleted");
     }
     setConfirmModal({ isOpen: false, id: null });
   };
