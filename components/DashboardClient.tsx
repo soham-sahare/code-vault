@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Select } from "./ui/SelectUtils";
 import ConfirmationModal from "./ConfirmationModal";
 import { getDifficultyColor, formatDate } from "@/lib/utils";
+import { FILTER_DIFFICULTY_OPTIONS } from "@/lib/constants";
 
 interface Problem {
   _id: string;
@@ -34,6 +35,9 @@ interface Stats {
   byTag: { _id: string; count: number }[];
   distinctTopics: string[];
   distinctTags: string[];
+  byTimeComplexity?: { _id: string; count: number }[];
+  bySpaceComplexity?: { _id: string; count: number }[];
+  activityTimeline?: { _id: string; count: number }[];
 }
 
 export default function DashboardClient({ initialProblems, stats }: { initialProblems: Problem[]; stats: Stats }) {
@@ -89,12 +93,7 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
     setShowAddModal(true);
   };
 
-  const difficultyOptions = [
-      { label: "All Difficulties", value: "" },
-      { label: "Easy", value: "Easy" },
-      { label: "Medium", value: "Medium" },
-      { label: "Hard", value: "Hard" }
-  ];
+
 
   const topicOptions = [
       { label: "All Topics", value: "" },
@@ -172,7 +171,7 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
             <div className="w-full sm:w-40">
             <Select 
-                options={difficultyOptions}
+                options={FILTER_DIFFICULTY_OPTIONS}
                 value={searchParams.get("difficulty") || ""}
                 onChange={(val) => updateFilter("difficulty", val)}
                 placeholder="All Difficulties"

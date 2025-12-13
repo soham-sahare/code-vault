@@ -22,7 +22,10 @@ export default async function StatsPage() {
           byTopic: [],
           byTag: [],
           distinctTopics: [],
-          distinctTags: []
+          distinctTags: [],
+          byTimeComplexity: [],
+          bySpaceComplexity: [],
+          activityTimeline: []
       };
   }
 

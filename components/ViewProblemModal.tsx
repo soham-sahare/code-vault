@@ -23,29 +23,7 @@ import { toast } from "sonner";
 import ConfirmationModal from "./ConfirmationModal";
 import { getDifficultyColor, formatDate } from "@/lib/utils";
 
-const LANGUAGES = [
-  { label: "JavaScript", value: "javascript" },
-  { label: "Python", value: "python" },
-  { label: "Java", value: "java" },
-  { label: "C++", value: "cpp" },
-  { label: "TypeScript", value: "typescript" },
-  { label: "Go", value: "go" },
-  { label: "Rust", value: "rust" },
-];
-
-const TIME_COMPLEXITY = [
-  { label: "O(1)", value: "O(1)" },
-  { label: "O(log n)", value: "O(log n)" },
-  { label: "O(n)", value: "O(n)" },
-  { label: "O(n log n)", value: "O(n log n)" },
-  { label: "O(n^2)", value: "O(n^2)" },
-];
-
-const SPACE_COMPLEXITY = [
-  { label: "O(1)", value: "O(1)" },
-  { label: "O(n)", value: "O(n)" },
-  { label: "O(n^2)", value: "O(n^2)" },
-];
+import { LANGUAGES, TIME_COMPLEXITY, SPACE_COMPLEXITY } from "@/lib/constants";
 
 export default function ViewProblemModal({ problemId, onClose }: { problemId: string, onClose: () => void }) {
   const router = useRouter();

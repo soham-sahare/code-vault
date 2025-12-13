@@ -17,7 +17,10 @@ export default async function DashboardPage(props: {
           byTopic: [],
           byTag: [],
           distinctTopics: [],
-          distinctTags: []
+          distinctTags: [],
+          byTimeComplexity: [],
+          bySpaceComplexity: [],
+          activityTimeline: []
       };
   }
 

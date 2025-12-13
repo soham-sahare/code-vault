@@ -119,9 +119,11 @@ export async function getUserStats() {
     const userId = user.id;
 
     try {
+      // 1. Core Counts
       const total = await Problem.countDocuments({ userId });
       const solved = await Problem.countDocuments({ userId, status: "Solved" });
       
+      // 2. Problem-based Aggregations
       const byDifficulty = await Problem.aggregate([
         { $match: { userId:  new mongoose.Types.ObjectId(userId) } },
         { $group: { _id: "$difficulty", count: { $sum: 1 } } }
@@ -144,6 +146,39 @@ export async function getUserStats() {
         { $sort: { count: -1 } }
       ]);
 
+      // 3. Solution-based Aggregations (Complexity & Activity)
+      // First get all problem IDs for this user
+      const userProblems = await Problem.find({ userId: userId }).select("_id");
+      const problemIds = userProblems.map(p => p._id);
+
+      const byTimeComplexity = await Solution.aggregate([
+        { $match: { problemId: { $in: problemIds }, timeComplexity: { $exists: true, $ne: "" } } },
+        { $group: { _id: "$timeComplexity", count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]);
+
+      const bySpaceComplexity = await Solution.aggregate([
+        { $match: { problemId: { $in: problemIds }, spaceComplexity: { $exists: true, $ne: "" } } },
+        { $group: { _id: "$spaceComplexity", count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]);
+
+      // Activity: Last 6 months
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const activityTimeline = await Solution.aggregate([
+        { $match: { 
+            problemId: { $in: problemIds },
+            createdAt: { $gte: sixMonthsAgo }
+        }},
+        { $group: { 
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, 
+            count: { $sum: 1 } 
+        }},
+        { $sort: { _id: 1 } }
+      ]);
+
       return {
         total,
         solved,
@@ -151,18 +186,14 @@ export async function getUserStats() {
         byTopic,
         byTag,
         distinctTopics,
-        distinctTags
+        distinctTags,
+        byTimeComplexity,
+        bySpaceComplexity,
+        activityTimeline
       };
     } catch (error) {
-      return {
-        total: 0,
-        solved: 0,
-        byDifficulty: [],
-        byTopic: [],
-        byTag: [],
-        distinctTopics: [],
-        distinctTags: []
-      };
+      console.error("Stats Error:", error);
+      return { error: "Failed to fetch stats" };
     }
   });
 }

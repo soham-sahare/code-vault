@@ -6,30 +6,7 @@ import { X, Loader2 } from "lucide-react";
 import { CreatableMultiSelect, Select } from "./ui/SelectUtils";
 import { toast } from "sonner";
 
-const TOPIC_OPTIONS = [
-  { label: "Array", value: "Array" },
-  { label: "String", value: "String" },
-  { label: "Hash Table", value: "Hash Table" },
-  { label: "Two Pointers", value: "Two Pointers" },
-  { label: "Dynamic Programming", value: "DP" },
-  { label: "Stack", value: "Stack" },
-  { label: "Heap", value: "Heap" },
-  { label: "Graph", value: "Graph" },
-  { label: "Tree", value: "Tree" },
-  { label: "Binary Search", value: "Binary Search" },
-  { label: "Backtracking", value: "Backtracking" },
-];
-
-const TAG_OPTIONS = [
-  { label: "NeetCode 150", value: "NeetCode 150" },
-  { label: "Blind 75", value: "Blind 75" },
-  { label: "Grind 75", value: "Grind 75" },
-  { label: "Easy", value: "Easy" },
-  { label: "Medium", value: "Medium" },
-  { label: "Hard", value: "Hard" },
-  { label: "Facebook High Freq", value: "Facebook" },
-  { label: "Google High Freq", value: "Google" },
-];
+import { TOPIC_OPTIONS, TAG_OPTIONS, DIFFICULTY_OPTIONS } from "@/lib/constants";
 
 interface AddProblemModalProps {
     onClose: () => void;
@@ -109,11 +86,7 @@ export default function AddProblemModal({ onClose, initialData }: AddProblemModa
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Difficulty</label>
               <Select 
-                options={[
-                    { label: "Easy", value: "Easy" },
-                    { label: "Medium", value: "Medium" },
-                    { label: "Hard", value: "Hard" }
-                ]}
+                options={DIFFICULTY_OPTIONS}
                 value={difficulty}
                 onChange={setDifficulty}
                 placeholder="Select Difficulty"

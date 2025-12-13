@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, PieChart, Tag, Hash, Activity } from "lucide-react";
+import { ArrowLeft, PieChart, Tag, Hash, Activity, Clock } from "lucide-react";
 
 interface Stats {
   total: number;
@@ -13,6 +13,9 @@ interface Stats {
   byTag: { _id: string; count: number }[];
   distinctTopics: string[];
   distinctTags: string[];
+  byTimeComplexity: { _id: string; count: number }[];
+  bySpaceComplexity: { _id: string; count: number }[];
+  activityTimeline: { _id: string; count: number }[];
 }
 
 export default function StatsClient({ stats }: { stats: Stats }) {
@@ -29,9 +32,36 @@ export default function StatsClient({ stats }: { stats: Stats }) {
   const easyDeg = totalSolved ? (easyCount / totalSolved) * 360 : 0;
   const mediumDeg = totalSolved ? (mediumCount / totalSolved) * 360 : 0;
 
+  // Helper to fill missing dates for last 30 days
+  const getLast30DaysActivity = () => {
+      const activityMap = new Map(stats.activityTimeline?.map(a => [a._id, a.count]) || []);
+      const days = [];
+      for (let i = 29; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dateStr = d.toISOString().split('T')[0];
+          days.push({
+              date: dateStr,
+              shortDate: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+              count: activityMap.get(dateStr) || 0
+          });
+      }
+      return days;
+  };
+  
+  const last30Days = getLast30DaysActivity();
+  const maxActivity = Math.max(...last30Days.map(d => d.count), 1); // Avoid div by zero
+
+  // Sort complexities by standard order if possible, or just descending count
+  // Ideally, import the order from constants, but descending count is also fine for stats
+  const sortedTime = [...(stats.byTimeComplexity || [])].sort((a,b) => b.count - a.count);
+  const sortedSpace = [...(stats.bySpaceComplexity || [])].sort((a,b) => b.count - a.count);
+  const maxTimeCount = Math.max(...sortedTime.map(t => t.count), 1);
+  const maxSpaceCount = Math.max(...sortedSpace.map(s => s.count), 1);
+
   return (
     <div className="text-white">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
         
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -186,6 +216,85 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                 </div>
             </div>
           </div>
+        </div>
+
+        {/* Complexity Analysis */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Time Complexity */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                 <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                    <Clock size={18} className="text-green-400" />
+                    Time Complexity Distribution
+                 </h3>
+                 <div className="space-y-4">
+                    {sortedTime.map((item) => (
+                        <div key={item._id} className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-300 font-mono">{item._id}</span>
+                                <span className="text-gray-400">{item.count}</span>
+                            </div>
+                            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div 
+                                    className="h-full bg-green-500/50 rounded-full transition-all duration-500" 
+                                    style={{ width: `${(item.count / maxTimeCount) * 100}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    ))}
+                    {sortedTime.length === 0 && <p className="text-gray-500 italic">No solution data yet.</p>}
+                 </div>
+            </div>
+
+            {/* Space Complexity */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                 <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                    <Hash size={18} className="text-blue-400" />
+                    Space Complexity Distribution
+                 </h3>
+                 <div className="space-y-4">
+                    {sortedSpace.map((item) => (
+                        <div key={item._id} className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-300 font-mono">{item._id}</span>
+                                <span className="text-gray-400">{item.count}</span>
+                            </div>
+                            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div 
+                                    className="h-full bg-blue-500/50 rounded-full transition-all duration-500" 
+                                    style={{ width: `${(item.count / maxSpaceCount) * 100}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    ))}
+                    {sortedSpace.length === 0 && <p className="text-gray-500 italic">No solution data yet.</p>}
+                 </div>
+            </div>
+        </div>
+
+        {/* Activity Timeline */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+             <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                <Activity size={18} className="text-yellow-400" />
+                Activity (Last 30 Days)
+             </h3>
+             <div className="h-48 w-full flex items-end gap-2 sm:gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10">
+                {last30Days.map((day, idx) => (
+                    <div key={day.date} className="flex flex-col items-center flex-1 min-w-[20px] group relative">
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10 border border-white/10">
+                            {day.count} solutions on {day.shortDate}
+                        </div>
+                        
+                        <div 
+                            className={`w-full rounded-t-sm transition-all duration-300 ${day.count > 0 ? 'bg-yellow-500/60 hover:bg-yellow-400' : 'bg-white/5'}`}
+                            style={{ height: `${Math.max((day.count / maxActivity) * 100, 4)}%` }}
+                        ></div>
+                        {idx % 5 === 0 && (
+                            <span className="text-[10px] text-gray-600 mt-2 truncate w-full text-center">{day.shortDate}</span>
+                        )}
+                    </div>
+                ))}
+             </div>
         </div>
 
         {/* Detailed Breakdowns Grid */}
