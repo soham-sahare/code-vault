@@ -38,12 +38,12 @@ export default function ProfileClient() {
 
   const handleResetStats = async () => {
       const res = await resetUserStats();
-      if (res.success) {
+      if ('error' in res) {
+          toast.error(res.error || "Failed to reset progress");
+      } else {
           toast.success("All progress has been reset.");
           setResetModalOpen(false);
           router.refresh();
-      } else {
-          toast.error(res.error || "Failed to reset progress");
       }
   };
 
