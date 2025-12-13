@@ -1,15 +1,25 @@
 "use client";
 
 import { registerUser } from "@/actions/auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Lock, Mail, User, Loader2, Code2 } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 export default function SignupPage() {
+  const { data: session } = useSession();
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (session) {
+      router.replace("/dashboard");
+    }
+  }, [session, router]);
+
+  if (session) return null;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
