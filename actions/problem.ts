@@ -6,28 +6,32 @@ import Solution from "@/models/Solution";
 import { revalidatePath } from "next/cache";
 import { authenticatedAction } from "@/lib/action-utils";
 
+function escapeRegex(text: string) {
+  return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+}
+
 export async function getProblems(filters: any = {}) {
   return authenticatedAction(async (data: any, { user }) => {
     const query: any = { userId: user.id };
 
-    if (data.topic) query.topic = data.topic;
-    if (data.tags) query.tags = data.tags;
-    if (data.difficulty) query.difficulty = data.difficulty;
-    if (data.status) {
-        // Map "Unsolved" from UI to "Todo" in DB if necessary, or just use filter
-        // Assuming UI sends "Unsolved" but DB has "Todo"
+    if (data.topic && typeof data.topic === 'string') query.topic = data.topic;
+    if (data.tags && typeof data.tags === 'string') query.tags = data.tags;
+    if (data.difficulty && typeof data.difficulty === 'string') query.difficulty = data.difficulty;
+    
+    if (data.status && typeof data.status === 'string') {
         if (data.status === "Unsolved") query.status = { $ne: "Solved" };
-        else query.status = data.status;
-    }
-    if (data.search) {
-      query.title = { $regex: data.search, $options: "i" };
+        else if (["Solved", "Todo"].includes(data.status)) query.status = data.status;
     }
 
-    // Optimization: Just fetch the problems. Rely on Problem.status.
+    if (data.search && typeof data.search === 'string') {
+      query.title = { $regex: escapeRegex(data.search), $options: "i" };
+    } else if (data.search) {
+      // If search is not a string (e.g. object), ignore it or throw error.
+      // Ignoring is safer for stability.
+    }
+
+    // Optimization: Just fetch the problems. Rely on problem.status.
     const problems = await Problem.find(query).sort({ createdAt: -1 }).lean();
-    
-    // Quick fix: Map 'Todo' to 'Unsolved' for the UI if strictly needed, 
-    // or rely on UI handling "anything not Solved is Unsolved" (which it does).
     
     return JSON.parse(JSON.stringify(problems));
   }, filters);
