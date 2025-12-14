@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "CodeVault | Master Coding Patterns",
+    default: "CodeVault",
     template: "%s | CodeVault"
   },
   description: "The only spaced-repetition platform designed for LeetCode. Master patterns like Sliding Window, Two Pointers, and DP with a system that guarantees retention.",
@@ -30,13 +30,13 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "https://code-vault.vercel.app",
-    title: "CodeVault | Master Coding Patterns",
+    title: "CodeVault",
     description: "Stop grinding blindly. Start mastering patterns with guaranteed retention.",
     siteName: "CodeVault",
   },
   twitter: {
     card: "summary_large_image",
-    title: "CodeVault | Master Coding Patterns",
+    title: "CodeVault",
     description: "The only spaced-repetition platform designed for LeetCode.",
     creator: "@sohamsahare",
   },
