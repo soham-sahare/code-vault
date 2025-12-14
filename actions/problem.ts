@@ -117,95 +117,96 @@ export async function getDueProblems() {
 
 export async function getUserStats() {
   return authenticatedAction(async (_, { user }) => {
-    const userId = user.id;
+    const userId = new mongoose.Types.ObjectId(user.id);
 
     try {
-      // Parallelize independent queries
-      const pTotal = Problem.countDocuments({ userId });
-      const pSolved = Problem.countDocuments({ userId, status: "Solved" });
+      // 1. Fetch all Problem-related stats in ONE efficient query using $facet
+      // This allows parallel processing on the DB server and reduces network round-trips (latency)
+      const [problemStats] = await Problem.aggregate([
+        { $match: { userId } },
+        { 
+          $facet: {
+            // Basic Counts
+            counts: [
+                { $group: { 
+                    _id: null, 
+                    total: { $sum: 1 },
+                    solved: { $sum: { $cond: [{ $eq: ["$status", "Solved"] }, 1, 0] } }
+                }}
+            ],
+            // Distribution by properties
+            byDifficulty: [
+                { $group: { _id: "$difficulty", count: { $sum: 1 } } }
+            ],
+            byTopic: [
+                { $unwind: "$topic" },
+                { $group: { _id: "$topic", count: { $sum: 1 } } },
+                { $sort: { count: -1 } }
+            ],
+            byTag: [
+                { $unwind: "$tags" },
+                { $group: { _id: "$tags", count: { $sum: 1 } } },
+                { $sort: { count: -1 } }
+            ],
+            // Just getting IDs for the next step (Solution stats)
+            ids: [{ $project: { _id: 1 } }] 
+          } 
+        }
+      ]);
+
+      // Unpack Problem Stats
+      const total = problemStats.counts[0]?.total || 0;
+      const solved = problemStats.counts[0]?.solved || 0;
+      const byDifficulty = problemStats.byDifficulty || [];
+      const byTopic = problemStats.byTopic || [];
+      const byTag = problemStats.byTag || [];
       
-      const pByDifficulty = Problem.aggregate([
-        { $match: { userId: new mongoose.Types.ObjectId(userId) } },
-        { $group: { _id: "$difficulty", count: { $sum: 1 } } }
-      ]);
+      // Extract distinct lists from the aggregation results
+      const distinctTopics = byTopic.map((t: any) => t._id);
+      const distinctTags = byTag.map((t: any) => t._id);
+      
+      const problemIds = problemStats.ids.map((p: any) => p._id);
 
-      const pDistinctTopics = Problem.distinct("topic", { userId });
-      const pDistinctTags = Problem.distinct("tags", { userId });
+      // 2. Fetch Solution Stats - Only if we have problems
+      // Using $facet for solutions too
+      let byTimeComplexity: any[] = [];
+      let bySpaceComplexity: any[] = [];
+      let activityTimeline: any[] = [];
 
-      const pByTopic = Problem.aggregate([
-        { $match: { userId: new mongoose.Types.ObjectId(userId) } },
-        { $unwind: "$topic" },
-        { $group: { _id: "$topic", count: { $sum: 1 } } },
-        { $sort: { count: -1 } }
-      ]);
+      if (problemIds.length > 0) {
+          const sixMonthsAgo = new Date();
+          sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-      const pByTag = Problem.aggregate([
-        { $match: { userId: new mongoose.Types.ObjectId(userId) } },
-        { $unwind: "$tags" },
-        { $group: { _id: "$tags", count: { $sum: 1 } } },
-        { $sort: { count: -1 } }
-      ]);
+          const [solutionStats] = await Solution.aggregate([
+             { $match: { problemId: { $in: problemIds } } },
+             {
+                 $facet: {
+                     byTime: [
+                         { $match: { timeComplexity: { $exists: true, $ne: "" } } },
+                         { $group: { _id: "$timeComplexity", count: { $sum: 1 } } },
+                         { $sort: { count: -1 } }
+                     ],
+                     bySpace: [
+                         { $match: { spaceComplexity: { $exists: true, $ne: "" } } },
+                         { $group: { _id: "$spaceComplexity", count: { $sum: 1 } } },
+                         { $sort: { count: -1 } }
+                     ],
+                     timeline: [
+                         { $match: { createdAt: { $gte: sixMonthsAgo } } },
+                         { $group: { 
+                             _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, 
+                             count: { $sum: 1 } 
+                         }},
+                         { $sort: { _id: 1 } }
+                     ]
+                 }
+             }
+          ]);
 
-      // Fetch IDs for solution stats (needed for next batch)
-      const pUserProblems = Problem.find({ userId }).select("_id");
-
-      // Await the problems list first as others depend on it
-      const userProblems = await pUserProblems;
-      const problemIds = userProblems.map(p => p._id);
-
-      // Start dependent queries
-      const pByTimeComplexity = Solution.aggregate([
-        { $match: { problemId: { $in: problemIds }, timeComplexity: { $exists: true, $ne: "" } } },
-        { $group: { _id: "$timeComplexity", count: { $sum: 1 } } },
-        { $sort: { count: -1 } }
-      ]);
-
-      const pBySpaceComplexity = Solution.aggregate([
-        { $match: { problemId: { $in: problemIds }, spaceComplexity: { $exists: true, $ne: "" } } },
-        { $group: { _id: "$spaceComplexity", count: { $sum: 1 } } },
-        { $sort: { count: -1 } }
-      ]);
-
-      // Activity: Last 6 months
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-      const pActivityTimeline = Solution.aggregate([
-        { $match: { 
-            problemId: { $in: problemIds },
-            createdAt: { $gte: sixMonthsAgo }
-        }},
-        { $group: { 
-            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, 
-            count: { $sum: 1 } 
-        }},
-        { $sort: { _id: 1 } }
-      ]);
-
-      // Await all efficiently
-      const [
-        total,
-        solved,
-        byDifficulty,
-        distinctTopics,
-        distinctTags,
-        byTopic,
-        byTag,
-        byTimeComplexity,
-        bySpaceComplexity,
-        activityTimeline
-      ] = await Promise.all([
-        pTotal,
-        pSolved,
-        pByDifficulty,
-        pDistinctTopics,
-        pDistinctTags,
-        pByTopic,
-        pByTag,
-        pByTimeComplexity,
-        pBySpaceComplexity,
-        pActivityTimeline
-      ]);
+          byTimeComplexity = solutionStats.byTime || [];
+          bySpaceComplexity = solutionStats.bySpace || [];
+          activityTimeline = solutionStats.timeline || [];
+      }
 
       return {
         total,
