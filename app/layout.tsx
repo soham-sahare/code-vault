@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Code Vault",
+  title: "CodeVault",
   description: "Track your coding journey with spaced repetition.",
 };
 
