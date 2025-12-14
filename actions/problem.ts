@@ -320,11 +320,11 @@ export async function resetUserStats() {
       const userProblems = await Problem.find({ userId: user.id }).select("_id");
       const problemIds = userProblems.map(p => p._id);
 
-      if (problemIds.length > 0) {
-          await Solution.deleteMany({ problemId: { $in: problemIds } });
-      }
+      const deletePromise = problemIds.length > 0 
+          ? Solution.deleteMany({ problemId: { $in: problemIds } }) 
+          : Promise.resolve();
 
-      await Problem.updateMany(
+      const updatePromise = Problem.updateMany(
           { userId: user.id },
           { 
               $set: { 
@@ -336,6 +336,8 @@ export async function resetUserStats() {
               } 
           }
       );
+
+      await Promise.all([deletePromise, updatePromise]);
 
       revalidatePath("/dashboard");
       revalidatePath("/stats");
