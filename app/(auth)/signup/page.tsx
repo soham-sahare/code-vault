@@ -23,7 +23,7 @@ export default function SignupPage() {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
          <div className="glass p-8 rounded-2xl flex flex-col items-center gap-4">
-            <Loader2 className="animate-spin text-purple-400" size={32} />
+            <Loader2 className="animate-spin text-blue-400" size={32} />
             <p className="text-gray-400">Loading...</p>
          </div>
       </div>
@@ -50,7 +50,7 @@ export default function SignupPage() {
     <div className="flex min-h-screen items-center justify-center p-4 relative overflow-hidden">
       <div className="glass w-full max-w-md rounded-2xl p-8 animate-in fade-in zoom-in duration-500">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-500/20 text-purple-400">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/20 text-blue-400">
             <Code2 size={32} />
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-white">Create Account</h1>
@@ -73,7 +73,7 @@ export default function SignupPage() {
               <input
                 name="name"
                 type="text"
-                className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-white placeholder-gray-500 transition focus:border-purple-500/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-white placeholder-gray-500 transition focus:border-blue-500/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 placeholder="John Doe"
                 required
               />
@@ -89,7 +89,7 @@ export default function SignupPage() {
               <input
                 name="email"
                 type="email"
-                className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-white placeholder-gray-500 transition focus:border-purple-500/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-white placeholder-gray-500 transition focus:border-blue-500/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 placeholder="you@example.com"
                 required
               />
@@ -105,7 +105,7 @@ export default function SignupPage() {
               <input
                 name="password"
                 type="password"
-                className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-white placeholder-gray-500 transition focus:border-purple-500/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                className="w-full rounded-xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-white placeholder-gray-500 transition focus:border-blue-500/50 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 placeholder="••••••••"
                 required
               />
@@ -115,7 +115,7 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 py-3 font-semibold text-white shadow-lg transition hover:from-purple-500 hover:to-purple-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 py-3 font-semibold text-white shadow-lg transition hover:from-blue-500 hover:to-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -129,7 +129,7 @@ export default function SignupPage() {
 
         <p className="mt-8 text-center text-sm text-gray-400">
           Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-purple-400 hover:text-purple-300 hover:underline">
+          <Link href="/login" className="font-semibold text-blue-400 hover:text-blue-300 hover:underline">
             Sign in
           </Link>
         </p>
