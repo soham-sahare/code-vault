@@ -32,6 +32,7 @@ const SolutionSchema = new Schema({
 }, { timestamps: true });
 
 SolutionSchema.index({ problemId: 1 });
+SolutionSchema.index({ title: 'text', approach: 'text', code: 'text' });
 
 const Solution = models.Solution || model('Solution', SolutionSchema);
 

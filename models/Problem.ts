@@ -49,6 +49,7 @@ ProblemSchema.index({ userId: 1, status: 1 });
 ProblemSchema.index({ userId: 1, nextReviewDate: 1 });
 ProblemSchema.index({ userId: 1, topic: 1 });
 ProblemSchema.index({ userId: 1, tags: 1 });
+ProblemSchema.index({ title: 'text', topic: 'text', tags: 'text' });
 
 // Check review status
 ProblemSchema.virtual('isDue').get(function() {
