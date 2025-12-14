@@ -31,6 +31,8 @@ const SolutionSchema = new Schema({
   },
 }, { timestamps: true });
 
+SolutionSchema.index({ problemId: 1 });
+
 const Solution = models.Solution || model('Solution', SolutionSchema);
 
 export default Solution;

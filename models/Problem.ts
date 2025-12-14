@@ -42,6 +42,13 @@ const ProblemSchema = new Schema({
     default: Date.now,
   },
 }, { timestamps: true });
+ 
+// Indexes for performance
+ProblemSchema.index({ userId: 1 });
+ProblemSchema.index({ userId: 1, status: 1 });
+ProblemSchema.index({ userId: 1, nextReviewDate: 1 });
+ProblemSchema.index({ userId: 1, topic: 1 });
+ProblemSchema.index({ userId: 1, tags: 1 });
 
 // Check review status
 ProblemSchema.virtual('isDue').get(function() {
