@@ -174,7 +174,7 @@ export default function Home() {
                 &copy; {new Date().getFullYear()} CodeVault. Made with <span className="text-red-500">♥</span> by <a href="https://sohamsahare.vercel.app/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition underline decoration-blue-500/30 underline-offset-4">sohamsahare</a>
             </p>
             <div className="flex gap-6">
-                <a href="#" className="text-sm text-gray-400 hover:text-white transition">GitHub</a>
+                <a href="https://github.com/soham-sahare" target="_blank" className="text-sm text-gray-400 hover:text-white transition">GitHub</a>
             </div>
         </div>
       </footer>
