@@ -18,8 +18,31 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CodeVault",
-  description: "Track your coding journey with spaced repetition.",
+  title: {
+    default: "CodeVault | Master Coding Patterns",
+    template: "%s | CodeVault"
+  },
+  description: "The only spaced-repetition platform designed for LeetCode. Master patterns like Sliding Window, Two Pointers, and DP with a system that guarantees retention.",
+  keywords: ["leetcode", "spaced repetition", "coding interview", "algorithms", "data structures", "software engineering"],
+  authors: [{ name: "Soham Sahare", url: "https://sohamsahare.vercel.app/" }],
+  creator: "Soham Sahare",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://code-vault.vercel.app",
+    title: "CodeVault | Master Coding Patterns",
+    description: "Stop grinding blindly. Start mastering patterns with guaranteed retention.",
+    siteName: "CodeVault",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CodeVault | Master Coding Patterns",
+    description: "The only spaced-repetition platform designed for LeetCode.",
+    creator: "@sohamsahare",
+  },
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export default function RootLayout({
