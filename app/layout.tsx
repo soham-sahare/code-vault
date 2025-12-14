@@ -5,6 +5,7 @@ import { Providers } from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 import { Toaster } from "sonner";
 import LanguageOnboardingModal from "@/components/LanguageOnboardingModal";
+import AppBackground from "@/components/AppBackground";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen text-white`}
       >
+        <AppBackground />
         <Providers>
           <Navbar />
           <div className="pt-16">
