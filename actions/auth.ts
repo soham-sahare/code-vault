@@ -40,28 +40,41 @@ export async function registerUser(formData: FormData) {
 export async function updateProfile(formData: FormData) {
   return authenticatedAction(async (data: FormData, { user }) => {
     const name = data.get("name") as string;
+    const defaultLanguage = data.get("defaultLanguage") as string;
     const currentPassword = data.get("currentPassword") as string;
     const newPassword = data.get("newPassword") as string;
 
     const dbUser = await User.findOne({ email: user.email }).select("+password");
     if (!dbUser) return { error: "User not found" };
 
-    if (name && name !== dbUser.name) {
-      const existingUser = await User.findOne({ name });
-      if (existingUser) return { error: "Username already taken" };
-      dbUser.name = name;
-    }
-
+    // Separate password update from profile update for cleaner logic
     if (newPassword) {
-      if (!currentPassword) return { error: "Current password is required" };
-      
-      const isMatch = await bcrypt.compare(currentPassword, dbUser.password);
-      if (!isMatch) return { error: "Incorrect current password" };
-
-      dbUser.password = await bcrypt.hash(newPassword, 10);
+       if (!currentPassword) return { error: "Current password is required" };
+       const userWithPassword = await User.findById(dbUser._id).select("+password");
+       const isMatch = await bcrypt.compare(currentPassword, userWithPassword.password);
+       if (!isMatch) return { error: "Incorrect current password" };
+       
+       await User.findByIdAndUpdate(dbUser._id, { 
+           password: await bcrypt.hash(newPassword, 10) 
+       });
     }
 
-    await dbUser.save();
+    // Update other fields
+    const updates: any = {};
+    if (name && name !== dbUser.name) {
+        // Unique check
+        const existing = await User.findOne({ name, _id: { $ne: dbUser._id } });
+        if (existing) return { error: "Username already taken" };
+        updates.name = name;
+    }
+    if (defaultLanguage) {
+        updates.defaultLanguage = defaultLanguage;
+    }
+
+    if (Object.keys(updates).length > 0) {
+        await User.findByIdAndUpdate(dbUser._id, { $set: updates });
+    }
+
     revalidatePath("/profile");
     revalidatePath("/", "layout");
 

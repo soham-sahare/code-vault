@@ -46,15 +46,20 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
+        token.defaultLanguage = (user as any).defaultLanguage;
       }
       if (trigger === "update" && session?.name) {
         token.name = session.name;
+      }
+      if (trigger === "update" && session?.defaultLanguage) {
+        token.defaultLanguage = session.defaultLanguage;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id;
+        (session.user as any).defaultLanguage = token.defaultLanguage;
       }
       return session;
     },

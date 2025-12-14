@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Lock, Mail, Loader2, Code2 } from "lucide-react";
 
 export default function LoginPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +20,16 @@ export default function LoginPage() {
     }
   }, [session, router]);
 
-  if (session) return null;
+  if (status === "loading" || session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="glass p-8 rounded-2xl flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin text-blue-400" size={32} />
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

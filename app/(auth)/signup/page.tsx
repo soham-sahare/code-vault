@@ -8,7 +8,7 @@ import { Lock, Mail, User, Loader2, Code2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 export default function SignupPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,16 @@ export default function SignupPage() {
     }
   }, [session, router]);
 
-  if (session) return null;
+  if (status === "loading" || session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+         <div className="glass p-8 rounded-2xl flex flex-col items-center gap-4">
+            <Loader2 className="animate-spin text-purple-400" size={32} />
+            <p className="text-gray-400">Loading...</p>
+         </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

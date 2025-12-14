@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 import { Toaster } from "sonner";
+import LanguageOnboardingModal from "@/components/LanguageOnboardingModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({
             {children}
           </div>
           <Toaster position="bottom-right" theme="dark" richColors />
+          <LanguageOnboardingModal />
         </Providers>
       </body>
     </html>

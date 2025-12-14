@@ -10,11 +10,15 @@ import ConfirmationModal from "./ConfirmationModal";
 import { Loader2, User, Lock, Save, AlertCircle, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { LANGUAGES } from "@/lib/constants";
+import { Select } from "./ui/SelectUtils";
+
 export default function ProfileClient() {
   const { data: session, update } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [defaultLang, setDefaultLang] = useState((session?.user as any)?.defaultLanguage || "");
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
@@ -27,8 +31,10 @@ export default function ProfileClient() {
       toast.success("Profile updated successfully");
       // Update session if name changed
       const newName = formData.get("name") as string;
-      if (newName && session) {
-        await update({ name: newName });
+      const newLang = formData.get("defaultLanguage") as string;
+      
+      if (session) {
+        await update({ name: newName, defaultLanguage: newLang });
       }
       
        const form = document.querySelector("form") as HTMLFormElement;
@@ -79,6 +85,21 @@ export default function ProfileClient() {
               placeholder="Your name"
               className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             />
+          </div>
+
+          {/* Default Language */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-300">Default Language</label>
+            <div className="relative">
+                <input type="hidden" name="defaultLanguage" value={defaultLang} />
+                <Select
+                    options={LANGUAGES}
+                    value={defaultLang}
+                    onChange={setDefaultLang}
+                    placeholder="Select default language"
+                />
+            </div>
+            <p className="text-xs text-gray-500">This will be pre-selected when you add new solutions.</p>
           </div>
 
           <div className="h-px bg-white/10 my-8"></div>

@@ -15,8 +15,17 @@ const UserSchema = new Schema({
     required: [true, 'Please provide a password'],
     select: false, // Don't return password by default
   },
+  defaultLanguage: {
+    type: String,
+    default: "", 
+  },
 }, { timestamps: true });
 
-const User = models.User || model('User', UserSchema);
+// Prevent overwrite warning in hot-reload
+if (process.env.NODE_ENV === "development") {
+  delete models.User;
+}
+
+const User = models.User || model("User", UserSchema);
 
 export default User;

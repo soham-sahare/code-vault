@@ -36,7 +36,7 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/20 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 group">
+        <Link href={session ? "/dashboard" : "/"} className="flex items-center gap-2 group">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/20 text-blue-400 transition group-hover:bg-blue-500/30 group-hover:text-blue-300">
             <Code2 size={20} />
           </div>
@@ -193,6 +193,8 @@ export default function Navbar() {
           </div>
         </div>
       )}
+
+
     </nav>
   );
 }

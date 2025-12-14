@@ -13,25 +13,21 @@ export async function getProblems(filters: any = {}) {
     if (data.topic) query.topic = data.topic;
     if (data.tags) query.tags = data.tags;
     if (data.difficulty) query.difficulty = data.difficulty;
-    if (data.status) query.status = data.status;
+    if (data.status) {
+        // Map "Unsolved" from UI to "Todo" in DB if necessary, or just use filter
+        // Assuming UI sends "Unsolved" but DB has "Todo"
+        if (data.status === "Unsolved") query.status = { $ne: "Solved" };
+        else query.status = data.status;
+    }
     if (data.search) {
       query.title = { $regex: data.search, $options: "i" };
     }
 
+    // Optimization: Just fetch the problems. Rely on Problem.status.
     const problems = await Problem.find(query).sort({ createdAt: -1 }).lean();
-    const problemIds = problems.map((p: any) => p._id);
-
-    const solutions = await Solution.aggregate([
-      { $match: { problemId: { $in: problemIds } } },
-      { $group: { _id: "$problemId", count: { $sum: 1 } } }
-    ]);
-
-    const solutionCounts = new Map(solutions.map((s: any) => [s._id.toString(), s.count]));
-
-    problems.forEach((p: any) => {
-      const hasSolution = solutionCounts.get(p._id.toString()) || 0;
-      p.status = hasSolution > 0 ? "Solved" : "Unsolved";
-    });
+    
+    // Quick fix: Map 'Todo' to 'Unsolved' for the UI if strictly needed, 
+    // or rely on UI handling "anything not Solved is Unsolved" (which it does).
     
     return JSON.parse(JSON.stringify(problems));
   }, filters);
@@ -39,9 +35,11 @@ export async function getProblems(filters: any = {}) {
 
 export async function getProblemDetails(id: string) {
   return authenticatedAction(async (problemId: string, { user }) => {
-    const problem = await Problem.findOne({ _id: problemId, userId: user.id }).lean();
-    const solutions = await Solution.find({ problemId }).lean();
-
+    const [problem, solutions] = await Promise.all([
+        Problem.findOne({ _id: problemId, userId: user.id }).lean(),
+        Solution.find({ problemId }).lean()
+    ]);
+    
     return {
       problem: JSON.parse(JSON.stringify(problem)),
       solutions: JSON.parse(JSON.stringify(solutions))
@@ -55,6 +53,7 @@ export async function createProblem(data: any) {
       const newProblem = await Problem.create({
         ...problemData,
         userId: user.id,
+        status: "Todo", // Default to Todo (Unsolved)
         topic: Array.isArray(problemData.topic) ? problemData.topic : [problemData.topic],
         tags: Array.isArray(problemData.tags) ? problemData.tags : problemData.tags.split(",").map((t: string) => t.trim()),
       });
@@ -69,8 +68,10 @@ export async function createProblem(data: any) {
 
 export async function deleteProblem(id: string) {
   return authenticatedAction(async (problemId: string, { user }) => {
-    await Problem.findOneAndDelete({ _id: problemId, userId: user.id });
-    await Solution.deleteMany({ problemId });
+    await Promise.all([
+        Problem.findOneAndDelete({ _id: problemId, userId: user.id }),
+        Solution.deleteMany({ problemId })
+    ]);
     
     revalidatePath("/dashboard");
     return { success: true };
@@ -119,45 +120,47 @@ export async function getUserStats() {
     const userId = user.id;
 
     try {
-      // 1. Core Counts
-      const total = await Problem.countDocuments({ userId });
-      const solved = await Problem.countDocuments({ userId, status: "Solved" });
+      // Parallelize independent queries
+      const pTotal = Problem.countDocuments({ userId });
+      const pSolved = Problem.countDocuments({ userId, status: "Solved" });
       
-      // 2. Problem-based Aggregations
-      const byDifficulty = await Problem.aggregate([
-        { $match: { userId:  new mongoose.Types.ObjectId(userId) } },
+      const pByDifficulty = Problem.aggregate([
+        { $match: { userId: new mongoose.Types.ObjectId(userId) } },
         { $group: { _id: "$difficulty", count: { $sum: 1 } } }
       ]);
 
-      const distinctTopics = await Problem.distinct("topic", { userId });
-      const distinctTags = await Problem.distinct("tags", { userId });
+      const pDistinctTopics = Problem.distinct("topic", { userId });
+      const pDistinctTags = Problem.distinct("tags", { userId });
 
-      const byTopic = await Problem.aggregate([
+      const pByTopic = Problem.aggregate([
         { $match: { userId: new mongoose.Types.ObjectId(userId) } },
         { $unwind: "$topic" },
         { $group: { _id: "$topic", count: { $sum: 1 } } },
         { $sort: { count: -1 } }
       ]);
 
-      const byTag = await Problem.aggregate([
+      const pByTag = Problem.aggregate([
         { $match: { userId: new mongoose.Types.ObjectId(userId) } },
         { $unwind: "$tags" },
         { $group: { _id: "$tags", count: { $sum: 1 } } },
         { $sort: { count: -1 } }
       ]);
 
-      // 3. Solution-based Aggregations (Complexity & Activity)
-      // First get all problem IDs for this user
-      const userProblems = await Problem.find({ userId: userId }).select("_id");
+      // Fetch IDs for solution stats (needed for next batch)
+      const pUserProblems = Problem.find({ userId }).select("_id");
+
+      // Await the problems list first as others depend on it
+      const userProblems = await pUserProblems;
       const problemIds = userProblems.map(p => p._id);
 
-      const byTimeComplexity = await Solution.aggregate([
+      // Start dependent queries
+      const pByTimeComplexity = Solution.aggregate([
         { $match: { problemId: { $in: problemIds }, timeComplexity: { $exists: true, $ne: "" } } },
         { $group: { _id: "$timeComplexity", count: { $sum: 1 } } },
         { $sort: { count: -1 } }
       ]);
 
-      const bySpaceComplexity = await Solution.aggregate([
+      const pBySpaceComplexity = Solution.aggregate([
         { $match: { problemId: { $in: problemIds }, spaceComplexity: { $exists: true, $ne: "" } } },
         { $group: { _id: "$spaceComplexity", count: { $sum: 1 } } },
         { $sort: { count: -1 } }
@@ -167,7 +170,7 @@ export async function getUserStats() {
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-      const activityTimeline = await Solution.aggregate([
+      const pActivityTimeline = Solution.aggregate([
         { $match: { 
             problemId: { $in: problemIds },
             createdAt: { $gte: sixMonthsAgo }
@@ -177,6 +180,31 @@ export async function getUserStats() {
             count: { $sum: 1 } 
         }},
         { $sort: { _id: 1 } }
+      ]);
+
+      // Await all efficiently
+      const [
+        total,
+        solved,
+        byDifficulty,
+        distinctTopics,
+        distinctTags,
+        byTopic,
+        byTag,
+        byTimeComplexity,
+        bySpaceComplexity,
+        activityTimeline
+      ] = await Promise.all([
+        pTotal,
+        pSolved,
+        pByDifficulty,
+        pDistinctTopics,
+        pDistinctTags,
+        pByTopic,
+        pByTag,
+        pByTimeComplexity,
+        pBySpaceComplexity,
+        pActivityTimeline
       ]);
 
       return {
@@ -255,6 +283,17 @@ export async function deleteSolution(id: string) {
 
     await Solution.findByIdAndDelete(solutionId);
     
+    // Check if any solutions remain
+    const remainingCount = await Solution.countDocuments({ problemId: solution.problemId });
+    if (remainingCount === 0) {
+        await Problem.findByIdAndUpdate(solution.problemId, {
+            status: "Todo",
+            lastPracticed: null, // Optional: Reset practice date? Maybe keep it.
+            // keeping lastPracticed might be good to know when you *last* worked on it, even if solution is gone.
+            // But usually 'status: Todo' implies not solved.
+        });
+    }
+
     revalidatePath("/dashboard");
     return { success: true };
   }, id);

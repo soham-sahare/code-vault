@@ -5,8 +5,13 @@ export default async function DashboardPage(props: {
   searchParams: Promise<{ topic?: string; difficulty?: string; search?: string; tags?: string }>;
 }) {
   const searchParams = await props.searchParams;
-  const problems = await getProblems(searchParams);
-  let stats: any = await getUserStats();
+  
+  const [problems, statsResult] = await Promise.all([
+    getProblems(searchParams),
+    getUserStats()
+  ]);
+  
+  let stats: any = statsResult;
 
   if (stats?.error) {
       // Fallback empty stats or handle error

@@ -1,5 +1,7 @@
 "use client";
 
+import { useSession } from "next-auth/react";
+
 import { getProblemDetails, addSolution, reviewProblem, deleteSolution, updateSolution, deleteProblem } from "@/actions/problem";
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
@@ -33,6 +35,8 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
   const [solutionLoading, setSolutionLoading] = useState(false);
   const [editingSolutionId, setEditingSolutionId] = useState<string | null>(null);
   
+  const { data: session } = useSession();
+  
   const [confirmModal, setConfirmModal] = useState<{ 
       isOpen: boolean; 
       type: 'solution' | 'problem' | null; 
@@ -43,6 +47,12 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
   const [newSolTime, setNewSolTime] = useState("O(n)");
   const [newSolSpace, setNewSolSpace] = useState("O(n)");
   const [newSolCode, setNewSolCode] = useState("");
+
+  useEffect(() => {
+    if (session?.user && (session.user as any).defaultLanguage) {
+        setNewSolLang((session.user as any).defaultLanguage);
+    }
+  }, [session]);
 
   useEffect(() => {
     getProblemDetails(problemId).then((res) => {
