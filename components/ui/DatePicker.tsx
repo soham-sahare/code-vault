@@ -53,18 +53,19 @@ export function DatePicker({ date, setDate, label }: DatePickerProps) {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full mt-2 left-0 z-50 p-3 bg-[#09090b] border border-white/10 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 data-[side=bottom]:slide-in-from-top-2">
+        <div className="fixed sm:absolute top-auto sm:top-full left-4 right-4 sm:left-0 sm:right-auto bottom-4 sm:bottom-auto mt-0 sm:mt-2 z-50 p-3 bg-[#09090b] border border-white/10 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 w-auto sm:w-auto">
            {/* Custom styles override via global style tag since we can't easily configure DayPicker css here otherwise */}
            <style>{`
-              .rdp { --rdp-cell-size: 32px; --rdp-accent-color: rgba(255, 255, 255, 0.1); margin: 0; }
-              .rdp-day_selected:not([disabled]) { font-weight: bold; border: 1px solid rgba(255,255,255,0.2) !important; color: white !important; background-color: var(--rdp-accent-color) !important; }
-              .rdp-day_selected:hover:not([disabled]) { background-color: rgba(255, 255, 255, 0.2) !important; }
-              .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: rgba(255, 255, 255, 0.05) !important; }
+              .rdp { --rdp-cell-size: 32px; margin: 0; }
+              .rdp-day { color: white !important; font-size: 0.875rem !important; background-color: transparent !important; }
+              .rdp-day:hover:not([disabled]):not(.rdp-day_selected) { background-color: rgba(255, 255, 255, 0.05) !important; }
+              .rdp-day_selected { font-weight: bold !important; border: 1px solid rgba(255,255,255,0.2) !important; color: white !important; background-color: rgba(255, 255, 255, 0.1) !important; }
+              .rdp-day_selected:hover { background-color: rgba(255, 255, 255, 0.2) !important; }
+              .rdp-day_today { color: #60a5fa !important; font-weight: 600 !important; }
               .rdp-caption_label { color: white; font-weight: 600; }
               .rdp-head_cell { color: #a1a1aa; font-weight: 500; font-size: 0.875rem; text-transform: uppercase; }
-              .rdp-day { color: white; font-size: 0.875rem; }
               .rdp-nav_button { color: #a1a1aa; }
-              .rdp-nav_button:hover { color: white; background-color: #ffffff20; }
+              .rdp-nav_button:hover { color: white; background-color: rgba(255,255,255,0.2); }
               .rdp-months { justify-content: center; }
            `}</style>
            <DayPicker

@@ -163,7 +163,7 @@ export function Select({ options: initialOptions, value, onChange, placeholder, 
 
       {isOpen && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl z-50 p-1.5 animate-in fade-in slide-in-from-top-2 duration-200 min-w-[160px]">
-          {(creatable || options.length > 8) && (
+          {creatable && (
               <input
                  autoFocus
                  type="text"
