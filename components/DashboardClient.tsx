@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -7,9 +6,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Plus, Clock, CheckCircle, Trash2, Pencil, ArrowRight, RotateCcw } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
-import dynamic from "next/dynamic";
-const AddProblemModal = dynamic(() => import("./AddProblemModal"), { ssr: false });
-const ViewProblemModal = dynamic(() => import("./ViewProblemModal"), { ssr: false });
+import AddProblemModal from "./AddProblemModal";
+import ViewProblemModal from "./ViewProblemModal";
 import { deleteProblem } from "@/actions/problem";
 import { toast } from "sonner";
 import { Select } from "./ui/SelectUtils";

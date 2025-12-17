@@ -49,6 +49,7 @@ export async function createProblem(data: any) {
       });
       
       revalidatePath("/dashboard");
+      revalidatePath("/stats");
       return { success: true, id: (newProblem as any)._id.toString() };
     } catch (error) {
       return { error: "Failed to create problem" };
@@ -64,6 +65,7 @@ export async function deleteProblem(id: string) {
     ]);
     
     revalidatePath("/dashboard");
+    revalidatePath("/stats");
     return { success: true };
   }, id);
 }
@@ -86,6 +88,7 @@ export async function addSolution(data: any) {
     });
     
     revalidatePath("/dashboard");
+    revalidatePath("/stats");
     return { success: true };
   }, data);
 }
@@ -164,8 +167,8 @@ export async function getUserStats() {
       let activityTimeline: any[] = [];
 
       if (problemIds.length > 0) {
-          const sixMonthsAgo = new Date();
-          sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+          const twelveMonthsAgo = new Date();
+          twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
           const [solutionStats] = await Solution.aggregate([
              { $match: { problemId: { $in: problemIds } } },
@@ -182,7 +185,7 @@ export async function getUserStats() {
                          { $sort: { count: -1 } }
                      ],
                      timeline: [
-                         { $match: { createdAt: { $gte: sixMonthsAgo } } },
+                         { $match: { createdAt: { $gte: twelveMonthsAgo } } },
                          { $group: { 
                              _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, 
                              count: { $sum: 1 } 
@@ -237,6 +240,7 @@ export async function reviewProblem(id: string) {
     });
 
     revalidatePath("/dashboard");
+    revalidatePath("/stats");
     return { success: true };
   }, id);
 }
@@ -257,6 +261,7 @@ export async function updateProblem(id: string, data: any) {
       if (!updated) return { error: "Problem not found" };
 
       revalidatePath("/dashboard");
+      revalidatePath("/stats");
       return { success: true };
     } catch (error) {
       return { error: "Failed to update problem" };
@@ -286,6 +291,7 @@ export async function deleteSolution(id: string) {
     }
 
     revalidatePath("/dashboard");
+    revalidatePath("/stats");
     return { success: true };
   }, id);
 }
@@ -301,6 +307,7 @@ export async function updateSolution(id: string, data: any) {
     await Solution.findByIdAndUpdate(id, solutionData);
 
     revalidatePath("/dashboard");
+    revalidatePath("/stats");
     return { success: true };
   }, data);
 }

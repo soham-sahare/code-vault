@@ -1,9 +1,9 @@
-"use strict";
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, PieChart, Tag, Hash, Activity, Clock } from "lucide-react";
+import { Select } from "./ui/SelectUtils";
 
 interface Stats {
   total: number;
@@ -19,6 +19,8 @@ interface Stats {
 }
 
 export default function StatsClient({ stats }: { stats: Stats }) {
+  const [duration, setDuration] = useState("30d");
+
   // Calculate percentages for the donut chart
   const easyCount = stats.byDifficulty.find((d) => d._id === "Easy")?.count || 0;
   const mediumCount = stats.byDifficulty.find((d) => d._id === "Medium")?.count || 0;
@@ -32,11 +34,34 @@ export default function StatsClient({ stats }: { stats: Stats }) {
   const easyDeg = totalSolved ? (easyCount / totalSolved) * 360 : 0;
   const mediumDeg = totalSolved ? (mediumCount / totalSolved) * 360 : 0;
 
-  // Helper to fill missing dates for last 30 days
-  const getLast30DaysActivity = () => {
+  const DURATION_OPTIONS = [
+      { label: "Last 24 Hours", value: "1d" },
+      { label: "Last 7 Days", value: "7d" },
+      { label: "Last 15 Days", value: "15d" },
+      { label: "Last 30 Days", value: "30d" },
+      { label: "Last 3 Months", value: "3m" },
+      { label: "Last 6 Months", value: "6m" },
+      { label: "Last 9 Months", value: "9m" },
+      { label: "Last 1 Year", value: "12m" },
+  ];
+
+  const getFilteredActivity = () => {
       const activityMap = new Map(stats.activityTimeline?.map(a => [a._id, a.count]) || []);
       const days = [];
-      for (let i = 29; i >= 0; i--) {
+      let daysToLookBack = 30;
+
+      switch(duration) {
+          case "1d": daysToLookBack = 1; break;
+          case "7d": daysToLookBack = 7; break;
+          case "15d": daysToLookBack = 15; break;
+          case "30d": daysToLookBack = 30; break;
+          case "3m": daysToLookBack = 90; break;
+          case "6m": daysToLookBack = 180; break;
+          case "9m": daysToLookBack = 270; break;
+          case "12m": daysToLookBack = 365; break;
+      }
+
+      for (let i = daysToLookBack - 1; i >= 0; i--) {
           const d = new Date();
           d.setDate(d.getDate() - i);
           const dateStr = d.toISOString().split('T')[0];
@@ -49,11 +74,10 @@ export default function StatsClient({ stats }: { stats: Stats }) {
       return days;
   };
   
-  const last30Days = getLast30DaysActivity();
-  const maxActivity = Math.max(...last30Days.map(d => d.count), 1); // Avoid div by zero
+  const filteredActivity = getFilteredActivity();
+  const maxActivity = Math.max(...filteredActivity.map(d => d.count), 1);
 
-  // Sort complexities by standard order if possible, or just descending count
-  // Ideally, import the order from constants, but descending count is also fine for stats
+  // Sort complexities
   const sortedTime = [...(stats.byTimeComplexity || [])].sort((a,b) => b.count - a.count);
   const sortedSpace = [...(stats.bySpaceComplexity || [])].sort((a,b) => b.count - a.count);
   const maxTimeCount = Math.max(...sortedTime.map(t => t.count), 1);
@@ -90,7 +114,6 @@ export default function StatsClient({ stats }: { stats: Stats }) {
             <div className="relative w-48 h-48 sm:w-56 sm:h-56">
                 {/* SVG Donut */}
                 <svg viewBox="0 0 36 36" className="w-full h-full rotate-[-90deg]">
-                  {/* Background Circle */}
                   <path
                     className="text-white/5"
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -98,8 +121,6 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                     stroke="currentColor"
                     strokeWidth="3.8"
                   />
-                  
-                  {/* Easy Segment (Green) */}
                   <path
                     className="text-green-500"
                     strokeDasharray={`${easyPct}, 100`}
@@ -108,8 +129,6 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                     stroke="currentColor"
                     strokeWidth="3.8"
                   />
-                  
-                  {/* Medium Segment (Yellow) - Rotated by easyDeg */}
                   {mediumCount > 0 && (
                       <path
                         className="text-yellow-500"
@@ -121,8 +140,6 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                         style={{ transformOrigin: 'center', transform: `rotate(${easyDeg}deg)` }}
                       />
                   )}
-
-                  {/* Hard Segment (Red) - Rotated by easyDeg + mediumDeg */}
                   {hardCount > 0 && (
                       <path
                         className="text-red-500"
@@ -135,8 +152,6 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                       />
                   )}
                 </svg>
-
-                {/* Center Text */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-4xl font-bold text-white">{totalSolved}</span>
                   <span className="text-sm text-gray-400">Solved</span>
@@ -273,15 +288,26 @@ export default function StatsClient({ stats }: { stats: Stats }) {
 
         {/* Activity Timeline */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-             <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                <Activity size={18} className="text-yellow-400" />
-                Activity (Last 30 Days)
-             </h3>
-             <div className="h-48 w-full flex items-end gap-2 sm:gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10">
-                {last30Days.map((day, idx) => (
+             <div className="flex items-center justify-between mb-6">
+                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Activity size={18} className="text-yellow-400" />
+                    Activity
+                 </h3>
+                 <div className="w-40">
+                    <Select 
+                        options={DURATION_OPTIONS}
+                        value={duration}
+                        onChange={setDuration}
+                        placeholder="Duration"
+                    />
+                 </div>
+             </div>
+             
+             <div className="h-48 w-full flex items-end gap-1 sm:gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10">
+                {filteredActivity.map((day, idx) => (
                     <div key={day.date} className="flex flex-col items-center flex-1 min-w-[20px] group relative">
                         {/* Tooltip */}
-                        <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10 border border-white/10">
+                        <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10 border border-white/10 left-1/2 -translate-x-1/2 pointer-events-none">
                             {day.count} solutions on {day.shortDate}
                         </div>
                         
@@ -289,7 +315,13 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                             className={`w-full rounded-t-sm transition-all duration-300 ${day.count > 0 ? 'bg-yellow-500/60 hover:bg-yellow-400' : 'bg-white/5'}`}
                             style={{ height: `${Math.max((day.count / maxActivity) * 100, 4)}%` }}
                         ></div>
-                        {idx % 5 === 0 && (
+                        
+                        {/* Intelligent X-Axis Labeling */}
+                        {(
+                            (filteredActivity.length <= 15) || 
+                            (filteredActivity.length <= 30 && idx % 3 === 0) || 
+                            (filteredActivity.length > 30 && idx % Math.ceil(filteredActivity.length / 10) === 0)
+                        ) && (
                             <span className="text-[10px] text-gray-600 mt-2 truncate w-full text-center">{day.shortDate}</span>
                         )}
                     </div>
