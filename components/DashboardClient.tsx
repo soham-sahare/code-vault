@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Plus, Clock, CheckCircle, Trash2, Pencil, ArrowRight, RotateCcw } from "lucide-react";
@@ -21,7 +20,7 @@ interface Problem {
   difficulty: "Easy" | "Medium" | "Hard";
   topic: string[];
   tags: string[];
-  status: "Solved" | "Unsolved";
+  status: "Solved" | "Unsolved" | "Todo";
   lastPracticed: string;
   nextReviewDate: string;
   intuition?: string; 
@@ -44,8 +43,11 @@ interface Stats {
 export default function DashboardClient({ initialProblems, stats }: { initialProblems: Problem[]; stats: Stats }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+  
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
+  const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
   const [localSearch, setLocalSearch] = useState(searchParams.get("search") || "");
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
@@ -53,22 +55,28 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
   useEffect(() => {
     const viewProblemId = searchParams.get("viewProblem");
     if (viewProblemId) {
+       const problem = initialProblems.find(p => p._id === viewProblemId);
        setSelectedProblemId(viewProblemId);
+       setSelectedProblem(problem || null);
     }
-  }, [searchParams]);
+  }, [searchParams, initialProblems]);
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
     if (term) params.set("search", term);
     else params.delete("search");
-    router.replace(`/dashboard?${params.toString()}`);
+    startTransition(() => {
+      router.replace(`/dashboard?${params.toString()}`, { scroll: false });
+    });
   }, 300);
 
   const updateFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams);
     if (value) params.set(key, value);
     else params.delete(key);
-    router.push(`/dashboard?${params.toString()}`);
+    startTransition(() => {
+      router.push(`/dashboard?${params.toString()}`, { scroll: false });
+    });
   };
 
   const handleDeleteClick = (e: React.MouseEvent, id: string) => {
@@ -94,6 +102,11 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
     setShowAddModal(true);
   };
 
+  const handleRowClick = (problem: Problem) => {
+    setSelectedProblem(problem);
+    setSelectedProblemId(problem._id);
+  };
+
   const topicOptions = [
       { label: "All Topics", value: "" },
       ...stats.distinctTopics.map(t => ({ label: t, value: t }))
@@ -104,7 +117,7 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
       ...stats.distinctTags.map(t => ({ label: t, value: t }))
   ];
 
-  // Computed filter logic
+  // Client-side filtering for instant feedback
   const filteredProblems = useMemo(() => {
     const term = (searchParams.get("search") || "").toLowerCase();
     const difficulty = searchParams.get("difficulty");
@@ -126,9 +139,10 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
   }, [initialProblems, searchParams]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300">
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between hover:bg-white/[0.07] transition-colors">
               <div>
                   <p className="text-sm text-gray-400">Total Solved</p>
                   <p className="text-2xl font-bold text-white mt-1">{stats.solved}</p>
@@ -138,7 +152,7 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
               </div>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 md:col-span-2 flex items-center justify-around gap-4">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 md:col-span-2 flex items-center justify-around gap-4 hover:bg-white/[0.07] transition-colors">
               <div className="text-center">
                   <p className="text-xs text-gray-400 mb-1">Easy</p>
                   <span className="text-lg font-bold text-green-400">
@@ -173,13 +187,14 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
           </Link>
       </div>
 
+      {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           <input 
             type="text" 
             placeholder="Search problems..." 
-            className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
             defaultValue={localSearch}
             onChange={(e) => {
               setLocalSearch(e.target.value);
@@ -190,35 +205,35 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
         
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
             <div className="w-full sm:w-40">
-            <Select 
-                options={FILTER_DIFFICULTY_OPTIONS}
-                value={searchParams.get("difficulty") || ""}
-                onChange={(val) => updateFilter("difficulty", val)}
-                placeholder="All Difficulties"
-            />
+              <Select 
+                  options={FILTER_DIFFICULTY_OPTIONS}
+                  value={searchParams.get("difficulty") || ""}
+                  onChange={(val) => updateFilter("difficulty", val)}
+                  placeholder="All Difficulties"
+              />
             </div>
 
             <div className="w-full sm:w-40">
-            <Select 
-                options={topicOptions}
-                value={searchParams.get("topic") || ""}
-                onChange={(val) => updateFilter("topic", val)}
-                placeholder="All Topics"
-            />
+              <Select 
+                  options={topicOptions}
+                  value={searchParams.get("topic") || ""}
+                  onChange={(val) => updateFilter("topic", val)}
+                  placeholder="All Topics"
+              />
             </div>
 
             <div className="w-full sm:w-40">
-            <Select 
-                options={tagOptions}
-                value={searchParams.get("tags") || ""}
-                onChange={(val) => updateFilter("tags", val)}
-                placeholder="Filter by Tag"
-            />
+              <Select 
+                  options={tagOptions}
+                  value={searchParams.get("tags") || ""}
+                  onChange={(val) => updateFilter("tags", val)}
+                  placeholder="Filter by Tag"
+              />
             </div>
             
             {(searchParams.toString().length > 0) && (
                 <button 
-                    onClick={() => router.push("/dashboard")}
+                    onClick={() => startTransition(() => router.push("/dashboard"))}
                     className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center sm:w-auto"
                     title="Reset Filters"
                 >
@@ -228,7 +243,7 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
 
             <button 
                 onClick={() => { setEditingProblem(null); setShowAddModal(true); }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium transition flex items-center justify-center gap-2 whitespace-nowrap"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-white font-medium transition flex items-center justify-center gap-2 whitespace-nowrap shadow-lg shadow-blue-500/20"
             >
                 <Plus size={20} /> 
                 <span className="hidden sm:inline">Add Problem</span>
@@ -237,6 +252,7 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
         </div>
       </div>
 
+      {/* Problems Table */}
       <div className="glass rounded-2xl overflow-hidden border border-white/10">
         <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -247,7 +263,6 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
                 <th className="p-4 font-medium hidden md:table-cell">Topic</th>
                 <th className="p-4 font-medium hidden lg:table-cell">Tags</th>
                 <th className="p-4 font-medium text-center w-[120px]">Status</th>
-
                 <th className="p-4 font-medium text-right w-[100px]">Actions</th>
                 </tr>
             </thead>
@@ -255,14 +270,14 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
                 {filteredProblems.length === 0 ? (
                 <tr>
                     <td colSpan={7} className="p-8 text-center text-gray-500">
-                    No problems found matching filters.
+                    {isPending ? "Loading..." : "No problems found matching filters."}
                     </td>
                 </tr>
                 ) : (
                 filteredProblems.map((problem) => (
                     <tr 
                     key={problem._id} 
-                    onClick={() => setSelectedProblemId(problem._id)}
+                    onClick={() => handleRowClick(problem)}
                     className="group hover:bg-white/5 transition cursor-pointer"
                     >
                     <td className="p-4">
@@ -330,7 +345,13 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
       </div>
       
       {showAddModal && <AddProblemModal onClose={() => { setShowAddModal(false); setEditingProblem(null); }} initialData={editingProblem} />}
-      {selectedProblemId && <ViewProblemModal problemId={selectedProblemId} onClose={() => setSelectedProblemId(null)} />}
+      {selectedProblemId && (
+        <ViewProblemModal 
+          problemId={selectedProblemId} 
+          onClose={() => { setSelectedProblemId(null); setSelectedProblem(null); }} 
+          initialProblem={selectedProblem}
+        />
+      )}
       
       <ConfirmationModal 
         isOpen={confirmModal.isOpen}

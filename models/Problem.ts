@@ -5,6 +5,7 @@ const ProblemSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+    index: true, // Primary index for user queries
   },
   title: {
     type: String,
@@ -26,8 +27,8 @@ const ProblemSchema = new Schema({
   }],
   status: {
     type: String,
-    enum: ['Solved', 'Todo'],
-    default: 'Solved',
+    enum: ['Solved', 'Todo', 'Unsolved'],
+    default: 'Todo',
   },
   nextReviewDate: {
     type: Date,
@@ -35,27 +36,40 @@ const ProblemSchema = new Schema({
   },
   reviewInterval: {
     type: Number,
-    default: 0, // Days: 0, 3, 7, 15, 30
+    default: 0,
   },
   lastPracticed: {
     type: Date,
     default: Date.now,
   },
-}, { timestamps: true });
+}, { 
+  timestamps: true,
+  // Performance optimization: use lean() by default
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
  
-// Indexes for performance
-ProblemSchema.index({ userId: 1 });
-ProblemSchema.index({ userId: 1, status: 1 });
-ProblemSchema.index({ userId: 1, nextReviewDate: 1 });
-ProblemSchema.index({ userId: 1, topic: 1 });
-ProblemSchema.index({ userId: 1, tags: 1 });
-ProblemSchema.index({ title: 'text', topic: 'text', tags: 'text' });
+// CRITICAL: Compound indexes for common query patterns
+// This dramatically improves query performance
+ProblemSchema.index({ userId: 1, createdAt: -1 }); // Dashboard listing
+ProblemSchema.index({ userId: 1, status: 1 }); // Status filtering
+ProblemSchema.index({ userId: 1, nextReviewDate: 1 }); // Due problems
+ProblemSchema.index({ userId: 1, difficulty: 1 }); // Difficulty filtering
+ProblemSchema.index({ userId: 1, topic: 1 }); // Topic filtering
+ProblemSchema.index({ userId: 1, tags: 1 }); // Tag filtering
 
-// Check review status
+// Text search index for search functionality
+ProblemSchema.index({ title: 'text' }, { 
+  weights: { title: 10 },
+  name: 'problem_text_search'
+});
+
+// Virtual for checking if review is due
 ProblemSchema.virtual('isDue').get(function() {
   return new Date() >= this.nextReviewDate;
 });
 
+// Prevent model recompilation in development
 const Problem = models.Problem || model('Problem', ProblemSchema);
 
 export default Problem;

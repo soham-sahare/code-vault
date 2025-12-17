@@ -1,7 +1,6 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-
 import { getProblemDetails, addSolution, reviewProblem, deleteSolution, updateSolution, deleteProblem } from "@/actions/problem";
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
@@ -15,25 +14,42 @@ import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-go';
 import 'prismjs/components/prism-rust';
 import 'prismjs/themes/prism-tomorrow.css';
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { X, Loader2, Link as LinkIcon, Calendar, Code as CodeIcon, Plus, CheckCircle, RotateCw, Clock, Trash2, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { CreatableSelect } from "./ui/SelectUtils";
 import { toast } from "sonner";
 import ConfirmationModal from "./ConfirmationModal";
 import { getDifficultyColor, formatDate } from "@/lib/utils";
-
 import { LANGUAGES, TIME_COMPLEXITY, SPACE_COMPLEXITY } from "@/lib/constants";
 
-export default function ViewProblemModal({ problemId, onClose }: { problemId: string, onClose: () => void }) {
+// Lazy load heavy syntax highlighter only when needed
+const SyntaxHighlighter = lazy(() => 
+  import('react-syntax-highlighter').then(mod => ({ default: mod.Prism }))
+);
+
+// Simple code display component as fallback
+function SimpleCodeBlock({ code, language }: { code: string; language: string }) {
+  return (
+    <pre className="bg-[#1e1e1e] p-6 rounded-lg overflow-x-auto">
+      <code className="text-sm text-gray-300 font-mono">{code}</code>
+    </pre>
+  );
+}
+
+export default function ViewProblemModal({ problemId, onClose, initialProblem }: { 
+  problemId: string; 
+  onClose: () => void;
+  initialProblem?: any; // Pass problem data from parent to avoid refetch
+}) {
   const router = useRouter();
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(initialProblem ? { problem: initialProblem, solutions: [] } : null);
+  const [loading, setLoading] = useState(!initialProblem);
   const [showAddSolution, setShowAddSolution] = useState(false);
   const [solutionLoading, setSolutionLoading] = useState(false);
   const [editingSolutionId, setEditingSolutionId] = useState<string | null>(null);
+  const [useLazyHighlighter, setUseLazyHighlighter] = useState(false);
+  const [highlighterStyle, setHighlighterStyle] = useState<any>(null); // State for style
   
   const { data: session } = useSession();
   
@@ -54,23 +70,75 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
     }
   }, [session]);
 
+  // Fetch problem details with optimized approach
   useEffect(() => {
-    getProblemDetails(problemId).then((res) => {
-      setData(res);
+    const fetchData = async () => {
+      try {
+        const res = await getProblemDetails(problemId);
+        if ('error' in res) {
+             toast.error(res.error);
+             return;
+        }
+        setData(res);
+        
+        // Only use heavy syntax highlighter if there are solutions
+        if (res.solutions && res.solutions.length > 0) {
+          // Delay loading syntax highlighter to not block initial render
+          setTimeout(async () => {
+             setUseLazyHighlighter(true);
+             // Load style dynamically
+             try {
+                const styleMod = await import('react-syntax-highlighter/dist/esm/styles/prism');
+                setHighlighterStyle(styleMod.vscDarkPlus);
+             } catch (e) {
+                console.error("Failed to load highlighter style", e);
+             }
+          }, 100);
+        }
+      } catch (error) {
+        toast.error("Failed to load problem details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!initialProblem) {
+      fetchData();
+    } else {
+      // If we have initial problem, fetch solutions in background
+      getProblemDetails(problemId).then(res => {
+        if ('error' in res) return;
+        setData(res);
+        if (res.solutions && res.solutions.length > 0) {
+          setTimeout(async () => {
+             setUseLazyHighlighter(true);
+             try {
+                const styleMod = await import('react-syntax-highlighter/dist/esm/styles/prism');
+                setHighlighterStyle(styleMod.vscDarkPlus);
+             } catch (e) {
+                console.error("Failed to load highlighter style", e);
+             }
+          }, 100);
+        }
+      });
       setLoading(false);
-    });
-  }, [problemId]);
+    }
+  }, [problemId, initialProblem]);
 
   const handleAddSolution = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSolutionLoading(true);
     const formData = new FormData(e.currentTarget);
+    // Use proper form data access
+    const approach = formData.get("approach")?.toString() || "";
+    const title = formData.get("title")?.toString() || "";
+
     const solutionData = {
         problemId,
-        title: formData.get("title"),
+        title: title,
         language: newSolLang,
         code: newSolCode,
-        approach: formData.get("approach"),
+        approach: approach,
         timeComplexity: newSolTime,
         spaceComplexity: newSolSpace,
     };
@@ -86,8 +154,15 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
         toast.error(res.error);
     } else {
         toast.success(editingSolutionId ? "Solution updated!" : "Solution added!");
-        const freshData = await getProblemDetails(problemId);
-        setData(freshData);
+        // Optimistic update - add to state immediately
+        if (!editingSolutionId) {
+          setData((prev: any) => ({
+            ...prev,
+            solutions: [...(prev.solutions || []), { ...solutionData, _id: Date.now().toString(), createdAt: new Date() }]
+          }));
+        }
+        // Fetch fresh data in background
+        getProblemDetails(problemId).then(setData);
         setShowAddSolution(false);
         setEditingSolutionId(null);
         setNewSolCode("");
@@ -121,8 +196,12 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
              toast.error(res.error || "Failed to delete");
         } else {
              toast.success("Solution deleted");
-             const freshData = await getProblemDetails(problemId);
-             setData(freshData);
+             // Optimistic update
+             setData((prev: any) => ({
+               ...prev,
+               solutions: prev.solutions.filter((s: any) => s._id !== confirmModal.id)
+             }));
+             getProblemDetails(problemId).then(setData);
         }
       } else if (confirmModal.type === 'problem') {
         const res = await deleteProblem(problemId);
@@ -146,12 +225,22 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
     window.dispatchEvent(new Event("problemReviewed"));
   };
 
+  // Show skeleton while loading
   if (loading) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <Loader2 className="animate-spin text-white" size={32} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-2 sm:p-8">
+          <div className="glass-modal w-full max-w-5xl rounded-2xl p-8 space-y-6 animate-in fade-in duration-200">
+            <div className="space-y-4">
+              <div className="h-8 bg-white/5 rounded w-2/3 animate-pulse"></div>
+              <div className="h-4 bg-white/5 rounded w-1/2 animate-pulse"></div>
+            </div>
+            <div className="space-y-3">
+              <div className="h-4 bg-white/5 rounded animate-pulse"></div>
+              <div className="h-4 bg-white/5 rounded w-5/6 animate-pulse"></div>
+            </div>
+          </div>
         </div>
-    )
+    );
   }
 
   if (!data || !data.problem) return null;
@@ -159,18 +248,20 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
   const { problem, solutions } = data;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-2 sm:p-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-2 sm:p-8 animate-in fade-in duration-150">
 
-      <div className="glass-modal w-full h-full max-w-5xl rounded-2xl flex flex-col animate-in fade-in zoom-in duration-300 overflow-hidden">
+      <div className="glass-modal w-full h-full max-w-5xl rounded-2xl flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden">
         
         <div className="p-6 border-b border-white/10 bg-black/20 space-y-4">
             <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                     <h2 className="text-2xl font-bold text-white">{problem.title}</h2>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getDifficultyColor(problem.difficulty)}`}>{problem.difficulty}</span>
-                    <a href={problem.link} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 transition">
-                        <LinkIcon size={16} />
-                    </a>
+                    {problem.link && (
+                      <a href={problem.link} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 transition">
+                          <LinkIcon size={16} />
+                      </a>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <button 
@@ -217,11 +308,13 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
                     <Calendar size={14} className="text-gray-600" />
                     <span>Submitted on <span className="text-gray-400">{formatDate(problem.createdAt)}</span></span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-gray-600" />
-                    <span>Solved <span className="text-gray-400">{Math.floor((Date.now() - new Date(problem.createdAt).getTime()) / (1000 * 60 * 60 * 24))} days ago</span></span>
-                </div>
-                {problem.status === "Solved" && (
+                {problem.status === "Solved" && problem.lastPracticed && (
+                  <div className="flex items-center gap-2">
+                      <CheckCircle size={14} className="text-gray-600" />
+                      <span>Solved <span className="text-gray-400">{Math.floor((Date.now() - new Date(problem.lastPracticed).getTime()) / (1000 * 60 * 60 * 24))} days ago</span></span>
+                  </div>
+                )}
+                {problem.status === "Solved" && problem.nextReviewDate && (
                     <div className="flex items-center gap-2">
                         <RotateCw size={14} className={new Date(problem.nextReviewDate) <= new Date() ? "text-yellow-500" : "text-gray-600"} />
                         <span>Next Review: <span className={new Date(problem.nextReviewDate) <= new Date() ? "text-yellow-400 font-medium" : "text-gray-400"}>
@@ -235,7 +328,7 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
         <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-white/10 space-y-8">
             
             {problem.intuition && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                      <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
                         <span className="w-1 h-6 bg-blue-500 rounded-full"></span>
                         Intuition
@@ -246,11 +339,11 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
                 </div>
             )}
 
-            <div className="animate-in fade-in slide-in-from-bottom-6 duration-700">
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-400">
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                         <span className="w-1 h-6 bg-purple-500 rounded-full"></span>
-                        Solutions ({solutions.length})
+                        Solutions ({solutions?.length || 0})
                     </h3>
                     <button 
                         onClick={() => setShowAddSolution(true)}
@@ -260,92 +353,93 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
                     </button>
                 </div>
 
-                    {showAddSolution && (
-                        <div className="glass p-6 rounded-xl border border-blue-500/30 mb-6 animate-in fade-in zoom-in duration-300">
-                            <h4 className="text-white font-medium mb-4">{editingSolutionId ? "Edit Solution" : "New Solution"}</h4>
-                            <form key={editingSolutionId || 'new'} onSubmit={handleAddSolution} className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <input 
-                                        name="title" 
-                                        required 
-                                        placeholder="Solution Title (e.g. Brute Force)" 
-                                        className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50" 
-                                        defaultValue={editingSolutionId && solutions.find((s:any) => s._id === editingSolutionId)?.title}
-                                    />
-                                    <div>
-                                       <CreatableSelect 
-                                         options={LANGUAGES}
-                                         value={newSolLang}
-                                         onChange={setNewSolLang}
-                                         placeholder="Select Language"
-                                       />
-                                    </div>
+                {showAddSolution && (
+                    <div className="glass p-6 rounded-xl border border-blue-500/30 mb-6 animate-in fade-in zoom-in-95 duration-200">
+                        <h4 className="text-white font-medium mb-4">{editingSolutionId ? "Edit Solution" : "New Solution"}</h4>
+                        <form key={editingSolutionId || 'new'} onSubmit={handleAddSolution} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <input 
+                                    name="title" 
+                                    required 
+                                    placeholder="Solution Title (e.g. Brute Force)" 
+                                    className="bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50" 
+                                    defaultValue={editingSolutionId && solutions.find((s:any) => s._id === editingSolutionId)?.title}
+                                />
+                                <div>
+                                   <CreatableSelect 
+                                     options={LANGUAGES}
+                                     value={newSolLang}
+                                     onChange={setNewSolLang}
+                                     placeholder="Select Language"
+                                   />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                       <CreatableSelect 
-                                         options={TIME_COMPLEXITY}
-                                         value={newSolTime}
-                                         onChange={setNewSolTime}
-                                         placeholder="Time Complexity"
-                                       />
-                                    </div>
-                                    <div>
-                                       <CreatableSelect 
-                                         options={SPACE_COMPLEXITY}
-                                         value={newSolSpace}
-                                         onChange={setNewSolSpace}
-                                         placeholder="Space Complexity"
-                                       />
-                                    </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                   <CreatableSelect 
+                                     options={TIME_COMPLEXITY}
+                                     value={newSolTime}
+                                     onChange={setNewSolTime}
+                                     placeholder="Time Complexity"
+                                   />
                                 </div>
                                 <div>
-                                     <textarea 
-                                        name="approach" 
-                                        rows={3} 
-                                        placeholder="Explain your approach..." 
-                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50 mb-2"
-                                        defaultValue={editingSolutionId && solutions.find((s:any) => s._id === editingSolutionId)?.approach}
-                                     />
+                                   <CreatableSelect 
+                                     options={SPACE_COMPLEXITY}
+                                     value={newSolSpace}
+                                     onChange={setNewSolSpace}
+                                     placeholder="Space Complexity"
+                                   />
                                 </div>
-                                <div className="border border-white/10 rounded-lg overflow-hidden bg-black/20 focus-within:ring-1 focus-within:ring-blue-500/50">
-                                    <Editor
-                                        value={newSolCode}
-                                        onValueChange={code => setNewSolCode(code)}
-                                        highlight={code => {
-                                            const langKey = newSolLang === 'cpp' ? 'cpp' : 
-                                                            newSolLang === 'python' ? 'python' : 
-                                                            newSolLang === 'java' ? 'java' : 
-                                                            newSolLang === 'go' ? 'go' : 
-                                                            newSolLang === 'rust' ? 'rust' :
-                                                            newSolLang === 'typescript' ? 'typescript' : 'javascript';
-                                            return highlight(code, languages[langKey] || languages.javascript, langKey);
-                                        }}
-                                        padding={15}
-                                        style={{
-                                            fontFamily: '"Fira code", "Fira Mono", monospace',
-                                            fontSize: 14,
-                                            backgroundColor: 'transparent',
-                                            color: '#f8f8f2',
-                                            minHeight: '150px',
-                                        }}
-                                        className="w-full text-sm font-mono focus:outline-none"
-                                        placeholder="Paste your code here..."
-                                        textareaId="code"
-                                    />
-                                </div>
-                                <div className="flex justify-end gap-2">
-                                    <button type="button" onClick={() => { setShowAddSolution(false); setEditingSolutionId(null); setNewSolCode(""); }} className="px-3 py-1.5 text-gray-400 hover:text-white text-sm">Cancel</button>
-                                    <button type="submit" disabled={solutionLoading} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm">
-                                        {editingSolutionId ? "Update Solution" : "Save Solution"}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    )}
+                            </div>
+                            <div>
+                                 <textarea 
+                                    name="approach" 
+                                    rows={3} 
+                                    placeholder="Explain your approach..." 
+                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500/50 mb-2"
+                                    defaultValue={editingSolutionId && solutions.find((s:any) => s._id === editingSolutionId)?.approach}
+                                 />
+                            </div>
+                            <div className="border border-white/10 rounded-lg overflow-hidden bg-black/20 focus-within:ring-1 focus-within:ring-blue-500/50">
+                                <Editor
+                                    value={newSolCode}
+                                    onValueChange={code => setNewSolCode(code)}
+                                    highlight={code => {
+                                        const langKey = newSolLang === 'cpp' ? 'cpp' : 
+                                                        newSolLang === 'python' ? 'python' : 
+                                                        newSolLang === 'java' ? 'java' : 
+                                                        newSolLang === 'go' ? 'go' : 
+                                                        newSolLang === 'rust' ? 'rust' :
+                                                        newSolLang === 'typescript' ? 'typescript' : 'javascript';
+                                        return highlight(code, languages[langKey] || languages.javascript, langKey);
+                                    }}
+                                    padding={15}
+                                    style={{
+                                        fontFamily: '"Fira code", "Fira Mono", monospace',
+                                        fontSize: 14,
+                                        backgroundColor: 'transparent',
+                                        color: '#f8f8f2',
+                                        minHeight: '150px',
+                                    }}
+                                    className="w-full text-sm font-mono focus:outline-none"
+                                    placeholder="Paste your code here..."
+                                    textareaId="code"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => { setShowAddSolution(false); setEditingSolutionId(null); setNewSolCode(""); }} className="px-3 py-1.5 text-gray-400 hover:text-white text-sm">Cancel</button>
+                                <button type="submit" disabled={solutionLoading} className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm flex items-center gap-2">
+                                    {solutionLoading && <Loader2 size={14} className="animate-spin" />}
+                                    {editingSolutionId ? "Update Solution" : "Save Solution"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
 
                 <div className="space-y-6">
-                    {solutions.map((sol: any) => (
+                    {solutions?.map((sol: any) => (
                         <div key={sol._id} className="bg-white/5 rounded-xl border border-white/10 overflow-hidden group hover:border-white/20 transition">
                             <div className="p-4 border-b border-white/5 bg-white/5 flex flex-col gap-3">
                                 <div className="flex justify-between items-start">
@@ -382,13 +476,19 @@ export default function ViewProblemModal({ problemId, onClose }: { problemId: st
                                 )}
                             </div>
                             <div className="bg-[#1e1e1e] overflow-x-auto text-sm relative">
-                                <SyntaxHighlighter 
-                                  language={sol.language.toLowerCase()} 
-                                  style={vscDarkPlus}
-                                  customStyle={{ margin: 0, padding: '1.5rem', background: 'transparent' }}
-                                >
-                                    {sol.code}
-                                </SyntaxHighlighter>
+                                {useLazyHighlighter && highlighterStyle ? (
+                                  <Suspense fallback={<SimpleCodeBlock code={sol.code} language={sol.language} />}>
+                                    <SyntaxHighlighter 
+                                      language={sol.language.toLowerCase()} 
+                                      style={highlighterStyle}
+                                      customStyle={{ margin: 0, padding: '1.5rem', background: 'transparent' }}
+                                    >
+                                        {sol.code}
+                                    </SyntaxHighlighter>
+                                  </Suspense>
+                                ) : (
+                                  <SimpleCodeBlock code={sol.code} language={sol.language} />
+                                )}
                             </div>
                         </div>
                     ))}

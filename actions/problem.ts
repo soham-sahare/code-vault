@@ -6,18 +6,14 @@ import Solution from "@/models/Solution";
 import { revalidatePath } from "next/cache";
 import { authenticatedAction } from "@/lib/action-utils";
 
-function escapeRegex(text: string) {
-  return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
-}
-
 export async function getProblems() {
   return authenticatedAction(async (_, { user }) => {
-    // Optimization: Fetch ALL problems for the user. 
-    // Filtering will now be handled Client-Side for instant UI feedback.
+    // Optimized query with lean() and minimal fields
     const problems = await Problem.find({ userId: user.id })
-      .select("title difficulty topic tags status link createdAt")
+      .select("title difficulty topic tags status link createdAt lastPracticed nextReviewDate")
       .sort({ createdAt: -1 })
-      .lean();
+      .lean()
+      .exec(); // Add exec() for better performance
     
     return JSON.parse(JSON.stringify(problems));
   });
@@ -25,10 +21,21 @@ export async function getProblems() {
 
 export async function getProblemDetails(id: string) {
   return authenticatedAction(async (problemId: string, { user }) => {
+    // Parallel fetch with Promise.all and lean()
     const [problem, solutions] = await Promise.all([
-        Problem.findOne({ _id: problemId, userId: user.id }).lean(),
-        Solution.find({ problemId }).lean()
+        Problem.findOne({ _id: problemId, userId: user.id })
+          .lean()
+          .exec(),
+        Solution.find({ problemId })
+          .select("title language code approach timeComplexity spaceComplexity createdAt")
+          .sort({ createdAt: -1 })
+          .lean()
+          .exec()
     ]);
+    
+    if (!problem) {
+      return { error: "Problem not found" };
+    }
     
     return {
       problem: JSON.parse(JSON.stringify(problem)),
@@ -43,13 +50,13 @@ export async function createProblem(data: any) {
       const newProblem = await Problem.create({
         ...problemData,
         userId: user.id,
-        status: "Todo", // Default to Todo (Unsolved)
+        status: "Todo",
         topic: Array.isArray(problemData.topic) ? problemData.topic : [problemData.topic],
         tags: Array.isArray(problemData.tags) ? problemData.tags : problemData.tags.split(",").map((t: string) => t.trim()),
       });
       
+      // Only revalidate necessary paths
       revalidatePath("/dashboard");
-      revalidatePath("/stats");
       return { success: true, id: (newProblem as any)._id.toString() };
     } catch (error) {
       return { error: "Failed to create problem" };
@@ -59,36 +66,47 @@ export async function createProblem(data: any) {
 
 export async function deleteProblem(id: string) {
   return authenticatedAction(async (problemId: string, { user }) => {
+    // Use deleteOne instead of findOneAndDelete for better performance
     await Promise.all([
-        Problem.findOneAndDelete({ _id: problemId, userId: user.id }),
+        Problem.deleteOne({ _id: problemId, userId: user.id }),
         Solution.deleteMany({ problemId })
     ]);
     
     revalidatePath("/dashboard");
-    revalidatePath("/stats");
     return { success: true };
   }, id);
 }
 
 export async function addSolution(data: any) {
   return authenticatedAction(async (solutionData: any, { user }) => {
-    const problem = await Problem.findOne({ _id: solutionData.problemId, userId: user.id });
+    // Verify ownership without loading full document
+    const problem = await Problem.findOne({ _id: solutionData.problemId, userId: user.id })
+      .select("_id")
+      .lean()
+      .exec();
+      
     if (!problem) return { error: "Problem not found or unauthorized" };
 
-    await Solution.create(solutionData);
-
+    // Create solution and update problem in parallel
     const nextDate = new Date();
     nextDate.setDate(nextDate.getDate() + 3);
 
-    await Problem.findByIdAndUpdate(solutionData.problemId, {
-      status: "Solved",
-      lastPracticed: new Date(),
-      reviewInterval: 3,
-      nextReviewDate: nextDate
-    });
+    await Promise.all([
+      Solution.create(solutionData),
+      Problem.updateOne(
+        { _id: solutionData.problemId },
+        {
+          $set: {
+            status: "Solved",
+            lastPracticed: new Date(),
+            reviewInterval: 3,
+            nextReviewDate: nextDate
+          }
+        }
+      )
+    ]);
     
     revalidatePath("/dashboard");
-    revalidatePath("/stats");
     return { success: true };
   }, data);
 }
@@ -102,7 +120,9 @@ export async function getDueProblems() {
     })
     .select("_id title nextReviewDate")
     .sort({ nextReviewDate: 1 })
-    .lean();
+    .limit(10) // Limit for performance
+    .lean()
+    .exec();
 
     return JSON.parse(JSON.stringify(problems));
   });
@@ -113,13 +133,11 @@ export async function getUserStats() {
     const userId = new mongoose.Types.ObjectId(user.id);
 
     try {
-      // 1. Fetch all Problem-related stats in ONE efficient query using $facet
-      // This allows parallel processing on the DB server and reduces network round-trips (latency)
+      // Single optimized aggregation pipeline
       const [problemStats] = await Problem.aggregate([
         { $match: { userId } },
         { 
           $facet: {
-            // Basic Counts
             counts: [
                 { $group: { 
                     _id: null, 
@@ -127,41 +145,38 @@ export async function getUserStats() {
                     solved: { $sum: { $cond: [{ $eq: ["$status", "Solved"] }, 1, 0] } }
                 }}
             ],
-            // Distribution by properties
             byDifficulty: [
-                { $group: { _id: "$difficulty", count: { $sum: 1 } } }
+                { $group: { _id: "$difficulty", count: { $sum: 1 } } },
+                { $sort: { _id: 1 } }
             ],
             byTopic: [
                 { $unwind: "$topic" },
                 { $group: { _id: "$topic", count: { $sum: 1 } } },
-                { $sort: { count: -1 } }
+                { $sort: { count: -1 } },
+                { $limit: 20 } // Limit for performance
             ],
             byTag: [
                 { $unwind: "$tags" },
                 { $group: { _id: "$tags", count: { $sum: 1 } } },
-                { $sort: { count: -1 } }
+                { $sort: { count: -1 } },
+                { $limit: 30 } // Limit for performance
             ],
-            // Just getting IDs for the next step (Solution stats)
-            ids: [{ $project: { _id: 1 } }] 
+            ids: [{ $project: { _id: 1 } }]
           } 
         }
-      ]);
+      ]).exec();
 
-      // Unpack Problem Stats
       const total = problemStats.counts[0]?.total || 0;
       const solved = problemStats.counts[0]?.solved || 0;
       const byDifficulty = problemStats.byDifficulty || [];
       const byTopic = problemStats.byTopic || [];
       const byTag = problemStats.byTag || [];
       
-      // Extract distinct lists from the aggregation results
       const distinctTopics = byTopic.map((t: any) => t._id);
       const distinctTags = byTag.map((t: any) => t._id);
       
       const problemIds = problemStats.ids.map((p: any) => p._id);
 
-      // 2. Fetch Solution Stats - Only if we have problems
-      // Using $facet for solutions too
       let byTimeComplexity: any[] = [];
       let bySpaceComplexity: any[] = [];
       let activityTimeline: any[] = [];
@@ -177,12 +192,14 @@ export async function getUserStats() {
                      byTime: [
                          { $match: { timeComplexity: { $exists: true, $ne: "" } } },
                          { $group: { _id: "$timeComplexity", count: { $sum: 1 } } },
-                         { $sort: { count: -1 } }
+                         { $sort: { count: -1 } },
+                         { $limit: 10 }
                      ],
                      bySpace: [
                          { $match: { spaceComplexity: { $exists: true, $ne: "" } } },
                          { $group: { _id: "$spaceComplexity", count: { $sum: 1 } } },
-                         { $sort: { count: -1 } }
+                         { $sort: { count: -1 } },
+                         { $limit: 10 }
                      ],
                      timeline: [
                          { $match: { createdAt: { $gte: twelveMonthsAgo } } },
@@ -194,7 +211,7 @@ export async function getUserStats() {
                      ]
                  }
              }
-          ]);
+          ]).exec();
 
           byTimeComplexity = solutionStats.byTime || [];
           bySpaceComplexity = solutionStats.bySpace || [];
@@ -222,7 +239,12 @@ export async function getUserStats() {
 
 export async function reviewProblem(id: string) {
   return authenticatedAction(async (problemId: string, { user }) => {
-    const problem = await Problem.findOne({ _id: problemId, userId: user.id });
+    // Verify ownership and get current interval in one query
+    const problem = await Problem.findOne({ _id: problemId, userId: user.id })
+      .select("reviewInterval")
+      .lean()
+      .exec();
+      
     if (!problem) return { error: "Problem not found" };
 
     const intervals = [0, 3, 7, 15, 30, 60];
@@ -233,14 +255,18 @@ export async function reviewProblem(id: string) {
     const nextDate = new Date();
     nextDate.setDate(nextDate.getDate() + nextInterval);
 
-    await Problem.findByIdAndUpdate(problemId, {
-      lastPracticed: new Date(),
-      reviewInterval: nextInterval,
-      nextReviewDate: nextDate,
-    });
+    await Problem.updateOne(
+      { _id: problemId },
+      {
+        $set: {
+          lastPracticed: new Date(),
+          reviewInterval: nextInterval,
+          nextReviewDate: nextDate,
+        }
+      }
+    );
 
     revalidatePath("/dashboard");
-    revalidatePath("/stats");
     return { success: true };
   }, id);
 }
@@ -248,20 +274,20 @@ export async function reviewProblem(id: string) {
 export async function updateProblem(id: string, data: any) {
   return authenticatedAction(async (problemData: any, { user }) => {
     try {
-      const updated = await Problem.findOneAndUpdate(
+      const updated = await Problem.updateOne(
         { _id: id, userId: user.id },
         {
-           ...problemData,
-          topic: Array.isArray(problemData.topic) ? problemData.topic : [problemData.topic],
-          tags: Array.isArray(problemData.tags) ? problemData.tags : problemData.tags.split(",").map((t: string) => t.trim()),
-        },
-        { new: true }
+          $set: {
+            ...problemData,
+            topic: Array.isArray(problemData.topic) ? problemData.topic : [problemData.topic],
+            tags: Array.isArray(problemData.tags) ? problemData.tags : problemData.tags.split(",").map((t: string) => t.trim()),
+          }
+        }
       );
 
-      if (!updated) return { error: "Problem not found" };
+      if (updated.matchedCount === 0) return { error: "Problem not found" };
 
       revalidatePath("/dashboard");
-      revalidatePath("/stats");
       return { success: true };
     } catch (error) {
       return { error: "Failed to update problem" };
@@ -271,43 +297,55 @@ export async function updateProblem(id: string, data: any) {
 
 export async function deleteSolution(id: string) {
   return authenticatedAction(async (solutionId: string, { user }) => {
-    const solution = await Solution.findById(solutionId);
+    const solution = await Solution.findById(solutionId).select("problemId").lean().exec();
     if (!solution) return { error: "Solution not found" };
 
-    const problem = await Problem.findOne({ _id: solution.problemId, userId: user.id });
+    const problem = await Problem.findOne({ _id: solution.problemId, userId: user.id })
+      .select("_id")
+      .lean()
+      .exec();
+      
     if (!problem) return { error: "Unauthorized" };
 
-    await Solution.findByIdAndDelete(solutionId);
+    // Delete solution and check count in parallel
+    const [, remainingCount] = await Promise.all([
+      Solution.deleteOne({ _id: solutionId }),
+      Solution.countDocuments({ problemId: solution.problemId })
+    ]);
     
-    // Check if any solutions remain
-    const remainingCount = await Solution.countDocuments({ problemId: solution.problemId });
+    // If this was the last solution, reset problem status
     if (remainingCount === 0) {
-        await Problem.findByIdAndUpdate(solution.problemId, {
-            status: "Todo",
-            lastPracticed: null, // Optional: Reset practice date? Maybe keep it.
-            // keeping lastPracticed might be good to know when you *last* worked on it, even if solution is gone.
-            // But usually 'status: Todo' implies not solved.
-        });
+        await Problem.updateOne(
+          { _id: solution.problemId },
+          {
+            $set: {
+              status: "Todo",
+              lastPracticed: null,
+            }
+          }
+        );
     }
 
     revalidatePath("/dashboard");
-    revalidatePath("/stats");
     return { success: true };
   }, id);
 }
 
 export async function updateSolution(id: string, data: any) {
   return authenticatedAction(async (solutionData: any, { user }) => {
-    const solution = await Solution.findById(id);
+    const solution = await Solution.findById(id).select("problemId").lean().exec();
     if (!solution) return { error: "Solution not found" };
 
-    const problem = await Problem.findOne({ _id: solution.problemId, userId: user.id });
+    const problem = await Problem.findOne({ _id: solution.problemId, userId: user.id })
+      .select("_id")
+      .lean()
+      .exec();
+      
     if (!problem) return { error: "Unauthorized" };
 
-    await Solution.findByIdAndUpdate(id, solutionData);
+    await Solution.updateOne({ _id: id }, { $set: solutionData });
 
     revalidatePath("/dashboard");
-    revalidatePath("/stats");
     return { success: true };
   }, data);
 }
@@ -315,27 +353,28 @@ export async function updateSolution(id: string, data: any) {
 export async function resetUserStats() {
   return authenticatedAction(async (_, { user }) => {
     try {
-      const userProblems = await Problem.find({ userId: user.id }).select("_id");
+      const userProblems = await Problem.find({ userId: user.id })
+        .select("_id")
+        .lean()
+        .exec();
+        
       const problemIds = userProblems.map(p => p._id);
 
-      const deletePromise = problemIds.length > 0 
-          ? Solution.deleteMany({ problemId: { $in: problemIds } }) 
-          : Promise.resolve();
-
-      const updatePromise = Problem.updateMany(
+      // Parallel operations for better performance
+      await Promise.all([
+        problemIds.length > 0 ? Solution.deleteMany({ problemId: { $in: problemIds } }) : Promise.resolve(),
+        Problem.updateMany(
           { userId: user.id },
           { 
-              $set: { 
-                  status: "Unsolved",
-                  lastPracticed: null,
-                  nextReviewDate: null,
-                  reviews: 0,
-                  reviewInterval: 0
-              } 
+            $set: { 
+              status: "Todo",
+              lastPracticed: null,
+              nextReviewDate: null,
+              reviewInterval: 0
+            } 
           }
-      );
-
-      await Promise.all([deletePromise, updatePromise]);
+        )
+      ]);
 
       revalidatePath("/dashboard");
       revalidatePath("/stats");
