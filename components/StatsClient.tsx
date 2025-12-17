@@ -19,7 +19,15 @@ interface Stats {
 }
 
 export default function StatsClient({ stats }: { stats: Stats }) {
-  const [duration, setDuration] = useState("30d");
+  // Default to last 30 days
+  const today = new Date();
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+
+  const [dateRange, setDateRange] = useState({
+      start: thirtyDaysAgo.toISOString().split('T')[0],
+      end: today.toISOString().split('T')[0]
+  });
 
   // Calculate percentages for the donut chart
   const easyCount = stats.byDifficulty.find((d) => d._id === "Easy")?.count || 0;
@@ -34,44 +42,63 @@ export default function StatsClient({ stats }: { stats: Stats }) {
   const easyDeg = totalSolved ? (easyCount / totalSolved) * 360 : 0;
   const mediumDeg = totalSolved ? (mediumCount / totalSolved) * 360 : 0;
 
-  const DURATION_OPTIONS = [
-      { label: "Last 24 Hours", value: "1d" },
-      { label: "Last 7 Days", value: "7d" },
-      { label: "Last 15 Days", value: "15d" },
-      { label: "Last 30 Days", value: "30d" },
-      { label: "Last 3 Months", value: "3m" },
-      { label: "Last 6 Months", value: "6m" },
-      { label: "Last 9 Months", value: "9m" },
-      { label: "Last 1 Year", value: "12m" },
-  ];
-
   const getFilteredActivity = () => {
       const activityMap = new Map(stats.activityTimeline?.map(a => [a._id, a.count]) || []);
-      const days = [];
-      let daysToLookBack = 30;
+      const start = new Date(dateRange.start);
+      const end = new Date(dateRange.end);
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+      
+      const dataPoints = [];
 
-      switch(duration) {
-          case "1d": daysToLookBack = 1; break;
-          case "7d": daysToLookBack = 7; break;
-          case "15d": daysToLookBack = 15; break;
-          case "30d": daysToLookBack = 30; break;
-          case "3m": daysToLookBack = 90; break;
-          case "6m": daysToLookBack = 180; break;
-          case "9m": daysToLookBack = 270; break;
-          case "12m": daysToLookBack = 365; break;
-      }
+      if (diffDays <= 30) {
+          // Daily Granularity
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              const dateStr = d.toISOString().split('T')[0];
+              dataPoints.push({
+                  date: dateStr,
+                  label: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+                  count: activityMap.get(dateStr) || 0,
+                  type: 'daily'
+              });
+          }
+      } else {
+           // Monthly Granularity
+           // Normalize start to beginning of month to ensure we catch everything
+           const current = new Date(start.getFullYear(), start.getMonth(), 1);
+           const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
 
-      for (let i = daysToLookBack - 1; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          const dateStr = d.toISOString().split('T')[0];
-          days.push({
-              date: dateStr,
-              shortDate: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
-              count: activityMap.get(dateStr) || 0
-          });
+           while (current <= endMonth) {
+               const year = current.getFullYear();
+               const month = current.getMonth(); // 0-indexed
+               const monthLabel = current.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+               
+               // Aggregate all days in this month
+               let monthCount = 0;
+               // Iterate days in this month
+               const daysInMonth = new Date(year, month + 1, 0).getDate();
+               for(let i = 1; i <= daysInMonth; i++) {
+                   const dayDate = new Date(year, month, i); // Local time construction
+                   // Manual ISO string construction to avoid timezone jumps
+                   const y = dayDate.getFullYear();
+                   const m = String(dayDate.getMonth() + 1).padStart(2, '0');
+                   const d = String(dayDate.getDate()).padStart(2, '0');
+                   const dayStr = `${y}-${m}-${d}`;
+                   
+                   monthCount += activityMap.get(dayStr) || 0;
+               }
+
+               dataPoints.push({
+                   date: `${year}-${month}`, // Unique ID for key
+                   label: monthLabel,
+                   count: monthCount,
+                   type: 'monthly'
+               });
+
+               current.setMonth(current.getMonth() + 1);
+           }
       }
-      return days;
+      return dataPoints;
   };
   
   const filteredActivity = getFilteredActivity();
@@ -89,7 +116,7 @@ export default function StatsClient({ stats }: { stats: Stats }) {
     if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
     }
-  }, [filteredActivity, duration]);
+  }, [filteredActivity, dateRange]);
 
   return (
     <div className="text-white">
@@ -301,14 +328,27 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                     <Activity size={18} className="text-yellow-400" />
                     Activity
                  </h3>
-                 <div className="w-40">
-                    <Select 
-                        options={DURATION_OPTIONS}
-                        value={duration}
-                        onChange={setDuration}
-                        placeholder="Duration"
-                    />
-                 </div>
+                  <div className="flex items-center gap-2">
+                     <div className="relative">
+                        <input 
+                            type="date" 
+                            value={dateRange.start}
+                            onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+                            className="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500/50 [color-scheme:dark]"
+                        />
+                        <span className="text-[10px] text-gray-500 absolute -top-2.5 left-2 bg-[#09090b] px-1">Start</span>
+                     </div>
+                     <span className="text-gray-500">-</span>
+                     <div className="relative">
+                        <input 
+                            type="date" 
+                            value={dateRange.end}
+                            onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+                            className="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500/50 [color-scheme:dark]"
+                        />
+                        <span className="text-[10px] text-gray-500 absolute -top-2.5 left-2 bg-[#09090b] px-1">End</span>
+                     </div>
+                  </div>
              </div>
              
              <div 
@@ -319,7 +359,7 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                     <div key={day.date} className="flex flex-col justify-end items-center flex-1 h-full min-w-[20px] group relative">
                         {/* Tooltip */}
                         <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50 border border-white/20 shadow-xl pointer-events-none transform -translate-x-1/2 left-1/2">
-                            {day.count} solutions on {day.shortDate}
+                            {day.count} solutions {day.type === 'monthly' ? 'in' : 'on'} {day.label}
                         </div>
                         
                         <div 
@@ -333,7 +373,7 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                             (filteredActivity.length <= 30 && idx % 3 === 0) || 
                             (filteredActivity.length > 30 && idx % Math.ceil(filteredActivity.length / 10) === 0)
                         ) && (
-                            <span className="text-[10px] text-gray-600 mt-2 truncate w-full text-center">{day.shortDate}</span>
+                            <span className="text-[10px] text-gray-600 mt-2 truncate w-full text-center">{day.label}</span>
                         )}
                     </div>
                 ))}
