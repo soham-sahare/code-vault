@@ -9,6 +9,7 @@ import { getUserStats } from "@/actions/problem";
 import { toast } from "sonner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ActivityHeatmap } from "./ActivityHeatmap";
+import { AnalyticsInsights } from "./AnalyticsInsights";
 
 interface Stats {
   total: number;
@@ -23,7 +24,16 @@ interface Stats {
   activityTimeline: { _id: string; solutions: number; problems: number }[];
 }
 
-export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
+interface Problem {
+  _id: string;
+  title: string;
+  difficulty: string;
+  topic: string[];
+  status: string;
+  lastPracticed?: string;
+}
+
+export default function StatsClient({ stats: initialStats, problems = [] }: { stats: Stats; problems?: Problem[] }) {
   // Default to Last 7 Days
   // Helper for local YYYY-MM-DD
   const toLocalYMD = (d: Date) => {
@@ -299,6 +309,17 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
             </div>
         )}
 
+        {/* Analytics Insights */}
+        {stats.total > 0 && (
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+            <h2 className="text-xl font-bold text-white mb-6">📊 Insights & Recommendations</h2>
+            <AnalyticsInsights 
+              problems={problems}
+              stats={stats}
+            />
+          </div>
+        )}
+
         {/* Top Row: Donut Chart & Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
@@ -564,47 +585,38 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
 
         {/* Detailed Breakdowns Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* All Topics List */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                    <Hash size={18} className="text-blue-400" />
-                    Topic Breakdown
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10">
-                    {stats.byTopic.map((topic) => {
-                        const maxTopicCount = Math.max(...stats.byTopic.map(t => t.count), 1);
-                        const width = (topic.count / maxTopicCount) * 100;
-                        
-                        return (
-                            <div key={topic._id} className="relative flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5 overflow-hidden group hover:border-white/10 transition">
-                                <div 
-                                    className="absolute inset-y-0 left-0 bg-blue-500/10 transition-all duration-1000 ease-out" 
-                                    style={{ width: `${width}%` }}
-                                ></div>
-                                <span className="relative z-10 text-gray-300 text-sm truncate pr-2 font-medium" title={topic._id}>{topic._id}</span>
-                                <span className="relative z-10 bg-black/20 px-2 py-0.5 rounded text-xs text-white font-medium border border-white/5">{topic.count}</span>
-                            </div>
-                        );
-                    })}
-                    {stats.byTopic.length === 0 && <p className="text-gray-500 col-span-2 text-center py-4">No data to display.</p>}
-                </div>
-            </div>
-
             {/* All Tags List */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
                 <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                    <Tag size={18} className="text-pink-400" />
+                    <Tag size={18} className="text-pink-300" />
                     Tag Breakdown
                 </h3>
                 <div className="flex flex-wrap gap-2 max-h-[400px] overflow-y-auto content-start scrollbar-thin scrollbar-thumb-white/10">
-                    {stats.byTag.map((tag) => (
-                        <div key={tag._id} className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition cursor-default">
-                             <span className="text-gray-300 text-sm">{tag._id}</span>
-                             <span className="bg-white/10 px-1.5 rounded-full text-[10px] text-gray-400 font-mono">{tag.count}</span>
-                        </div>
-                    ))}
-                     {stats.byTag.length === 0 && <p className="text-gray-500 text-center w-full py-4">No data to display.</p>}
-                </div>
+    {stats.byTag.map((tag) => (
+        <div key={tag._id} className="flex items-center gap-2 px-3 py-1.5 bg-pink-100/10 hover:bg-pink-100/20 border border-pink-100/30 rounded-full transition cursor-default">
+            <span className="text-pink-300 text-sm">{tag._id}</span>
+            <span className="bg-pink-100/20 px-1.5 rounded-full text-[10px] text-pink-300 font-mono">{tag.count}</span>
+        </div>
+    ))}
+    {stats.byTag.length === 0 && <p className="text-gray-500 text-center w-full py-4">No data to display.</p>}
+</div>
+            </div>
+
+            {/* All Topics List */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                    <Hash size={18} className="text-purple-600" />
+                    Topic Breakdown
+                </h3>
+                <div className="flex flex-wrap gap-2 max-h-[400px] overflow-y-auto content-start scrollbar-thin scrollbar-thumb-white/10">
+    {stats.byTag.map((topic) => (
+        <div key={topic._id} className="flex items-center gap-2 px-3 py-1.5 bg-pink-100/10 hover:bg-pink-100/20 border border-pink-100/30 rounded-full transition cursor-default">
+            <span className="text-pink-300 text-sm">{topic._id}</span>
+            <span className="bg-pink-100/20 px-1.5 rounded-full text-[10px] text-pink-300 font-mono">{topic.count}</span>
+        </div>
+    ))}
+    {stats.byTag.length === 0 && <p className="text-gray-500 text-center w-full py-4">No data to display.</p>}
+</div>
             </div>
         </div>
 

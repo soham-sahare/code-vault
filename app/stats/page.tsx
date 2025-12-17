@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getUserStats } from "@/actions/problem";
+import { getUserStats, getProblems } from "@/actions/problem";
 import StatsClient from "@/components/StatsClient";
 
 
@@ -37,9 +37,13 @@ export default async function StatsPage() {
       };
   }
 
+  // Fetch problems for analytics insights
+  const problemsResult = await getProblems();
+  const problems = problemsResult.error ? [] : problemsResult.problems || [];
+
   return (
     <div className="min-h-screen p-4 sm:p-8">
-        <StatsClient stats={stats} />
+        <StatsClient stats={stats} problems={problems} />
     </div>
   );
 }
