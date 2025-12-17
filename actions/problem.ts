@@ -128,14 +128,26 @@ export async function getDueProblems() {
   });
 }
 
-export async function getUserStats() {
+export async function getUserStats(from?: string | Date, to?: string | Date) {
   return authenticatedAction(async (_, { user }) => {
     const userId = new mongoose.Types.ObjectId(user.id);
+    
+    // Date filter logic
+    const dateFilter: any = { userId };
+    if (from || to) {
+        dateFilter.lastPracticed = {};
+        if (from) dateFilter.lastPracticed.$gte = new Date(from);
+        if (to) {
+            const endDate = new Date(to);
+            endDate.setHours(23, 59, 59, 999); // Include the entire end day
+            dateFilter.lastPracticed.$lte = endDate;
+        }
+    }
 
     try {
       // Single optimized aggregation pipeline
       const [problemStats] = await Problem.aggregate([
-        { $match: { userId } },
+        { $match: dateFilter },
         { 
           $facet: {
             counts: [
@@ -153,13 +165,13 @@ export async function getUserStats() {
                 { $unwind: "$topic" },
                 { $group: { _id: "$topic", count: { $sum: 1 } } },
                 { $sort: { count: -1 } },
-                { $limit: 20 } // Limit for performance
+                { $limit: 20 }
             ],
             byTag: [
                 { $unwind: "$tags" },
                 { $group: { _id: "$tags", count: { $sum: 1 } } },
                 { $sort: { count: -1 } },
-                { $limit: 30 } // Limit for performance
+                { $limit: 30 }
             ],
             ids: [{ $project: { _id: 1 } }]
           } 
@@ -181,12 +193,26 @@ export async function getUserStats() {
       let bySpaceComplexity: any[] = [];
       let activityTimeline: any[] = [];
 
-      if (problemIds.length > 0) {
-          const twelveMonthsAgo = new Date();
-          twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+      // For solutions, we filter by createdAt using the same range
+      const solutionDateFilter: any = { problemId: { $in: problemIds } };
+      if (from || to) {
+          solutionDateFilter.createdAt = {};
+          if (from) solutionDateFilter.createdAt.$gte = new Date(from);
+          if (to) {
+              const endDate = new Date(to);
+              endDate.setHours(23, 59, 59, 999);
+              solutionDateFilter.createdAt.$lte = endDate;
+          }
+      } else {
+           // Default to 12 months for timeline if no filter
+           const twelveMonthsAgo = new Date();
+           twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+           solutionDateFilter.createdAt = { $gte: twelveMonthsAgo };
+      }
 
+      if (problemIds.length > 0) {
           const [solutionStats] = await Solution.aggregate([
-             { $match: { problemId: { $in: problemIds } } },
+             { $match: solutionDateFilter },
              {
                  $facet: {
                      byTime: [
@@ -202,10 +228,15 @@ export async function getUserStats() {
                          { $limit: 10 }
                      ],
                      timeline: [
-                         { $match: { createdAt: { $gte: twelveMonthsAgo } } },
                          { $group: { 
                              _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, 
-                             count: { $sum: 1 } 
+                             solutions: { $sum: 1 },
+                             distinctProblems: { $addToSet: "$problemId" }
+                         }},
+                         { $project: {
+                             _id: 1,
+                             solutions: 1,
+                             problems: { $size: "$distinctProblems" }
                          }},
                          { $sort: { _id: 1 } }
                      ]

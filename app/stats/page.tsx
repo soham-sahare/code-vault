@@ -12,7 +12,15 @@ export default async function StatsPage() {
     redirect("/login");
   }
 
-  let stats: any = await getUserStats();
+  // Calculate default 7-day range
+  const today = new Date();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(today.getDate() - 7);
+  
+  const startStr = sevenDaysAgo.toISOString().split('T')[0];
+  const endStr = today.toISOString().split('T')[0];
+
+  let stats: any = await getUserStats(startStr, endStr);
 
   if (stats?.error) {
       stats = {

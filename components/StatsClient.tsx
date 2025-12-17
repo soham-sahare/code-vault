@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useTransition, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft, PieChart, Tag, Hash, Activity, Clock } from "lucide-react";
+import { Link as LinkIcon, ArrowLeft, PieChart, Tag, Hash, Activity, Clock, Loader2, RotateCcw } from "lucide-react";
 import { Select } from "./ui/SelectUtils";
+import { getUserStats } from "@/actions/problem";
+import { toast } from "sonner";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface Stats {
   total: number;
@@ -15,19 +18,101 @@ interface Stats {
   distinctTags: string[];
   byTimeComplexity: { _id: string; count: number }[];
   bySpaceComplexity: { _id: string; count: number }[];
-  activityTimeline: { _id: string; count: number }[];
+  activityTimeline: { _id: string; solutions: number; problems: number }[];
 }
 
-export default function StatsClient({ stats }: { stats: Stats }) {
-  // Default to last 30 days
+export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
+  // Default to Last 7 Days
   const today = new Date();
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(today.getDate() - 30);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(today.getDate() - 7);
 
+  const [stats, setStats] = useState(initialStats);
   const [dateRange, setDateRange] = useState({
-      start: thirtyDaysAgo.toISOString().split('T')[0],
+      start: sevenDaysAgo.toISOString().split('T')[0],
       end: today.toISOString().split('T')[0]
   });
+  const [selectedPreset, setSelectedPreset] = useState("7d");
+  const [isPending, startTransition] = useTransition();
+
+  const DURATION_OPTIONS = [
+    { label: "All Time", value: "all" },
+    { label: "Last 24 Hours", value: "1d" },
+    { label: "Last 7 Days", value: "7d" },
+    { label: "Last 15 Days", value: "15d" },
+    { label: "Last 30 Days", value: "30d" },
+    { label: "Last 3 Months", value: "3m" },
+    { label: "Last 6 Months", value: "6m" },
+    { label: "Last 9 Months", value: "9m" },
+    { label: "Last 1 Year", value: "12m" },
+  ];
+
+  useEffect(() => {
+    // Only fetch if not initial mount (simple check via preset logic or ref if needed)
+    // But here we rely on the fact that initial state is set correctly.
+    // However, if initialStats are NOT all-time, we might mismatch.
+    // Assuming initialStats passed from server are also All Time by default (which they are).
+    
+    // If user changes dates manually, we fetch.
+    const fetchData = () => {
+        startTransition(async () => {
+            const res = await getUserStats(dateRange.start || undefined, dateRange.end || undefined);
+            if ('error' in res) {
+                toast.error("Failed to update stats");
+            } else {
+                setStats(res as Stats);
+            }
+        });
+    };
+    
+    fetchData();
+  }, [dateRange]);
+
+  const handlePresetChange = (val: string) => {
+      setSelectedPreset(val);
+      
+      if (val === 'all') {
+          setDateRange({ start: "", end: "" });
+          return;
+      }
+
+      const end = new Date();
+      const start = new Date();
+      
+      switch(val) {
+          case "1d": start.setDate(end.getDate() - 1); break;
+          case "7d": start.setDate(end.getDate() - 7); break;
+          case "15d": start.setDate(end.getDate() - 15); break;
+          case "30d": start.setDate(end.getDate() - 30); break;
+          case "3m": start.setMonth(end.getMonth() - 3); break;
+          case "6m": start.setMonth(end.getMonth() - 6); break;
+          case "9m": start.setMonth(end.getMonth() - 9); break;
+          case "12m": start.setFullYear(end.getFullYear() - 1); break;
+      }
+
+      setDateRange({
+          start: start.toISOString().split('T')[0],
+          end: end.toISOString().split('T')[0]
+      });
+  };
+
+  const resetFilters = () => {
+      // Reset to default 7 days
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 7);
+      
+      setSelectedPreset("7d");
+      setDateRange({ 
+          start: start.toISOString().split('T')[0], 
+          end: end.toISOString().split('T')[0] 
+      });
+  };
+
+  const handleDateChange = (key: 'start' | 'end', val: string) => {
+      setDateRange(prev => ({ ...prev, [key]: val }));
+      setSelectedPreset("custom"); // Reset preset if manually changed
+  };
 
   // Calculate percentages for the donut chart
   const easyCount = stats.byDifficulty.find((d) => d._id === "Easy")?.count || 0;
@@ -42,8 +127,8 @@ export default function StatsClient({ stats }: { stats: Stats }) {
   const easyDeg = totalSolved ? (easyCount / totalSolved) * 360 : 0;
   const mediumDeg = totalSolved ? (mediumCount / totalSolved) * 360 : 0;
 
-  const getFilteredActivity = () => {
-      const activityMap = new Map(stats.activityTimeline?.map(a => [a._id, a.count]) || []);
+  const filteredActivity = useMemo(() => {
+      const activityMap = new Map(stats.activityTimeline?.map(a => [a._id, a]) || []);
       const start = new Date(dateRange.start);
       const end = new Date(dateRange.end);
       const diffTime = Math.abs(end.getTime() - start.getTime());
@@ -74,35 +159,39 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                const monthLabel = current.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
                
                // Aggregate all days in this month
-               let monthCount = 0;
+               let monthSolutions = 0;
+               let monthProblems = 0;
                // Iterate days in this month
                const daysInMonth = new Date(year, month + 1, 0).getDate();
                for(let i = 1; i <= daysInMonth; i++) {
                    const dayDate = new Date(year, month, i); // Local time construction
                    // Manual ISO string construction to avoid timezone jumps
+
                    const y = dayDate.getFullYear();
                    const m = String(dayDate.getMonth() + 1).padStart(2, '0');
                    const d = String(dayDate.getDate()).padStart(2, '0');
                    const dayStr = `${y}-${m}-${d}`;
                    
-                   monthCount += activityMap.get(dayStr) || 0;
+                   const dayData = activityMap.get(dayStr);
+                   monthSolutions += dayData?.solutions || 0;
+                   monthProblems += dayData?.problems || 0;
                }
 
-               dataPoints.push({
-                   date: `${year}-${month}`, // Unique ID for key
-                   label: monthLabel,
-                   count: monthCount,
+               data.push({
+                   date: `${year}-${month}`,
+                   label: formatLabel(current, 'monthly'),
+                   solutions: monthSolutions,
+                   problems: monthProblems,
                    type: 'monthly'
                });
 
                current.setMonth(current.getMonth() + 1);
            }
       }
-      return dataPoints;
-  };
+      return data;
+  }, [stats.activityTimeline, dateRange]);
   
-  const filteredActivity = getFilteredActivity();
-  const maxActivity = Math.max(...filteredActivity.map(d => d.count), 1);
+  const maxActivity = Math.max(...filteredActivity.map(d => Math.max(d.solutions, d.problems)), 1);
 
   // Sort complexities
   const sortedTime = [...(stats.byTimeComplexity || [])].sort((a,b) => b.count - a.count);
@@ -122,19 +211,71 @@ export default function StatsClient({ stats }: { stats: Stats }) {
     <div className="text-white">
       <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
         
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Link 
-            href="/dashboard" 
-            className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition text-gray-400 hover:text-white"
-          >
-            <ArrowLeft size={20} />
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Statistics & Analytics</h1>
-            <p className="text-gray-400 mt-1">Detailed breakdown of your problem solving journey</p>
-          </div>
-        </div>
+         {/* Header & Global Filters */}
+         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <Link 
+                href="/dashboard" 
+                className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition text-gray-400 hover:text-white"
+              >
+                <ArrowLeft size={20} />
+              </Link>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">Statistics & Analytics</h1>
+                <p className="text-gray-400 mt-1">Detailed breakdown of your problem solving journey</p>
+              </div>
+            </div>
+
+            {/* Global Filters moved here */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto">
+                 <div className="w-full sm:w-32 min-w-[120px]">
+                    <Select 
+                        options={[...DURATION_OPTIONS, { label: "Custom", value: "custom" }]}
+                        value={selectedPreset}
+                        onChange={handlePresetChange}
+                        placeholder="Period"
+                    />
+                 </div>
+                 <div className="flex items-center gap-2">
+                    <div className="relative">
+                        <input 
+                            type="date" 
+                            value={dateRange.start}
+                            onChange={(e) => handleDateChange('start', e.target.value)}
+                            className="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500/50 [color-scheme:dark]"
+                        />
+                        <span className="text-[10px] text-gray-500 absolute -top-2.5 left-2 bg-[#09090b] px-1">Start</span>
+                    </div>
+                    <span className="text-gray-500">-</span>
+                    <div className="relative">
+                        <input 
+                            type="date" 
+                            value={dateRange.end}
+                            onChange={(e) => handleDateChange('end', e.target.value)}
+                            className="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500/50 [color-scheme:dark]"
+                        />
+                        <span className="text-[10px] text-gray-500 absolute -top-2.5 left-2 bg-[#09090b] px-1">End</span>
+                    </div>
+                 </div>
+                 
+                 {selectedPreset !== 'all' && (
+                    <button 
+                        onClick={resetFilters}
+                        className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center h-9 w-9"
+                        title="Reset Filters"
+                    >
+                        <RotateCcw size={16} />
+                    </button>
+                 )}
+            </div>
+         </div>
+        
+        {isPending && (
+            <div className="fixed top-4 right-4 z-50 bg-black/80 px-4 py-2 rounded-full border border-white/10 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                <Loader2 size={16} className="animate-spin text-blue-400" />
+                <span className="text-sm text-white">Updating stats...</span>
+            </div>
+        )}
 
         {/* Top Row: Donut Chart & Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -328,55 +469,74 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                     <Activity size={18} className="text-yellow-400" />
                     Activity
                  </h3>
-                  <div className="flex items-center gap-2">
-                     <div className="relative">
-                        <input 
-                            type="date" 
-                            value={dateRange.start}
-                            onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                            className="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500/50 [color-scheme:dark]"
-                        />
-                        <span className="text-[10px] text-gray-500 absolute -top-2.5 left-2 bg-[#09090b] px-1">Start</span>
-                     </div>
-                     <span className="text-gray-500">-</span>
-                     <div className="relative">
-                        <input 
-                            type="date" 
-                            value={dateRange.end}
-                            onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                            className="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500/50 [color-scheme:dark]"
-                        />
-                        <span className="text-[10px] text-gray-500 absolute -top-2.5 left-2 bg-[#09090b] px-1">End</span>
-                     </div>
-                  </div>
              </div>
              
              <div 
                 ref={scrollContainerRef}
-                className="h-64 w-full flex items-end gap-1 sm:gap-2 overflow-x-auto pt-16 pb-2 px-4 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] overflow-y-hidden"
+                className="h-[300px] w-full overflow-x-auto pb-2 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
              >
-                {filteredActivity.map((day, idx) => (
-                    <div key={day.date} className="flex flex-col justify-end items-center flex-1 h-full min-w-[20px] group relative">
-                        {/* Tooltip */}
-                        <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50 border border-white/20 shadow-xl pointer-events-none transform -translate-x-1/2 left-1/2">
-                            {day.count} solutions {day.type === 'monthly' ? 'in' : 'on'} {day.label}
-                        </div>
-                        
-                        <div 
-                            className={`w-full rounded-t-sm transition-all duration-300 ${day.count > 0 ? 'bg-yellow-500/60 hover:bg-yellow-400' : 'bg-white/5'}`}
-                            style={{ height: `${Math.max((day.count / maxActivity) * 80, 4)}%` }} // Adjusted height scale to fit new container
-                        ></div>
-                        
-                        {/* Intelligent X-Axis Labeling */}
-                        {(
-                            (filteredActivity.length <= 15) || 
-                            (filteredActivity.length <= 30 && idx % 3 === 0) || 
-                            (filteredActivity.length > 30 && idx % Math.ceil(filteredActivity.length / 10) === 0)
-                        ) && (
-                            <span className="text-[10px] text-gray-600 mt-2 truncate w-full text-center">{day.label}</span>
-                        )}
-                    </div>
-                ))}
+                {/* 
+                  Container width logic:
+                  If filtering by 'all' or large range, ensure chart is wide enough to scroll.
+                  Otherwise, fit 100%.
+                */}
+                <div style={{ minWidth: filteredActivity.length > 50 ? `${filteredActivity.length * 20}px` : '100%', height: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={filteredActivity} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorSolutions" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#EAB308" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#EAB308" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorProblems" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                            <XAxis 
+                                dataKey="label" 
+                                stroke="#525252" 
+                                fontSize={12} 
+                                tickLine={false} 
+                                axisLine={false}
+                                interval="preserveStartEnd"
+                                minTickGap={30}
+                            />
+                            <YAxis 
+                                stroke="#525252" 
+                                fontSize={12} 
+                                tickLine={false} 
+                                axisLine={false} 
+                                allowDecimals={false}
+                            />
+                            <Tooltip 
+                                contentStyle={{ backgroundColor: '#09090b', borderColor: '#27272a', borderRadius: '8px' }}
+                                itemStyle={{ fontSize: '12px' }}
+                                labelStyle={{ color: '#a1a1aa', marginBottom: '4px', fontSize: '12px' }}
+                                cursor={{ stroke: '#ffffff20' }}
+                            />
+                            <Area 
+                                type="monotone" 
+                                dataKey="solutions" 
+                                name="Total Solutions"
+                                stroke="#EAB308" 
+                                strokeWidth={2}
+                                fillOpacity={1} 
+                                fill="url(#colorSolutions)" 
+                            />
+                            <Area 
+                                type="monotone" 
+                                dataKey="problems" 
+                                name="Problems Practiced"
+                                stroke="#3B82F6" 
+                                strokeWidth={2}
+                                fillOpacity={1} 
+                                fill="url(#colorProblems)" 
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
              </div>
         </div>
 
@@ -389,12 +549,21 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                     Topic Breakdown
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10">
-                    {stats.byTopic.map((topic) => (
-                        <div key={topic._id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5">
-                            <span className="text-gray-300 text-sm truncate pr-2" title={topic._id}>{topic._id}</span>
-                            <span className="bg-white/10 px-2 py-0.5 rounded text-xs text-white font-medium">{topic.count}</span>
-                        </div>
-                    ))}
+                    {stats.byTopic.map((topic) => {
+                        const maxTopicCount = Math.max(...stats.byTopic.map(t => t.count), 1);
+                        const width = (topic.count / maxTopicCount) * 100;
+                        
+                        return (
+                            <div key={topic._id} className="relative flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5 overflow-hidden group hover:border-white/10 transition">
+                                <div 
+                                    className="absolute inset-y-0 left-0 bg-blue-500/10 transition-all duration-1000 ease-out" 
+                                    style={{ width: `${width}%` }}
+                                ></div>
+                                <span className="relative z-10 text-gray-300 text-sm truncate pr-2 font-medium" title={topic._id}>{topic._id}</span>
+                                <span className="relative z-10 bg-black/20 px-2 py-0.5 rounded text-xs text-white font-medium border border-white/5">{topic.count}</span>
+                            </div>
+                        );
+                    })}
                     {stats.byTopic.length === 0 && <p className="text-gray-500 col-span-2 text-center py-4">No data to display.</p>}
                 </div>
             </div>
