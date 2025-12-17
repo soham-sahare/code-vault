@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useTransition, useMemo } from "react";
 import Link from "next/link";
 import { Link as LinkIcon, ArrowLeft, PieChart, Tag, Hash, Activity, Clock, Loader2, RotateCcw } from "lucide-react";
 import { Select } from "./ui/SelectUtils";
+import { DatePicker } from "./ui/DatePicker";
 import { getUserStats } from "@/actions/problem";
 import { toast } from "sonner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -23,15 +24,27 @@ interface Stats {
 
 export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
   // Default to Last 7 Days
-  const today = new Date();
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(today.getDate() - 7);
+  // Helper for local YYYY-MM-DD
+  const toLocalYMD = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+  };
 
+  // Default to Last 7 Days (Today Inclusive)
+  // Logic: End = Today, Start = Today - 6 days (total 7 days range)
+  const getInitialDates = () => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 6); // 7 days inclusive
+      return { start: toLocalYMD(start), end: toLocalYMD(end) };
+  };
+
+  const initialDates = getInitialDates();
+  
   const [stats, setStats] = useState(initialStats);
-  const [dateRange, setDateRange] = useState({
-      start: sevenDaysAgo.toISOString().split('T')[0],
-      end: today.toISOString().split('T')[0]
-  });
+  const [dateRange, setDateRange] = useState(initialDates);
   const [selectedPreset, setSelectedPreset] = useState("7d");
   const [isPending, startTransition] = useTransition();
 
@@ -76,14 +89,15 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
           return;
       }
 
-      const end = new Date();
+      const end = new Date(); // Local today
       const start = new Date();
       
       switch(val) {
-          case "1d": start.setDate(end.getDate() - 1); break;
-          case "7d": start.setDate(end.getDate() - 7); break;
-          case "15d": start.setDate(end.getDate() - 15); break;
-          case "30d": start.setDate(end.getDate() - 30); break;
+          case "1d": start.setDate(end.getDate()); break; // Today only? Or last 24h? Usually stats for "Today" meant 1d.
+          // Adjusting 7d to be inclusive of today: Today - 6 days
+          case "7d": start.setDate(end.getDate() - 6); break; 
+          case "15d": start.setDate(end.getDate() - 14); break;
+          case "30d": start.setDate(end.getDate() - 29); break;
           case "3m": start.setMonth(end.getMonth() - 3); break;
           case "6m": start.setMonth(end.getMonth() - 6); break;
           case "9m": start.setMonth(end.getMonth() - 9); break;
@@ -91,27 +105,25 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
       }
 
       setDateRange({
-          start: start.toISOString().split('T')[0],
-          end: end.toISOString().split('T')[0]
+          start: toLocalYMD(start),
+          end: toLocalYMD(end)
       });
   };
 
   const resetFilters = () => {
-      // Reset to default 7 days
-      const end = new Date();
-      const start = new Date();
-      start.setDate(end.getDate() - 7);
-      
+      const dates = getInitialDates();
       setSelectedPreset("7d");
-      setDateRange({ 
-          start: start.toISOString().split('T')[0], 
-          end: end.toISOString().split('T')[0] 
-      });
+      setDateRange(dates);
   };
 
   const handleDateChange = (key: 'start' | 'end', val: string) => {
       setDateRange(prev => ({ ...prev, [key]: val }));
       setSelectedPreset("custom"); // Reset preset if manually changed
+  };
+
+  const onDateChange = (key: 'start' | 'end', date: Date | undefined) => {
+      if (!date) return;
+      handleDateChange(key, date.toISOString().split('T')[0]);
   };
 
   // Calculate percentages for the donut chart
@@ -134,16 +146,25 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
       const diffTime = Math.abs(end.getTime() - start.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
       
-      const dataPoints = [];
+      const formatLabel = (date: Date, type: 'daily' | 'monthly') => {
+          if (type === 'daily') {
+              return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+          }
+          return date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      };
+
+      const data = [];
 
       if (diffDays <= 30) {
           // Daily Granularity
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
               const dateStr = d.toISOString().split('T')[0];
-              dataPoints.push({
+              const dayData = activityMap.get(dateStr);
+              data.push({
                   date: dateStr,
                   label: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
-                  count: activityMap.get(dateStr) || 0,
+                  solutions: dayData?.solutions || 0,
+                  problems: dayData?.problems || 0,
                   type: 'daily'
               });
           }
@@ -227,8 +248,8 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
             </div>
 
             {/* Global Filters moved here */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto">
-                 <div className="w-full sm:w-32 min-w-[120px]">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+                 <div className="w-full sm:w-48 min-w-[120px]">
                     <Select 
                         options={[...DURATION_OPTIONS, { label: "Custom", value: "custom" }]}
                         value={selectedPreset}
@@ -236,37 +257,32 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
                         placeholder="Period"
                     />
                  </div>
-                 <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <input 
-                            type="date" 
-                            value={dateRange.start}
-                            onChange={(e) => handleDateChange('start', e.target.value)}
-                            className="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500/50 [color-scheme:dark]"
+                 
+                 <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                    <div className="w-full sm:w-[150px]">
+                        <DatePicker 
+                            date={dateRange.start ? new Date(dateRange.start + 'T00:00:00') : undefined}
+                            setDate={(d) => onDateChange('start', d)}
+                            label="Start"
                         />
-                        <span className="text-[10px] text-gray-500 absolute -top-2.5 left-2 bg-[#09090b] px-1">Start</span>
                     </div>
-                    <span className="text-gray-500">-</span>
-                    <div className="relative">
-                        <input 
-                            type="date" 
-                            value={dateRange.end}
-                            onChange={(e) => handleDateChange('end', e.target.value)}
-                            className="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500/50 [color-scheme:dark]"
+                    <span className="text-gray-500 hidden sm:block">-</span>
+                    <div className="w-full sm:w-[150px]">
+                        <DatePicker 
+                            date={dateRange.end ? new Date(dateRange.end + 'T00:00:00') : undefined}
+                            setDate={(d) => onDateChange('end', d)}
+                            label="End"
                         />
-                        <span className="text-[10px] text-gray-500 absolute -top-2.5 left-2 bg-[#09090b] px-1">End</span>
                     </div>
                  </div>
-                 
-                 {selectedPreset !== 'all' && (
-                    <button 
-                        onClick={resetFilters}
-                        className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center h-9 w-9"
-                        title="Reset Filters"
-                    >
-                        <RotateCcw size={16} />
-                    </button>
-                 )}
+
+                 <button 
+                     onClick={resetFilters}
+                     className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center h-10 w-10 sm:h-auto sm:w-auto self-end sm:self-auto"
+                     title="Reset Filters"
+                 >
+                     <RotateCcw size={18} />
+                 </button>
             </div>
          </div>
         
@@ -335,7 +351,7 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
             </div>
 
             {/* Legend */}
-            <div className="mt-8 grid grid-cols-3 gap-8 w-full px-8">
+            <div className="mt-8 grid grid-cols-3 gap-2 sm:gap-8 w-full px-2 sm:px-8">
                <div className="flex flex-col items-center">
                    <div className="flex items-center gap-2 mb-1">
                        <span className="w-3 h-3 rounded-full bg-green-500"></span>
@@ -489,8 +505,8 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
                                     <stop offset="95%" stopColor="#EAB308" stopOpacity={0}/>
                                 </linearGradient>
                                 <linearGradient id="colorProblems" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                                    <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/>
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
@@ -529,7 +545,7 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
                                 type="monotone" 
                                 dataKey="problems" 
                                 name="Problems Practiced"
-                                stroke="#3B82F6" 
+                                stroke="#8B5CF6" 
                                 strokeWidth={2}
                                 fillOpacity={1} 
                                 fill="url(#colorProblems)" 

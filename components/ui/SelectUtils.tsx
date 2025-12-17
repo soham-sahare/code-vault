@@ -155,7 +155,7 @@ export function Select({ options: initialOptions, value, onChange, placeholder, 
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-left text-white focus:outline-none focus:ring-2 focus:ring-white/20 flex items-center justify-between text-sm min-h-[42px] hover:bg-white/10 transition-all shadow-sm"
+        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-left text-white focus:outline-none focus:ring-2 focus:ring-white/20 flex items-center justify-between text-sm min-h-[42px] hover:bg-white/10 transition-all shadow-sm whitespace-nowrap"
       >
         <span className={!value ? "text-gray-500" : ""}>{selectedLabel || placeholder}</span>
         <ChevronDown size={16} className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />

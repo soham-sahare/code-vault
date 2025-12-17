@@ -132,14 +132,21 @@ export async function getUserStats(from?: string | Date, to?: string | Date) {
   return authenticatedAction(async (_, { user }) => {
     const userId = new mongoose.Types.ObjectId(user.id);
     
-    // Date filter logic
+    // IST Timezone Offset
+    const IST_OFFSET = "+05:30";
+
+    // Date filter logic for problems (lastPracticed)
     const dateFilter: any = { userId };
     if (from || to) {
         dateFilter.lastPracticed = {};
-        if (from) dateFilter.lastPracticed.$gte = new Date(from);
+        if (from) {
+            // Construct IST-aware Date object for start of day
+            const startDate = new Date(`${from}T00:00:00${IST_OFFSET}`);
+            dateFilter.lastPracticed.$gte = startDate;
+        }
         if (to) {
-            const endDate = new Date(to);
-            endDate.setHours(23, 59, 59, 999); // Include the entire end day
+            // Construct IST-aware Date object for end of day
+            const endDate = new Date(`${to}T23:59:59.999${IST_OFFSET}`);
             dateFilter.lastPracticed.$lte = endDate;
         }
     }
@@ -229,7 +236,7 @@ export async function getUserStats(from?: string | Date, to?: string | Date) {
                      ],
                      timeline: [
                          { $group: { 
-                             _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, 
+                             _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "+05:30" } }, 
                              solutions: { $sum: 1 },
                              distinctProblems: { $addToSet: "$problemId" }
                          }},
