@@ -53,7 +53,11 @@ export function DatePicker({ date, setDate, label }: DatePickerProps) {
       </button>
 
       {isOpen && (
-        <div className="fixed sm:absolute top-auto sm:top-full left-4 right-4 sm:left-0 sm:right-auto bottom-4 sm:bottom-auto mt-0 sm:mt-2 z-50 p-3 bg-[#09090b] border border-white/10 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 w-auto sm:w-auto">
+        <>
+          {/* Backdrop for mobile */}
+          <div className="fixed inset-0 bg-black/50 z-40 sm:hidden" onClick={() => setIsOpen(false)} />
+          
+          <div className="fixed sm:absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 sm:translate-y-0 sm:top-full sm:left-0 sm:translate-x-0 mt-0 sm:mt-2 z-50 p-3 bg-[#09090b] border border-white/10 rounded-xl shadow-2xl animate-in fade-in zoom-in-95 max-w-[320px] w-[calc(100vw-2rem)] sm:w-auto">
            {/* Custom styles override via global style tag since we can't easily configure DayPicker css here otherwise */}
            <style>{`
               .rdp { --rdp-cell-size: 32px; margin: 0; }
@@ -79,7 +83,8 @@ export function DatePicker({ date, setDate, label }: DatePickerProps) {
             }}
 
           />
-        </div>
+         </div>
+        </>
       )}
     </div>
   );
