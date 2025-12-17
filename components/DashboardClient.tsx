@@ -107,6 +107,17 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
     setSelectedProblemId(problem._id);
   };
 
+  // Check URL parameter to open add problem modal
+  useEffect(() => {
+    const addProblemParam = searchParams.get('addProblem');
+    if (addProblemParam === 'true') {
+      setEditingProblem(null);
+      setShowAddModal(true);
+      // Remove the parameter from URL
+      router.replace('/dashboard');
+    }
+  }, [searchParams, router]);
+
   const topicOptions = [
       { label: "All Topics", value: "" },
       ...stats.distinctTopics.map(t => ({ label: t, value: t }))

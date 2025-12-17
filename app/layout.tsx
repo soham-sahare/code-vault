@@ -53,6 +53,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { GlobalKeyboardHandler } from "@/components/GlobalKeyboardHandler";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -65,12 +67,14 @@ export default function RootLayout({
       >
         <AppBackground />
         <Providers>
-          <Navbar />
-          <div className="pt-16">
-            {children}
-          </div>
-          <Toaster position="bottom-right" theme="dark" richColors />
-          <LanguageOnboardingModal />
+          <GlobalKeyboardHandler>
+            <Navbar />
+            <div className="pt-16">
+              {children}
+            </div>
+            <Toaster position="bottom-right" theme="dark" richColors />
+            <LanguageOnboardingModal />
+          </GlobalKeyboardHandler>
         </Providers>
       </body>
     </html>
