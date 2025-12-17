@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, PieChart, Tag, Hash, Activity, Clock } from "lucide-react";
 import { Select } from "./ui/SelectUtils";
@@ -82,6 +82,14 @@ export default function StatsClient({ stats }: { stats: Stats }) {
   const sortedSpace = [...(stats.bySpaceComplexity || [])].sort((a,b) => b.count - a.count);
   const maxTimeCount = Math.max(...sortedTime.map(t => t.count), 1);
   const maxSpaceCount = Math.max(...sortedSpace.map(s => s.count), 1);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+    }
+  }, [filteredActivity, duration]);
 
   return (
     <div className="text-white">
@@ -303,7 +311,10 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                  </div>
              </div>
              
-             <div className="h-56 w-full flex items-end gap-1 sm:gap-2 overflow-x-auto pt-10 pb-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+             <div 
+                ref={scrollContainerRef}
+                className="h-64 w-full flex items-end gap-1 sm:gap-2 overflow-x-auto pt-16 pb-2 px-4 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] overflow-y-hidden"
+             >
                 {filteredActivity.map((day, idx) => (
                     <div key={day.date} className="flex flex-col justify-end items-center flex-1 h-full min-w-[20px] group relative">
                         {/* Tooltip */}
