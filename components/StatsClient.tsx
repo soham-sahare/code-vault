@@ -248,7 +248,7 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
             </div>
 
             {/* Global Filters moved here */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-2 w-full lg:w-auto">
                  <div className="w-full sm:w-48 min-w-[120px]">
                     <Select 
                         options={[...DURATION_OPTIONS, { label: "Custom", value: "custom" }]}
@@ -258,8 +258,8 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
                     />
                  </div>
                  
-                 <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-                    <div className="w-full sm:w-[150px]">
+                 <div className="flex flex-row items-center gap-2 w-full sm:w-auto">
+                    <div className="flex-1 sm:w-[150px]">
                         <DatePicker 
                             date={dateRange.start ? new Date(dateRange.start + 'T00:00:00') : undefined}
                             setDate={(d) => onDateChange('start', d)}
@@ -267,7 +267,7 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
                         />
                     </div>
                     <span className="text-gray-500 hidden sm:block">-</span>
-                    <div className="w-full sm:w-[150px]">
+                    <div className="flex-1 sm:w-[150px]">
                         <DatePicker 
                             date={dateRange.end ? new Date(dateRange.end + 'T00:00:00') : undefined}
                             setDate={(d) => onDateChange('end', d)}
@@ -278,7 +278,7 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
 
                  <button 
                      onClick={resetFilters}
-                     className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center h-10 w-10 sm:h-auto sm:w-auto self-end sm:self-auto"
+                     className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors flex items-center justify-center h-10 w-10 sm:h-auto sm:w-auto self-center sm:self-auto"
                      title="Reset Filters"
                  >
                      <RotateCcw size={18} />
@@ -298,7 +298,7 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
           
           {/* Difficulty Distribution (Donut Chart) */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col items-center justify-center relative min-h-[300px]">
-            <h3 className="text-lg font-semibold text-white mb-6 absolute top-6 left-6 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-white mb-6 w-full flex items-center gap-2">
                 <PieChart size={18} className="text-blue-400" />
                 Difficulty Distribution
             </h3>
