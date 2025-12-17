@@ -63,13 +63,17 @@ export function DatePicker({ date, setDate, label }: DatePickerProps) {
               .rdp { --rdp-cell-size: 32px; margin: 0; }
               .rdp-day { color: white !important; font-size: 0.875rem !important; background-color: transparent !important; }
               .rdp-day:hover:not([disabled]):not(.rdp-day_selected) { background-color: rgba(255, 255, 255, 0.05) !important; }
-              .rdp-day_selected { font-weight: bold !important; border: 1px solid rgba(255,255,255,0.2) !important; color: white !important; background-color: rgba(255, 255, 255, 0.1) !important; }
+              .rdp-day_selected { font-weight: bold !important; border: 1px solid rgba(255,255,255,0.2) !important; color: white !important; background-color: rgba(255, 255, 255, 0.1) !important; border-radius: 6px !important; }
               .rdp-day_selected:hover { background-color: rgba(255, 255, 255, 0.2) !important; }
               .rdp-day_today { color: #60a5fa !important; font-weight: 600 !important; }
               .rdp-caption_label { color: white; font-weight: 600; }
               .rdp-head_cell { color: #a1a1aa; font-weight: 500; font-size: 0.875rem; text-transform: uppercase; }
-              .rdp-nav_button { color: #a1a1aa; }
-              .rdp-nav_button:hover { color: white; background-color: rgba(255,255,255,0.2); }
+              .rdp-nav_button, .rdp-button_previous, .rdp-button_next { color: #a1a1aa !important; }
+              .rdp-nav_button:hover, .rdp-button_previous:hover, .rdp-button_next:hover { color: white !important; background-color: rgba(255,255,255,0.2) !important; }
+              .rdp-chevron { color: #a1a1aa !important; fill: #a1a1aa !important; }
+              .rdp-button_previous:hover .rdp-chevron, .rdp-button_next:hover .rdp-chevron { color: white !important; fill: white !important; }
+              .rdp-chevron polygon { fill: #a1a1aa !important; stroke: #a1a1aa !important; }
+              .rdp-button_previous:hover .rdp-chevron polygon, .rdp-button_next:hover .rdp-chevron polygon { fill: white !important; stroke: white !important; }
               .rdp-months { justify-content: center; }
            `}</style>
            <DayPicker
