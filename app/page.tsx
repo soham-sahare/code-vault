@@ -101,7 +101,7 @@ export default function Home() {
                   </div>
                   
                    {/* Floating Badge */}
-                  <div className="absolute -bottom-6 -left-6 glass p-4 rounded-xl border border-white/10 animate-bounce duration-[3000ms]">
+                  <div className="absolute -bottom-6 -right-6 glass p-4 rounded-xl border border-white/10 animate-bounce duration-[3000ms]">
                       <div className="flex items-center gap-3">
                           <div className="p-2 bg-green-500/20 rounded-lg text-green-400">
                               <Zap size={20} fill="currentColor" />
