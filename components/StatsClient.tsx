@@ -588,14 +588,14 @@ export default function StatsClient({ stats: initialStats, problems = [] }: { st
             {/* All Tags List */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
                 <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                    <Tag size={18} className="text-pink-300" />
+                    <Tag size={18} className="text-yellow-300" />
                     Tag Breakdown
                 </h3>
                 <div className="flex flex-wrap gap-2 max-h-[400px] overflow-y-auto content-start scrollbar-thin scrollbar-thumb-white/10">
     {stats.byTag.map((tag) => (
-        <div key={tag._id} className="flex items-center gap-2 px-3 py-1.5 bg-pink-100/10 hover:bg-pink-100/20 border border-pink-100/30 rounded-full transition cursor-default">
-            <span className="text-pink-300 text-sm">{tag._id}</span>
-            <span className="bg-pink-100/20 px-1.5 rounded-full text-[10px] text-pink-300 font-mono">{tag.count}</span>
+        <div key={tag._id} className="flex items-center gap-2 px-3 py-1.5 bg-yellow-100/10 hover:bg-yellow-100/20 border border-yellow-100/30 rounded-full transition cursor-default">
+            <span className="text-yellow-300 text-white text-sm">{tag._id}</span>
+            <span className="bg-yellow-100/20 px-1.5 rounded-full text-[10px] text-white font-mono">{tag.count}</span>
         </div>
     ))}
     {stats.byTag.length === 0 && <p className="text-gray-500 text-center w-full py-4">No data to display.</p>}
@@ -609,13 +609,13 @@ export default function StatsClient({ stats: initialStats, problems = [] }: { st
                     Topic Breakdown
                 </h3>
                 <div className="flex flex-wrap gap-2 max-h-[400px] overflow-y-auto content-start scrollbar-thin scrollbar-thumb-white/10">
-    {stats.byTag.map((topic) => (
-        <div key={topic._id} className="flex items-center gap-2 px-3 py-1.5 bg-pink-100/10 hover:bg-pink-100/20 border border-pink-100/30 rounded-full transition cursor-default">
-            <span className="text-pink-300 text-sm">{topic._id}</span>
-            <span className="bg-pink-100/20 px-1.5 rounded-full text-[10px] text-pink-300 font-mono">{topic.count}</span>
+    {stats.byTopic.map((topic) => (
+        <div key={topic._id} className="flex items-center gap-2 px-3 py-1.5 bg-purple-100/10 hover:bg-purple-100/20 border border-purple-100/30 rounded-full transition cursor-default">
+            <span className="text-purple-300 text-sm">{topic._id}</span>
+            <span className="bg-purple-100/20 px-1.5 rounded-full text-[10px] text-white font-mono">{topic.count}</span>
         </div>
     ))}
-    {stats.byTag.length === 0 && <p className="text-gray-500 text-center w-full py-4">No data to display.</p>}
+    {stats.byTopic.length === 0 && <p className="text-gray-500 text-center w-full py-4">No data to display.</p>}
 </div>
             </div>
         </div>
