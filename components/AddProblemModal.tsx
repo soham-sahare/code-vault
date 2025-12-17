@@ -1,7 +1,7 @@
 "use client";
 
 import { createProblem, updateProblem } from "@/actions/problem";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Loader2 } from "lucide-react";
 import { CreatableMultiSelect, Select } from "./ui/SelectUtils";
 import { toast } from "sonner";
@@ -18,6 +18,17 @@ export default function AddProblemModal({ onClose, initialData }: AddProblemModa
   const [topics, setTopics] = useState<string[]>(initialData?.topic || []);
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
   const [difficulty, setDifficulty] = useState<string>(initialData?.difficulty || "Easy");
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

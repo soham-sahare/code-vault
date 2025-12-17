@@ -31,6 +31,18 @@ export default function LanguageOnboardingModal() {
     }
   }, []);
 
+  // ESC key handler
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
+
   // If no session or user already has a default language, don't show (unless forced)
   // But if we're on shortcuts step, always show
   const shouldShow = step === 'shortcuts' || !session?.user || ((session.user as any).defaultLanguage && !forceShow) || !isOpen;

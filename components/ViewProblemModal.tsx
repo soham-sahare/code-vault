@@ -72,6 +72,18 @@ export default function ViewProblemModal({ problemId, onClose, initialProblem, o
     }
   }, [session]);
 
+  // ESC key handler
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
   // Fetch problem details with optimized approach
   useEffect(() => {
     const fetchData = async () => {

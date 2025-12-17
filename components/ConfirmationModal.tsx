@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, AlertTriangle } from "lucide-react";
 
 interface ConfirmationModalProps {
@@ -26,6 +26,17 @@ export default function ConfirmationModal({
   verificationText
 }: ConfirmationModalProps) {
   const [inputValue, setInputValue] = useState("");
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        handleClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
