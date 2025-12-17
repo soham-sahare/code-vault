@@ -1,12 +1,15 @@
+
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Plus, Clock, CheckCircle, Trash2, Pencil, ArrowRight, RotateCcw } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
-import AddProblemModal from "./AddProblemModal";
-import ViewProblemModal from "./ViewProblemModal";
+import dynamic from "next/dynamic";
+const AddProblemModal = dynamic(() => import("./AddProblemModal"), { ssr: false });
+const ViewProblemModal = dynamic(() => import("./ViewProblemModal"), { ssr: false });
 import { deleteProblem } from "@/actions/problem";
 import { toast } from "sonner";
 import { Select } from "./ui/SelectUtils";
@@ -93,8 +96,6 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
     setShowAddModal(true);
   };
 
-
-
   const topicOptions = [
       { label: "All Topics", value: "" },
       ...stats.distinctTopics.map(t => ({ label: t, value: t }))
@@ -104,6 +105,27 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
       { label: "All Tags", value: "" },
       ...stats.distinctTags.map(t => ({ label: t, value: t }))
   ];
+
+  // Computed filter logic
+  const filteredProblems = useMemo(() => {
+    const term = (searchParams.get("search") || "").toLowerCase();
+    const difficulty = searchParams.get("difficulty");
+    const topic = searchParams.get("topic");
+    const tags = searchParams.get("tags");
+    const status = searchParams.get("status");
+
+    return initialProblems.filter(p => {
+        if (term && !p.title.toLowerCase().includes(term)) return false;
+        if (difficulty && p.difficulty !== difficulty) return false;
+        if (topic && !p.topic.includes(topic)) return false;
+        if (tags && !p.tags.includes(tags)) return false;
+        if (status) {
+            if (status === "Unsolved" && p.status === "Solved") return false;
+            if (status === "Solved" && p.status !== "Solved") return false;
+        }
+        return true;
+    });
+  }, [initialProblems, searchParams]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -232,14 +254,14 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
                 </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm">
-                {initialProblems.length === 0 ? (
+                {filteredProblems.length === 0 ? (
                 <tr>
                     <td colSpan={7} className="p-8 text-center text-gray-500">
-                    No problems found.
+                    No problems found matching filters.
                     </td>
                 </tr>
                 ) : (
-                initialProblems.map((problem) => (
+                filteredProblems.map((problem) => (
                     <tr 
                     key={problem._id} 
                     onClick={() => setSelectedProblemId(problem._id)}

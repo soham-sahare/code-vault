@@ -1,13 +1,9 @@
 import { getProblems, getUserStats } from "@/actions/problem";
 import DashboardClient from "@/components/DashboardClient";
 
-export default async function DashboardPage(props: {
-  searchParams: Promise<{ topic?: string; difficulty?: string; search?: string; tags?: string }>;
-}) {
-  const searchParams = await props.searchParams;
-  
+export default async function DashboardPage() {
   const [problems, statsResult] = await Promise.all([
-    getProblems(searchParams),
+    getProblems(),
     getUserStats()
   ]);
   

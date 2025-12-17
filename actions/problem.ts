@@ -10,31 +10,17 @@ function escapeRegex(text: string) {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
 }
 
-export async function getProblems(filters: any = {}) {
-  return authenticatedAction(async (data: any, { user }) => {
-    const query: any = { userId: user.id };
-
-    if (data.topic && typeof data.topic === 'string') query.topic = data.topic;
-    if (data.tags && typeof data.tags === 'string') query.tags = data.tags;
-    if (data.difficulty && typeof data.difficulty === 'string') query.difficulty = data.difficulty;
-    
-    if (data.status && typeof data.status === 'string') {
-        if (data.status === "Unsolved") query.status = { $ne: "Solved" };
-        else if (["Solved", "Todo"].includes(data.status)) query.status = data.status;
-    }
-
-    if (data.search && typeof data.search === 'string') {
-      query.title = { $regex: escapeRegex(data.search), $options: "i" };
-    } else if (data.search) {
-      // If search is not a string (e.g. object), ignore it or throw error.
-      // Ignoring is safer for stability.
-    }
-
-    // Optimization: Just fetch the problems. Rely on problem.status.
-    const problems = await Problem.find(query).sort({ createdAt: -1 }).lean();
+export async function getProblems() {
+  return authenticatedAction(async (_, { user }) => {
+    // Optimization: Fetch ALL problems for the user. 
+    // Filtering will now be handled Client-Side for instant UI feedback.
+    const problems = await Problem.find({ userId: user.id })
+      .select("title difficulty topic tags status link createdAt")
+      .sort({ createdAt: -1 })
+      .lean();
     
     return JSON.parse(JSON.stringify(problems));
-  }, filters);
+  });
 }
 
 export async function getProblemDetails(id: string) {
