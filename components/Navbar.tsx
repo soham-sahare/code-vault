@@ -143,6 +143,32 @@ export default function Navbar() {
       {isMobileMenuOpen && (
         <div className="sm:hidden border-t border-white/10 bg-[#0a0a0a] animate-in slide-in-from-top-2">
           <div className="space-y-1 px-4 py-4">
+            {/* Mobile Notifications */}
+            {session && dueProblems.length > 0 && (
+                <div className="mb-4 pb-4 border-b border-white/5">
+                    <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                        <Bell size={14} />
+                        Due for Review
+                        <span className="ml-auto bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{dueProblems.length}</span>
+                    </div>
+                    {dueProblems.map((p) => (
+                        <Link 
+                            key={p._id} 
+                            href={`/dashboard?viewProblem=${p._id}`}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="block px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/5 rounded-lg transition"
+                        >
+                            <div className="flex flex-col">
+                                <span className="font-medium truncate">{p.title}</span>
+                                <span className="text-[10px] text-red-400 flex items-center gap-1 mt-0.5">
+                                    <Clock size={10} /> Due: {formatDate(p.nextReviewDate)}
+                                </span>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+            )}
+
             {session ? (
               <>
                 <div className="px-3 py-2 text-sm text-gray-400 border-b border-white/5 mb-2">

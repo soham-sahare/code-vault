@@ -303,17 +303,17 @@ export default function StatsClient({ stats }: { stats: Stats }) {
                  </div>
              </div>
              
-             <div className="h-48 w-full flex items-end gap-1 sm:gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10">
+             <div className="h-56 w-full flex items-end gap-1 sm:gap-2 overflow-x-auto pt-10 pb-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                 {filteredActivity.map((day, idx) => (
                     <div key={day.date} className="flex flex-col justify-end items-center flex-1 h-full min-w-[20px] group relative">
                         {/* Tooltip */}
-                        <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black/90 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10 border border-white/10 left-1/2 -translate-x-1/2 pointer-events-none">
+                        <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50 border border-white/20 shadow-xl pointer-events-none transform -translate-x-1/2 left-1/2">
                             {day.count} solutions on {day.shortDate}
                         </div>
                         
                         <div 
                             className={`w-full rounded-t-sm transition-all duration-300 ${day.count > 0 ? 'bg-yellow-500/60 hover:bg-yellow-400' : 'bg-white/5'}`}
-                            style={{ height: `${Math.max((day.count / maxActivity) * 90, 4)}%` }}
+                            style={{ height: `${Math.max((day.count / maxActivity) * 80, 4)}%` }} // Adjusted height scale to fit new container
                         ></div>
                         
                         {/* Intelligent X-Axis Labeling */}

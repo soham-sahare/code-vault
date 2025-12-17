@@ -384,3 +384,27 @@ export async function resetUserStats() {
     }
   });
 }
+
+export async function deleteAllData() {
+  return authenticatedAction(async (_, { user }) => {
+    try {
+      // Find all problems to potentially delete related solutions first
+      // Actually, we can just delete solutions by problemId if we filtered by problems belonging to user
+      // Or safer: Find all user's problems, get IDs, delete solutions with those IDs.
+      const userProblems = await Problem.find({ userId: user.id }).select("_id").lean().exec();
+      const problemIds = userProblems.map(p => p._id);
+
+      await Promise.all([
+        problemIds.length > 0 ? Solution.deleteMany({ problemId: { $in: problemIds } }) : Promise.resolve(),
+        Problem.deleteMany({ userId: user.id })
+      ]);
+
+      revalidatePath("/dashboard");
+      revalidatePath("/stats");
+      return { success: true };
+    } catch (error) {
+      console.error("Delete All Data Error:", error);
+      return { error: "Failed to delete all data" };
+    }
+  });
+}

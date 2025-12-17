@@ -50,7 +50,7 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
   const [localSearch, setLocalSearch] = useState(searchParams.get("search") || "");
-  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; id: string | null }>({ isOpen: false, id: null });
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; id: string | null; title?: string }>({ isOpen: false, id: null });
   
   useEffect(() => {
     const viewProblemId = searchParams.get("viewProblem");
@@ -79,9 +79,9 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
     });
   };
 
-  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
+  const handleDeleteClick = (e: React.MouseEvent, id: string, title: string) => {
     e.stopPropagation();
-    setConfirmModal({ isOpen: true, id });
+    setConfirmModal({ isOpen: true, id, title });
   };
 
   const handleConfirmDelete = async () => {
@@ -328,7 +328,7 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
                                 <Pencil size={16} />
                             </button>
                             <button 
-                                onClick={(e) => handleDeleteClick(e, problem._id)}
+                                onClick={(e) => handleDeleteClick(e, problem._id, problem.title)}
                                 className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-400/10 rounded transition"
                                 title="Delete"
                             >
@@ -350,6 +350,13 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
           problemId={selectedProblemId} 
           onClose={() => { setSelectedProblemId(null); setSelectedProblem(null); }} 
           initialProblem={selectedProblem}
+          onEdit={() => { 
+             const prob: any = selectedProblem || initialProblems.find(p => p._id === selectedProblemId);
+             setEditingProblem(prob);
+             setSelectedProblemId(null);
+             setSelectedProblem(null);
+             setShowAddModal(true);
+          }}
         />
       )}
       
@@ -358,7 +365,13 @@ export default function DashboardClient({ initialProblems, stats }: { initialPro
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
         onConfirm={handleConfirmDelete}
         title="Delete Problem"
-        message="Are you sure you want to delete this problem? This action cannot be undone and will permanently remove the problem and all its solutions."
+        message={
+            <>
+                Are you sure you want to delete the Problem - <span className="font-bold text-white">{confirmModal.title}</span>?
+                <br />
+                <span className="text-xs text-red-500 mt-2 block font-medium">this cant be undone</span>
+            </>
+        }
         confirmText="Delete Problem"
         isDangerous={true}
       />

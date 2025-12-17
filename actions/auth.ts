@@ -81,3 +81,32 @@ export async function updateProfile(formData: FormData) {
     return { success: true };
   }, formData);
 }
+
+export async function deleteAccount() {
+  return authenticatedAction(async (_, { user }) => {
+    try {
+        await connectDB();
+        
+        // Find user's problems to delete associated solutions
+        const Problem = (await import("@/models/Problem")).default;
+        const Solution = (await import("@/models/Solution")).default;
+
+        const userProblems = await Problem.find({ userId: user.id }).select("_id").lean();
+        const problemIds = userProblems.map(p => p._id);
+
+        await Promise.all([
+            // Delete Solutions linked to user's problems
+            problemIds.length > 0 ? Solution.deleteMany({ problemId: { $in: problemIds } }) : Promise.resolve(),
+            // Delete Problems
+            Problem.deleteMany({ userId: user.id }),
+            // Delete User
+            User.findByIdAndDelete(user.id)
+        ]);
+        
+        return { success: true };
+    } catch (error) {
+        console.error("Delete Account Error:", error);
+        return { error: "Failed to delete account" };
+    }
+  });
+}

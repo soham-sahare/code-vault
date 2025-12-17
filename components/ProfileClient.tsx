@@ -17,7 +17,13 @@ export default function ProfileClient() {
   const { data: session, update } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [resetModalOpen, setResetModalOpen] = useState(false);
+  
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{
+      isOpen: boolean;
+      type: 'resetStats' | 'deleteData' | 'deleteAccount' | null;
+  }>({ isOpen: false, type: null });
+
   const [defaultLang, setDefaultLang] = useState((session?.user as any)?.defaultLanguage || "");
 
   async function handleSubmit(formData: FormData) {
@@ -29,7 +35,6 @@ export default function ProfileClient() {
       toast.error(res.error);
     } else {
       toast.success("Profile updated successfully");
-      // Update session if name changed
       const newName = formData.get("name") as string;
       const newLang = formData.get("defaultLanguage") as string;
       
@@ -42,21 +47,82 @@ export default function ProfileClient() {
     }
   }
 
-  const handleResetStats = async () => {
-      const res = await resetUserStats();
-      if ('error' in res) {
-          toast.error(res.error || "Failed to reset progress");
-      } else {
-          toast.success("All progress has been reset.");
-          setResetModalOpen(false);
-          router.refresh();
+  const handleAction = async () => {
+      if (!modalConfig.type) return;
+
+      if (modalConfig.type === 'resetStats') {
+          const res = await resetUserStats();
+          if ('error' in res) {
+              toast.error(res.error || "Failed to reset progress");
+          } else {
+              toast.success("Progress reset successfully");
+              router.refresh();
+          }
+      } 
+      else if (modalConfig.type === 'deleteData') {
+          const { deleteAllData } = await import("@/actions/problem");
+          const res = await deleteAllData();
+          if ('error' in res) {
+              toast.error(res.error || "Failed to delete data");
+          } else {
+              toast.success("All problems and solutions deleted");
+              router.refresh();
+          }
+      }
+      else if (modalConfig.type === 'deleteAccount') {
+          const { deleteAccount } = await import("@/actions/auth");
+          const res = await deleteAccount();
+          if ('error' in res) {
+              toast.error(res.error || "Failed to delete account");
+          } else {
+              toast.success("Account deleted. Goodbye!");
+              // Force hard redirect to cleanup state
+              window.location.href = "/login"; 
+          }
+      }
+
+      setModalConfig({ isOpen: false, type: null });
+  };
+
+  const getModalProps = () => {
+      switch (modalConfig.type) {
+          case 'resetStats':
+              return {
+                  title: "Reset Progress",
+                  message: "This will effectively reset your progress to 0%. All solutions will be deleted and problem statuses reset to 'Todo'. This cannot be undone.",
+                  confirmText: "Reset Progress",
+                  verificationText: "delete my progress"
+              };
+          case 'deleteData':
+              return {
+                  title: "Delete All Data",
+                  message: "Permanently delete ALL your problems and solutions. Your account will remain, but your dashboard will be empty. This cannot be undone.",
+                  confirmText: "Delete Everything",
+                  verificationText: "delete all data"
+              };
+          case 'deleteAccount':
+              return {
+                  title: "Delete Account",
+                  message: "Permanently delete your account and all associated data. You will be logged out immediately. This cannot be undone.",
+                  confirmText: "Delete Account",
+                  verificationText: "delete my account"
+              };
+          default:
+              return {
+                  title: "",
+                  message: "",
+                  confirmText: "",
+                  verificationText: ""
+              };
       }
   };
 
   if (!session) return null;
+  const modalProps = getModalProps();
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 pb-12">
+      {/* ... keeping existing header and form ... */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold text-white">Profile Settings</h1>
         <p className="text-gray-400">Manage your account settings and preferences.</p>
@@ -64,6 +130,7 @@ export default function ProfileClient() {
 
       <div className="bg-white/5 border border-white/10 rounded-2xl p-8">
         <form action={handleSubmit} className="space-y-6">
+          {/* ... existing form fields ... */}
           
           {/* Email (Read-only) */}
           <div className="space-y-2">
@@ -155,33 +222,73 @@ export default function ProfileClient() {
               <h3 className="text-lg font-semibold">Danger Zone</h3>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                  <p className="text-white font-medium">Reset Progress</p>
-                  <p className="text-sm text-gray-400 mt-1">
-                      Permanently delete all your solutions and reset problem status to "Unsolved". 
-                      This action cannot be undone.
-                  </p>
+          <div className="flex flex-col gap-6">
+              {/* Reset Progress */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                      <p className="text-white font-medium">Reset Progress</p>
+                      <p className="text-sm text-gray-400 mt-1 max-w-md">
+                          Permanently delete all solutions and reset problem statuses to "Unsolved".
+                      </p>
+                  </div>
+                  <button 
+                      onClick={() => setModalConfig({ isOpen: true, type: 'resetStats' })}
+                      className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition font-medium whitespace-nowrap flex items-center gap-2"
+                  >
+                      <Trash2 size={16} />
+                      Reset Stats
+                  </button>
               </div>
-              <button 
-                  onClick={() => setResetModalOpen(true)}
-                  className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition font-medium whitespace-nowrap flex items-center gap-2"
-              >
-                  <Trash2 size={16} />
-                  Reset Stats
-              </button>
+
+              <div className="h-px bg-red-500/10"></div>
+
+              {/* Delete All Data */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                      <p className="text-white font-medium">Delete All Data</p>
+                      <p className="text-sm text-gray-400 mt-1 max-w-md">
+                          Permanently delete ALL problems and solutions. Your dashboard will be empty.
+                      </p>
+                  </div>
+                  <button 
+                      onClick={() => setModalConfig({ isOpen: true, type: 'deleteData' })}
+                      className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition font-medium whitespace-nowrap flex items-center gap-2"
+                  >
+                      <Trash2 size={16} />
+                      Delete Everything
+                  </button>
+              </div>
+
+              <div className="h-px bg-red-500/10"></div>
+
+              {/* Delete Account */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                      <p className="text-white font-medium">Delete Account</p>
+                      <p className="text-sm text-gray-400 mt-1 max-w-md">
+                          Permanently delete your account and all associated data. You will be logged out.
+                      </p>
+                  </div>
+                  <button 
+                      onClick={() => setModalConfig({ isOpen: true, type: 'deleteAccount' })}
+                      className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition font-medium whitespace-nowrap flex items-center gap-2"
+                  >
+                      <Trash2 size={16} />
+                      Delete Account
+                  </button>
+              </div>
           </div>
       </div>
 
       <ConfirmationModal 
-          isOpen={resetModalOpen}
-          onClose={() => setResetModalOpen(false)}
-          onConfirm={handleResetStats}
-          title="Reset All Progress"
-          message="This action creates permanent data loss. All your solutions will be deleted and problem statuses reset. This cannot be undone."
-          confirmText="Reset Everything"
+          isOpen={modalConfig.isOpen}
+          onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+          onConfirm={handleAction}
+          title={modalProps.title}
+          message={modalProps.message}
+          confirmText={modalProps.confirmText}
           isDangerous={true}
-          verificationText="delete my progress"
+          verificationText={modalProps.verificationText}
       />
     </div>
   );

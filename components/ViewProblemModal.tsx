@@ -37,9 +37,10 @@ function SimpleCodeBlock({ code, language }: { code: string; language: string })
   );
 }
 
-export default function ViewProblemModal({ problemId, onClose, initialProblem }: { 
+export default function ViewProblemModal({ problemId, onClose, initialProblem, onEdit }: { 
   problemId: string; 
   onClose: () => void;
+  onEdit?: () => void;
   initialProblem?: any; // Pass problem data from parent to avoid refetch
 }) {
   const router = useRouter();
@@ -57,6 +58,7 @@ export default function ViewProblemModal({ problemId, onClose, initialProblem }:
       isOpen: boolean; 
       type: 'solution' | 'problem' | null; 
       id: string | null; 
+      title?: string;
   }>({ isOpen: false, type: null, id: null });
 
   const [newSolLang, setNewSolLang] = useState("javascript");
@@ -179,12 +181,12 @@ export default function ViewProblemModal({ problemId, onClose, initialProblem }:
     setShowAddSolution(true);
   };
 
-  const handleDeleteSolutionClick = (id: string) => {
-      setConfirmModal({ isOpen: true, type: 'solution', id });
+  const handleDeleteSolutionClick = (id: string, title: string) => {
+      setConfirmModal({ isOpen: true, type: 'solution', id, title });
   };
 
   const handleDeleteProblemClick = () => {
-      setConfirmModal({ isOpen: true, type: 'problem', id: problemId });
+      setConfirmModal({ isOpen: true, type: 'problem', id: problemId, title: problem.title });
   };
 
   const handleConfirmDelete = async () => {
@@ -264,6 +266,15 @@ export default function ViewProblemModal({ problemId, onClose, initialProblem }:
                     )}
                 </div>
                 <div className="flex items-center gap-2">
+                    {onEdit && (
+                        <button 
+                            onClick={onEdit}
+                            className="p-2 hover:bg-blue-500/20 text-gray-400 hover:text-blue-400 rounded-lg transition"
+                            title="Edit Problem"
+                        >
+                            <Pencil size={20} />
+                        </button>
+                    )}
                     <button 
                         onClick={handleDeleteProblemClick}
                         className="p-2 hover:bg-red-500/20 text-gray-400 hover:text-red-400 rounded-lg transition"
@@ -460,7 +471,7 @@ export default function ViewProblemModal({ problemId, onClose, initialProblem }:
                                             <Pencil size={14} />
                                         </button>
                                         <button 
-                                            onClick={() => handleDeleteSolutionClick(sol._id)}
+                                            onClick={() => handleDeleteSolutionClick(sol._id, sol.title)}
                                             className="p-1.5 hover:bg-white/10 text-gray-400 hover:text-red-400 rounded transition"
                                             title="Delete Solution"
                                         >
@@ -502,9 +513,21 @@ export default function ViewProblemModal({ problemId, onClose, initialProblem }:
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
         onConfirm={handleConfirmDelete}
         title={confirmModal.type === 'problem' ? "Delete Problem" : "Delete Solution"}
-        message={confirmModal.type === 'problem' 
-            ? "Are you sure you want to delete this ENTIRE problem? This action cannot be undone." 
-            : "Are you sure you want to delete this solution?"}
+        message={
+            confirmModal.type === 'problem' ? (
+                <>
+                    Are you sure you want to delete the Problem - <span className="font-bold text-white">{confirmModal.title}</span>?
+                    <br />
+                    <span className="text-xs text-red-500 mt-2 block font-medium">this cant be undone</span>
+                </>
+            ) : (
+                <>
+                    Are you sure you want to delete the solution - <span className="font-bold text-white">{confirmModal.title}</span> for problem - <span className="font-bold text-white">{problem.title}</span>?
+                    <br />
+                    <span className="text-xs text-red-500 mt-2 block font-medium">this cant be undone</span>
+                </>
+            )
+        }
         confirmText="Delete"
         isDangerous={true}
       />
