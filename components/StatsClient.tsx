@@ -8,6 +8,7 @@ import { DatePicker } from "./ui/DatePicker";
 import { getUserStats } from "@/actions/problem";
 import { toast } from "sonner";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ActivityHeatmap } from "./ActivityHeatmap";
 
 interface Stats {
   total: number;
@@ -605,6 +606,20 @@ export default function StatsClient({ stats: initialStats }: { stats: Stats }) {
                      {stats.byTag.length === 0 && <p className="text-gray-500 text-center w-full py-4">No data to display.</p>}
                 </div>
             </div>
+        </div>
+
+        {/* Activity Heatmap */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+           <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+               <Activity size={18} className="text-green-400" />
+               Activity Heatmap
+           </h3>
+           <ActivityHeatmap 
+             data={stats.activityTimeline.map(item => ({
+               date: item._id,
+               count: item.solutions || item.problems || 0
+             }))}
+           />
         </div>
 
       </div>
