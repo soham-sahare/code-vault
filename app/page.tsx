@@ -34,12 +34,12 @@ export default function Home() {
                     v2.0 Now Available
                  </div>
                  <h1 className="text-5xl font-bold tracking-tight text-white sm:text-7xl bg-clip-text text-transparent bg-gradient-to-r from-blue-100 via-white to-blue-100 pb-2">
-                    Master Coding<br/>
-                    <span className="text-blue-500">Patterns.</span>
+                    Your Coding Journey,<br/>
+                    <span className="text-blue-500">All in One Place.</span>
                  </h1>
                  <p className="mt-6 text-lg leading-8 text-gray-400">
-                    The only spaced-repetition platform designed for LeetCode. 
-                    Stop grinding blindly. Start mastering <strong>Patterns</strong> like Sliding Window, Two Pointers, and DP with a system that guarantees retention.
+                    Store every solution, revisit key concepts, and keep your algorithms fresh with intelligent spaced repetition. 
+                    CodeVault is your personal repository to <strong>organize</strong>, <strong>review</strong>, and <strong>master</strong> your entire coding journey.
                  </p>
                  <div className="mt-10 flex items-center gap-x-6">
                     {session ? (
@@ -64,11 +64,12 @@ export default function Home() {
 
                  {/* Supported Patterns List */}
                  <div className="mt-12 pt-8 border-t border-white/10">
-                    <p className="text-sm text-gray-500 mb-4 font-mono">MASTER CORE PATTERNS:</p>
+                    <p className="text-sm text-gray-500 mb-4 font-mono uppercase tracking-wider">Your Knowledge Ecosystem:</p>
                     <div className="flex flex-wrap gap-2">
-                        {["Sliding Window", "Two Pointers", "Dynamic Programming", "DFS / BFS", "Heaps", "Greedy", "Backtracking"].map((pattern) => (
-                            <span key={pattern} className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-xs text-gray-300 font-mono">
-                                {pattern}
+                        {["Archive Solutions", "Revisit & Revise", "Concept Retention", "Algorithm Repository", "Progress Tracking"].map((item) => (
+                    
+                           <span key={item} className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-xs text-gray-300 font-mono">
+                                {item}
                             </span>
                         ))}
                     </div>
@@ -122,8 +123,8 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="mx-auto max-w-2xl lg:text-center mb-16">
                 <h2 className="text-base font-semibold leading-7 text-blue-400">Everything you need</h2>
-                <p className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">Platform built for retention</p>
-                <p className="mt-6 text-lg leading-8 text-gray-400">We don't just store code. We help you build a mental map of algorithms.</p>
+                <p className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">Your coding knowledge, always accessible</p>
+                <p className="mt-6 text-lg leading-8 text-gray-400">Store your entire coding journey in one place and revisit it whenever you need to keep your skills sharp.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 <div className="glass p-8 rounded-2xl border border-white/5 hover:border-blue-500/30 transition group hover:-translate-y-1 duration-300">
@@ -131,7 +132,7 @@ export default function Home() {
                         <Database size={24} />
                     </div>
                     <h3 className="text-xl font-bold mb-3 text-white">Centralized Vault</h3>
-                    <p className="text-gray-400 text-sm leading-relaxed">Save solutions, notes, and complexity analysis in one unified, searchable dashboard.</p>
+                    <p className="text-gray-400 text-sm leading-relaxed">Store all your coding solutions, notes, and approaches in one place. Your complete coding journey, organized and searchable.</p>
                 </div>
 
                 <div className="glass p-8 rounded-2xl border border-white/5 hover:border-purple-500/30 transition group hover:-translate-y-1 duration-300">
@@ -139,7 +140,7 @@ export default function Home() {
                         <Zap size={24} />
                     </div>
                     <h3 className="text-xl font-bold mb-3 text-white">Spaced Repetition</h3>
-                    <p className="text-gray-400 text-sm leading-relaxed">Smart algorithms schedule reviews (3, 7, 30 days) to optimize long-term retention.</p>
+                    <p className="text-gray-400 text-sm leading-relaxed">Keep concepts fresh in your mind with smart review scheduling. Revisit problems at optimal intervals to ensure long-term retention.</p>
                 </div>
 
                 <div className="glass p-8 rounded-2xl border border-white/5 hover:border-pink-500/30 transition group hover:-translate-y-1 duration-300">
@@ -147,7 +148,7 @@ export default function Home() {
                         <BarChart3 size={24} />
                     </div>
                     <h3 className="text-xl font-bold mb-3 text-white">Detailed Analytics</h3>
-                    <p className="text-gray-400 text-sm leading-relaxed">Track your mastery level across topics like DP, Graphs, and Trees with visual charts.</p>
+                    <p className="text-gray-400 text-sm leading-relaxed">Visualize your progress across topics and patterns. Track which concepts need more practice and celebrate your growth.</p>
                 </div>
 
                 <div className="glass p-8 rounded-2xl border border-white/5 hover:border-green-500/30 transition group hover:-translate-y-1 duration-300">
