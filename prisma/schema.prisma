@@ -1,0 +1,130 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                      String     @id @default(uuid())
+  email                   String     @unique
+  name                    String?
+  username                String?    @unique
+  passwordHash            String?
+  defaultLanguage         String     @default("Python")
+  hasCompletedOnboarding  Boolean    @default(false)
+  isPublicProfile         Boolean    @default(false)
+  theme                   String     @default("SYSTEM")
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
+
+  problems                Problem[]
+  notes                   Note[]
+  reminders               Reminder[]
+  sheets                  Sheet[]
+}
+
+model Problem {
+  id            String         @id @default(uuid())
+  userId        String
+  num           Int
+  name          String
+  url           String         @default("#")
+  topic         String
+  difficulty    String
+  diffColor     String
+  status        String         @default("Due Today")
+  statusColor   String
+  interval      String         @default("Recall Stage 1")
+  isFavorite    Boolean        @default(false)
+  isPublic      Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  solutions     Solution[]
+  notes         Note[]
+  reminders     Reminder[]
+  sheets        SheetProblem[]
+}
+
+model Solution {
+  id         String         @id @default(uuid())
+  problemId  String
+  name       String
+  lang       String
+  intuition  String
+  approach   String
+  code       String
+  time       String
+  space      String
+  tags       String[]
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  problem    Problem        @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  notes      SolutionNote[]
+}
+
+model SolutionNote {
+  id         String   @id @default(uuid())
+  solutionId String
+  type       String
+  text       String
+
+  solution   Solution @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+}
+
+model Note {
+  id         String   @id @default(uuid())
+  problemId  String
+  userId     String
+  text       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  problem    Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Reminder {
+  id          String    @id @default(uuid())
+  problemId   String
+  userId      String
+  dueDate     DateTime
+  stage       String
+  cycle       Int       @default(1)
+  status      String    @default("PENDING")
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  problem     Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Sheet {
+  id          String         @id @default(uuid())
+  userId      String
+  name        String
+  description String?
+  isPublic    Boolean        @default(false)
+  shareSlug   String?        @unique
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problems    SheetProblem[]
+}
+
+model SheetProblem {
+  sheetId   String
+  problemId String
+  order     Int      @default(0)
+
+  sheet     Sheet    @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@id([sheetId, problemId])
+}
