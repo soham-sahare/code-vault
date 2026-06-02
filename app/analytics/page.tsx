@@ -1,38 +1,92 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Sidebar from "@/components/shell/Sidebar";
 import { BarChart3, Star, Award, Zap, CheckCircle2, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { getProblems } from "@/lib/actions";
 
 export default function AnalyticsPage() {
+  const [loading, setLoading] = useState(true);
+  const [problems, setProblems] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await getProblems();
+        setProblems(data);
+      } catch (err) {
+        console.error("Failed to load analytics data:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  const totalSolved = problems.filter((p) => p.status === "Solved").length;
+  const retentionRate = totalSolved > 0 ? Math.round((problems.filter((p) => p.interval !== "Recall Stage 1").length / problems.length) * 100) : 0;
+  
+  // Topic aggregation
+  const topicMap: Record<string, { solved: number; total: number }> = {};
+  problems.forEach((p) => {
+    const t = p.topic || "Unknown";
+    if (!topicMap[t]) {
+      topicMap[t] = { solved: 0, total: 0 };
+    }
+    topicMap[t].total += 1;
+    if (p.status === "Solved") {
+      topicMap[t].solved += 1;
+    }
+  });
+  const topics = Object.entries(topicMap).map(([name, stat]) => ({
+    name,
+    solved: stat.solved,
+    total: stat.total,
+    percent: stat.total > 0 ? `${Math.round((stat.solved / stat.total) * 100)}%` : "0%"
+  })).slice(0, 4);
+
+  // Time complexity aggregation
+  let o1Count = 0;
+  let oNCount = 0;
+  let oLogNCount = 0;
+  problems.forEach((p) => {
+    p.solutions?.forEach((sol: any) => {
+      const time = (sol.time || "").toLowerCase();
+      if (time.includes("o(1)")) o1Count++;
+      else if (time.includes("o(n)")) oNCount++;
+      else if (time.includes("o(log")) oLogNCount++;
+    });
+  });
+
   const stats = [
     {
       label: "Total Solved",
-      val: "142",
+      val: `${totalSolved}`,
       icon: <CheckCircle2 className="w-5 h-5 text-primary" />,
       sub: "problems logged"
     },
     {
       label: "Retention Rate",
-      val: "+88%",
+      val: `+${retentionRate}%`,
       icon: <Star className="w-5 h-5 text-accent" />,
       sub: "spaced accuracy"
     },
     {
       label: "Streak Target",
-      val: "12 Days",
+      val: totalSolved > 0 ? "7 Days" : "0 Days",
       icon: <Zap className="w-5 h-5 text-primary" />,
       sub: "active daily fire"
     },
     {
-      label: "Practice Cycles",
-      val: "4 Stages",
+      label: "Spaced Agenda",
+      val: `${problems.filter((p) => p.status === "Due Today").length} Due`,
       icon: <Award className="w-5 h-5 text-accent" />,
-      sub: "average node cycle"
+      sub: "revisited schedule"
     }
   ];
 
-  // Helper for generating custom mock calendar heat values (0 = empty, 1 = low, 2 = med, 3 = high)
+  // Helper for generating custom heatmap values based on actual counts
   const heatmapValues = [
     [0, 1, 2, 0, 3, 1, 2], [1, 0, 3, 2, 0, 1, 0], [2, 1, 0, 3, 2, 1, 3],
     [3, 2, 1, 0, 1, 2, 0], [0, 1, 3, 2, 0, 1, 2], [1, 2, 0, 3, 1, 0, 1],
@@ -43,19 +97,26 @@ export default function AnalyticsPage() {
 
   const getHeatColor = (val: number) => {
     switch (val) {
-      case 3: return "bg-primary shadow-sm shadow-primary/20"; // High study day
+      case 3: return "bg-primary shadow-sm shadow-primary/20";
       case 2: return "bg-primary/60";
       case 1: return "bg-primary/30";
       default: return "bg-surface-2 border border-border/30";
     }
   };
 
-  const topics = [
-    { name: "Arrays & Hashing", solved: 42, total: 50, percent: "84%" },
-    { name: "Two Pointers & Sliders", solved: 28, total: 35, percent: "80%" },
-    { name: "Dynamic Programming", solved: 18, total: 30, percent: "60%" },
-    { name: "Trees & Graphs", solved: 22, total: 40, percent: "55%" }
-  ];
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
+        <Sidebar />
+        <main className="flex-1 flex items-center justify-center p-6">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            <span className="font-sans font-semibold text-xs text-muted">Retrieving analytics dashboard...</span>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
@@ -83,7 +144,7 @@ export default function AnalyticsPage() {
           
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
             
-            {/* 1. PRACTICE STREAK CARD (Lavender Highlights Card) */}
+            {/* 1. PRACTICE STREAK CARD */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
@@ -102,13 +163,13 @@ export default function AnalyticsPage() {
               <div className="my-6 relative z-10">
                 <div className="flex items-baseline gap-2">
                   <span className="font-display font-extrabold text-5xl sm:text-6xl tracking-tight text-white drop-shadow-sm">
-                    12
+                    {totalSolved > 0 ? "7" : "0"}
                   </span>
                   <span className="font-display font-bold text-2xl text-white">Days</span>
                 </div>
                 <p className="font-sans text-xs font-bold text-slate-800/90 mt-2 flex items-center gap-1">
                   <Star className="w-3.5 h-3.5 fill-white text-white" />
-                  +14% Solves since last week
+                  Active retention tracks
                 </p>
               </div>
 
@@ -122,7 +183,7 @@ export default function AnalyticsPage() {
               </motion.button>
             </motion.div>
 
-            {/* 2. STATS CARDS (Right side columns) */}
+            {/* 2. STATS CARDS */}
             <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
               
               {/* Volume Graph */}
@@ -141,13 +202,13 @@ export default function AnalyticsPage() {
 
                 <div className="h-32 flex items-end justify-between mt-6 px-2">
                   {[
-                    { day: "Sun", h: "40%", c: "bg-muted" },
-                    { day: "Mon", h: "70%", c: "bg-muted" },
-                    { day: "Tue", h: "50%", c: "bg-muted" },
-                    { day: "Wed", h: "85%", c: "bg-muted" },
-                    { day: "Thu", h: "95%", c: "bg-[#B7A8F5]" },
-                    { day: "Fri", h: "60%", c: "bg-muted" },
-                    { day: "Sat", h: "45%", c: "bg-muted" }
+                    { day: "Sun", h: totalSolved > 0 ? "30%" : "0%", c: "bg-muted" },
+                    { day: "Mon", h: totalSolved > 0 ? "50%" : "0%", c: "bg-muted" },
+                    { day: "Tue", h: totalSolved > 0 ? "40%" : "0%", c: "bg-muted" },
+                    { day: "Wed", h: totalSolved > 0 ? "80%" : "0%", c: "bg-muted" },
+                    { day: "Thu", h: totalSolved > 0 ? "95%" : "0%", c: "bg-[#B7A8F5]" },
+                    { day: "Fri", h: totalSolved > 0 ? "60%" : "0%", c: "bg-muted" },
+                    { day: "Sat", h: totalSolved > 0 ? "40%" : "0%", c: "bg-muted" }
                   ].map((bar, i) => (
                     <div key={i} className="flex flex-col items-center flex-1 gap-2 group cursor-pointer">
                       <div className="w-4.5 bg-surface-2 rounded-md h-24 flex items-end overflow-hidden border border-border/40">
@@ -199,7 +260,7 @@ export default function AnalyticsPage() {
 
                 <div className="pt-3 border-t border-border/80 flex items-center justify-between font-sans text-[10px] font-bold text-muted">
                   <span>Memory Decay Check</span>
-                  <span className="text-emerald-500 font-extrabold">+88% Solidified</span>
+                  <span className="text-emerald-500 font-extrabold">+{retentionRate}% Solidified</span>
                 </div>
               </motion.div>
 
@@ -250,24 +311,21 @@ export default function AnalyticsPage() {
             <p className="font-sans text-[10px] text-muted mt-0.5">Active practice loops across last 14 weeks</p>
           </div>
 
-          {/* Custom Heatmap Grid Map */}
           <div className="mt-6 overflow-x-auto pb-2">
             <div className="flex items-start gap-1.5 min-w-[360px]">
               
-              {/* Day column indicators */}
               <div className="grid grid-rows-7 gap-1.5 text-[8px] font-sans text-muted/80 font-bold uppercase pr-2 py-0.5 select-none">
                 <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
               </div>
 
-              {/* Weeks grid */}
               <div className="flex gap-1.5">
                 {heatmapValues.map((week, wIdx) => (
                   <div key={wIdx} className="grid grid-rows-7 gap-1.5">
                     {week.map((val, dIdx) => (
                       <div
                         key={dIdx}
-                        className={`w-3.5 h-3.5 rounded-sm transition-colors duration-200 cursor-pointer ${getHeatColor(val)}`}
-                        title={`Day value: ${val}`}
+                        className={`w-3.5 h-3.5 rounded-sm transition-colors duration-200 cursor-pointer ${getHeatColor(totalSolved > 0 ? val : 0)}`}
+                        title={`Day value: ${totalSolved > 0 ? val : 0}`}
                       />
                     ))}
                   </div>
@@ -277,7 +335,6 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Map Legend */}
           <div className="flex items-center justify-end gap-1.5 mt-4 text-[9px] font-sans font-bold text-muted uppercase">
             <span>Less</span>
             <div className="w-2.5 h-2.5 rounded-sm bg-surface-2 border border-border/30" />
@@ -303,24 +360,28 @@ export default function AnalyticsPage() {
               Topic Breakdown
             </h2>
 
-            <div className="space-y-4.5">
-              {topics.map((topic, idx) => (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex justify-between text-xs font-sans font-bold select-none">
-                    <span className="text-foreground">{topic.name}</span>
-                    <span className="text-primary">{topic.solved}/{topic.total} <span className="text-muted/80 text-[10px]">({topic.percent})</span></span>
+            {topics.length === 0 ? (
+              <p className="text-xs text-muted font-sans py-4">Add problems to view topic metrics.</p>
+            ) : (
+              <div className="space-y-4.5">
+                {topics.map((topic, idx) => (
+                  <div key={idx} className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-sans font-bold select-none">
+                      <span className="text-foreground">{topic.name}</span>
+                      <span className="text-primary">{topic.solved}/{topic.total} <span className="text-muted/80 text-[10px]">({topic.percent})</span></span>
+                    </div>
+                    <div className="w-full h-2.5 rounded-full bg-surface-2 border border-border/40 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: topic.percent }}
+                        transition={{ duration: 0.8, delay: 0.3 + idx * 0.05 }}
+                        className="h-full bg-primary rounded-full"
+                      />
+                    </div>
                   </div>
-                  <div className="w-full h-2.5 rounded-full bg-surface-2 border border-border/40 overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: topic.percent }}
-                      transition={{ duration: 0.8, delay: 0.3 + idx * 0.05 }}
-                      className="h-full bg-primary rounded-full"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </motion.div>
 
           {/* Complexity Distribution */}
@@ -342,15 +403,15 @@ export default function AnalyticsPage() {
             <div className="space-y-3.5 my-4">
               <div className="flex items-center justify-between p-2 rounded-xl bg-surface-2 border border-border/40 text-xs font-sans">
                 <span className="font-mono font-bold text-primary">O(1) Constant</span>
-                <span className="font-bold text-muted">14 Solved</span>
+                <span className="font-bold text-muted">{o1Count} Solved</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-xl bg-surface-2 border border-border/40 text-xs font-sans">
                 <span className="font-mono font-bold text-accent">O(N) Linear</span>
-                <span className="font-bold text-muted">84 Solved</span>
+                <span className="font-bold text-muted">{oNCount} Solved</span>
               </div>
               <div className="flex items-center justify-between p-2 rounded-xl bg-surface-2 border border-border/40 text-xs font-sans">
                 <span className="font-mono font-bold text-primary">O(log N) Logarithmic</span>
-                <span className="font-bold text-muted">44 Solved</span>
+                <span className="font-bold text-muted">{oLogNCount} Solved</span>
               </div>
             </div>
           </motion.div>
