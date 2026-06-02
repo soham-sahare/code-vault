@@ -2,38 +2,72 @@
 
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/shell/Sidebar";
-import { Settings, User, Mail, Globe, Lock, ShieldCheck, Check } from "lucide-react";
+import { Settings, User, Globe, ShieldCheck, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getUserProfile, updateUserProfile } from "@/lib/actions";
 
 export default function SettingsPage() {
+  const [loading, setLoading] = useState(true);
   const [defaultLanguage, setDefaultLanguage] = useState("Python");
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
-  const [username, setUsername] = useState("hunter");
-  const [email, setEmail] = useState("hunter@codevault.dev");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [isPublicProfile, setIsPublicProfile] = useState(false);
-  const [notifyEmail, setNotifyEmail] = useState(true);
-  const [notifyApp, setNotifyApp] = useState(true);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
 
   useEffect(() => {
-    const storedLang = localStorage.getItem("defaultLanguage") || "Python";
-    setDefaultLanguage(storedLang);
-    const storedProfile = localStorage.getItem("isPublicProfile") === "true";
-    setIsPublicProfile(storedProfile);
+    async function load() {
+      try {
+        const user = await getUserProfile();
+        if (user) {
+          setDefaultLanguage(user.defaultLanguage);
+          setUsername(user.username || "");
+          setEmail(user.email);
+          setIsPublicProfile(user.isPublicProfile);
+        }
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
     if (typeof window !== "undefined") {
       setOrigin(window.location.origin);
     }
   }, []);
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("defaultLanguage", defaultLanguage);
-    localStorage.setItem("isPublicProfile", isPublicProfile ? "true" : "false");
-    
-    setSaveStatus("Saved successfully!");
-    setTimeout(() => setSaveStatus(null), 3000);
+    try {
+      await updateUserProfile({
+        username: username || undefined,
+        defaultLanguage,
+        isPublicProfile,
+      });
+      setSaveStatus("Saved successfully!");
+      setTimeout(() => setSaveStatus(null), 3000);
+    } catch (err: any) {
+      console.error("Error updating settings:", err);
+      setSaveStatus(err.message || "Failed to save settings.");
+      setTimeout(() => setSaveStatus(null), 3000);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
+        <Sidebar />
+        <main className="flex-1 flex items-center justify-center p-6">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            <span className="font-sans font-semibold text-xs text-muted">Retrieving user profile...</span>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
@@ -134,14 +168,13 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="block font-semibold text-muted mb-2 uppercase tracking-wide">
-                  Email Address
+                  Email Address (Immutable)
                 </label>
                 <input
                   type="email"
-                  required
+                  disabled
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-foreground font-semibold"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-2/60 border border-border text-muted font-semibold cursor-not-allowed"
                 />
               </div>
             </div>
@@ -166,7 +199,7 @@ export default function SettingsPage() {
                 className="w-4.5 h-4.5 accent-primary cursor-pointer"
               />
             </div>
-            {isPublicProfile && (
+            {isPublicProfile && username && (
               <div className="p-3 bg-surface-2/30 rounded-xl border border-border/80 text-[10px] text-muted">
                 Your public profile URL: <span className="text-primary font-bold">{origin}/u/{username}</span>
               </div>
