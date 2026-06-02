@@ -17,7 +17,7 @@ import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-go";
 import "prismjs/components/prism-rust";
 import "prismjs/themes/prism-tomorrow.css";
-import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, addNote, updateNote, deleteNote, markRevisited } from "@/lib/actions";
+import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile } from "@/lib/actions";
 
 function highlightCode(code: string, lang: string) {
   if (!code) return "";
@@ -78,6 +78,32 @@ interface Problem {
 export default function DashboardPage() {
   // State for problems so they are mutable locally
   const [problemsList, setProblemsList] = useState<Problem[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const profile = await getUserProfile();
+        setUserProfile(profile);
+      } catch (err) {
+        console.error("Failed to load user profile:", err);
+      }
+    }
+    fetchUser();
+  }, []);
+
+  const getInitials = () => {
+    const name = userProfile?.name || userProfile?.username || userProfile?.email || "User";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    if (name.length >= 2) {
+      return name.substring(0, 2).toUpperCase();
+    }
+    return name[0].toUpperCase();
+  };
 
   // Modal State Hooks
   const [activeProblem, setActiveProblem] = useState<null | any>(null);
@@ -381,31 +407,46 @@ export default function DashboardPage() {
               )}
             </button>
 
-            {/* Profile Button */}
-            <Link
-              href="/settings"
-              className="px-3.5 py-2 rounded-xl bg-surface border border-border flex items-center justify-center gap-1.5 text-muted hover:text-foreground font-sans font-bold text-xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              title="View Profile Settings"
-            >
-              <span>Profile</span>
-            </Link>
+            {/* User Avatar Circle with Initials & Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-display font-extrabold text-xs text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-sm select-none"
+              >
+                {getInitials()}
+              </button>
 
-            {/* Logout Button */}
-            <Link
-              href="/login"
-              className="px-3.5 py-2 rounded-xl bg-surface border border-border flex items-center justify-center gap-1.5 text-muted hover:text-rose-500 font-sans font-bold text-xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              title="Log out"
-            >
-              <span>Logout</span>
-            </Link>
-
-            {/* User Avatar */}
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-border shadow-sm">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=100&auto=format&fit=crop"
-                alt="Hunter Avatar"
-                className="w-full h-full object-cover"
-              />
+              <AnimatePresence>
+                {isProfileDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsProfileDropdownOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className="absolute right-0 mt-2 z-50 w-44 bg-surface border border-border rounded-xl shadow-xl overflow-hidden font-semibold font-sans text-xs"
+                    >
+                      <div className="px-4 py-2.5 border-b border-border bg-surface-2/40 text-muted/80 text-[10px] uppercase tracking-wider truncate">
+                        {userProfile?.name || userProfile?.username || "Account"}
+                      </div>
+                      <Link
+                        href="/settings"
+                        className="flex items-center gap-2 px-4 py-2.5 text-foreground hover:bg-surface-2 hover:text-primary transition-colors"
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                      >
+                        Profile Settings
+                      </Link>
+                      <Link
+                        href="/login"
+                        className="flex items-center gap-2 px-4 py-2.5 text-rose-500 hover:bg-rose-500/5 transition-colors border-t border-border"
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                      >
+                        Logout
+                      </Link>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
