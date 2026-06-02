@@ -23,7 +23,7 @@ export default function SheetsPage() {
       const data = await getSheets();
       setSheetsList(data);
       if (activeSheet) {
-        const updatedActive = data.find((s) => s.id === activeSheet.id);
+        const updatedActive = data.find((s: any) => s.id === activeSheet.id);
         setActiveSheet(updatedActive || null);
       }
     } catch (err) {

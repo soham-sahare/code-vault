@@ -219,7 +219,7 @@ export default function DashboardPage() {
       const data = await getProblems();
       setProblemsList(data);
       if (activeProblem) {
-        const updatedActive = data.find((p) => p.id === activeProblem.id);
+        const updatedActive = data.find((p: any) => p.id === activeProblem.id);
         setActiveProblem(updatedActive || null);
       }
     } catch (err) {
