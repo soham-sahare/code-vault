@@ -1657,48 +1657,58 @@ export default function DashboardPage() {
                 )}
 
                 {/* 3. HISTORY TAB */}
-                {activeTab === "history" && (
-                  <div className="w-full py-8 px-4 relative">
-                    {activeProblem.history.length === 0 ? (
-                      <p className="text-center font-sans text-xs text-muted py-10">No spacing history logs found</p>
-                    ) : (
-                      <div className="relative">
-                        {/* Connecting Line */}
-                        <div className="absolute top-[20px] left-[10%] right-[10%] h-0.5 bg-border/40 rounded-full z-0" />
+                {activeTab === "history" && (() => {
+                  const historyList = (activeProblem.history || []).length > 0
+                    ? activeProblem.history
+                    : (activeProblem.reminders || []).map((r: any) => ({
+                        status: r.status === "PENDING" ? "Pending" : "Done",
+                        date: new Date(r.dueDate).toLocaleDateString(),
+                        stage: r.stage,
+                      }));
 
-                        <div className="flex flex-row items-stretch justify-between relative z-10 w-full">
-                          {activeProblem.history.map((hist: any, i: number) => {
-                            const isDone = hist.status === "Done";
-                            return (
-                              <div key={i} className="flex flex-col items-center text-center flex-1 px-1 relative">
-                                {/* Node circle */}
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md border-[3px] border-surface z-10 mb-3.5 transition-transform hover:scale-115 ${isDone ? "bg-emerald-500 text-white" : "bg-surface-2 border-border/80 text-muted"
-                                  }`}>
-                                  {isDone ? <Check className="w-4.5 h-4.5" /> : <Clock className="w-4 h-4 text-amber-500" />}
+                  return (
+                    <div className="w-full py-8 px-4 relative">
+                      {historyList.length === 0 ? (
+                        <p className="text-center font-sans text-xs text-muted py-10">No spacing history logs found</p>
+                      ) : (
+                        <div className="relative">
+                          {/* Connecting Line */}
+                          <div className="absolute top-[20px] left-[10%] right-[10%] h-0.5 bg-border/40 rounded-full z-0" />
+
+                          <div className="flex flex-row items-stretch justify-between relative z-10 w-full">
+                            {historyList.map((hist: any, i: number) => {
+                              const isDone = hist.status === "Done";
+                              return (
+                                <div key={i} className="flex flex-col items-center text-center flex-1 px-1 relative">
+                                  {/* Node circle */}
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md border-[3px] border-surface z-10 mb-3.5 transition-transform hover:scale-115 ${isDone ? "bg-emerald-500 text-white" : "bg-surface-2 border-border/80 text-muted"
+                                    }`}>
+                                    {isDone ? <Check className="w-4.5 h-4.5" /> : <Clock className="w-4 h-4 text-amber-500" />}
+                                  </div>
+
+                                  {/* Date Badge */}
+                                  <span className="font-sans font-bold text-[9px] text-muted bg-surface-2 border border-border/80 px-2 py-0.5 rounded-md mb-2">
+                                    {hist.date}
+                                  </span>
+
+                                  {/* Stage */}
+                                  <h4 className="font-display font-bold text-xs text-foreground">
+                                    {hist.stage}
+                                  </h4>
+
+                                  {/* Status */}
+                                  <p className={`font-sans text-[10px] font-bold mt-1 ${isDone ? "text-emerald-500" : "text-amber-500"}`}>
+                                    {hist.status}
+                                  </p>
                                 </div>
-
-                                {/* Date Badge */}
-                                <span className="font-sans font-bold text-[9px] text-muted bg-surface-2 border border-border/80 px-2 py-0.5 rounded-md mb-2">
-                                  {hist.date}
-                                </span>
-
-                                {/* Stage */}
-                                <h4 className="font-display font-bold text-xs text-foreground">
-                                  {hist.stage}
-                                </h4>
-
-                                {/* Status */}
-                                <p className={`font-sans text-[10px] font-bold mt-1 ${isDone ? "text-emerald-500" : "text-amber-500"}`}>
-                                  {hist.status}
-                                </p>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  );
+                })()}
 
               </div>
 
