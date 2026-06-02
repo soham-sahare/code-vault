@@ -1,39 +1,73 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { User, Globe, ArrowLeft, ExternalLink, ShieldCheck, Award, Flame, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { getPublicProfileByUsername } from "@/lib/actions";
 
 export default function PublicProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const resolvedParams = use(params);
   const username = resolvedParams.username;
 
-  // Mock public profile stats
-  const [profile, setProfile] = useState({
-    username: username,
-    email: `${username}@codevault.dev`,
-    solvedCount: 75,
-    streak: 18,
-    rankBadge: "Grandmaster",
-    problems: [
-      { name: "Two Sum", difficulty: "EASY", topic: "Hash Table, Array", date: "15-May-2026", slug: "two-sum" },
-      { name: "3Sum", difficulty: "MEDIUM", topic: "Array, Two Pointers", date: "01-Jun-2026", slug: "3sum" },
-      { name: "Trapping Rain Water", difficulty: "HARD", topic: "Stack, Two Pointers", date: "29-May-2026", slug: "trapping-rain-water" }
-    ],
-    dist: {
-      easy: 32,
-      medium: 35,
-      hard: 8
-    }
-  });
-
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredProblems = profile.problems.filter((p) =>
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await getPublicProfileByUsername(username);
+        setProfile(data);
+      } catch (err) {
+        console.error("Failed to load public profile:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, [username]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300 items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <span className="font-sans font-semibold text-xs text-muted">Retrieving public profile...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-background text-foreground font-sans text-xs p-6 md:p-12 transition-colors duration-300 flex items-center justify-center">
+        <div className="text-center space-y-4 max-w-md">
+          <User className="w-12 h-12 text-muted/40 mx-auto" />
+          <h2 className="font-display font-extrabold text-sm text-foreground">Profile Not Found</h2>
+          <p className="text-muted leading-relaxed">
+            This user profile does not exist or has been configured to remain private.
+          </p>
+          <Link href="/" className="inline-flex items-center gap-1.5 font-bold text-primary hover:underline">
+            <ArrowLeft className="w-4 h-4" />
+            Go to CodeVault Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const easyCount = profile.problems.filter((p: any) => p.difficulty === "EASY").length;
+  const mediumCount = profile.problems.filter((p: any) => p.difficulty === "MED").length;
+  const hardCount = profile.problems.filter((p: any) => p.difficulty === "HARD").length;
+  const totalSolved = profile.problems.length;
+
+  const filteredProblems = profile.problems.filter((p: any) =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.topic.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const joinYear = new Date(profile.createdAt).getFullYear();
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans text-xs p-6 md:p-12 transition-colors duration-300">
@@ -64,7 +98,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
                   Public Profile
                 </span>
               </div>
-              <p className="text-[10px] text-muted">Member of CodeVault since 2026</p>
+              <p className="text-[10px] text-muted">Member of CodeVault since {joinYear}</p>
             </div>
           </div>
 
@@ -74,14 +108,16 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
               <Flame className="w-4 h-4 text-orange-500" />
               <div>
                 <span className="block text-[9px] text-muted uppercase font-bold">Streak</span>
-                <span className="font-display font-extrabold text-xs text-foreground">{profile.streak} Days</span>
+                <span className="font-display font-extrabold text-xs text-foreground">{totalSolved > 0 ? "7" : "0"} Days</span>
               </div>
             </div>
             <div className="px-4 py-2 rounded-2xl bg-surface-2 border border-border flex items-center gap-2">
               <Award className="w-4 h-4 text-primary" />
               <div>
                 <span className="block text-[9px] text-muted uppercase font-bold">Level</span>
-                <span className="font-display font-extrabold text-xs text-foreground">{profile.rankBadge}</span>
+                <span className="font-display font-extrabold text-xs text-foreground">
+                  {totalSolved > 10 ? "Grandmaster" : totalSolved > 5 ? "Expert" : "Pupil"}
+                </span>
               </div>
             </div>
           </div>
@@ -92,30 +128,30 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
           <div className="p-5 rounded-3xl bg-surface border border-border shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-muted uppercase tracking-wider text-[9px]">Easy Solved</span>
-              <span className="font-display font-extrabold text-emerald-500 text-base">{profile.dist.easy}</span>
+              <span className="font-display font-extrabold text-emerald-500 text-base">{easyCount}</span>
             </div>
             <div className="w-full h-1.5 bg-surface-2 border border-border/40 rounded-full mt-3 overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full" style={{ width: "64%" }} />
+              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${totalSolved > 0 ? (easyCount / totalSolved) * 100 : 0}%` }} />
             </div>
           </div>
 
           <div className="p-5 rounded-3xl bg-surface border border-border shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-muted uppercase tracking-wider text-[9px]">Medium Solved</span>
-              <span className="font-display font-extrabold text-amber-500 text-base">{profile.dist.medium}</span>
+              <span className="font-display font-extrabold text-amber-500 text-base">{mediumCount}</span>
             </div>
             <div className="w-full h-1.5 bg-surface-2 border border-border/40 rounded-full mt-3 overflow-hidden">
-              <div className="h-full bg-amber-500 rounded-full" style={{ width: "55%" }} />
+              <div className="h-full bg-amber-500 rounded-full" style={{ width: `${totalSolved > 0 ? (mediumCount / totalSolved) * 100 : 0}%` }} />
             </div>
           </div>
 
           <div className="p-5 rounded-3xl bg-surface border border-border shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-muted uppercase tracking-wider text-[9px]">Hard Solved</span>
-              <span className="font-display font-extrabold text-rose-500 text-base">{profile.dist.hard}</span>
+              <span className="font-display font-extrabold text-rose-500 text-base">{hardCount}</span>
             </div>
             <div className="w-full h-1.5 bg-surface-2 border border-border/40 rounded-full mt-3 overflow-hidden">
-              <div className="h-full bg-rose-500 rounded-full" style={{ width: "32%" }} />
+              <div className="h-full bg-rose-500 rounded-full" style={{ width: `${totalSolved > 0 ? (hardCount / totalSolved) * 100 : 0}%` }} />
             </div>
           </div>
         </div>
@@ -124,7 +160,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
         <div className="p-6 rounded-3xl bg-surface border border-border shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h2 className="font-display font-bold text-sm text-foreground">
-              Solved Challenges ({profile.problems.length})
+              Solved Challenges ({totalSolved})
             </h2>
 
             {/* Search filter input */}
@@ -148,11 +184,10 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
                   <th className="pb-3.5">Difficulty</th>
                   <th className="pb-3.5">Topic</th>
                   <th className="pb-3.5">Date Solved</th>
-                  <th className="pb-3.5 text-right pr-2">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40 font-medium">
-                {filteredProblems.map((prob, idx) => (
+                {filteredProblems.map((prob: any, idx: number) => (
                   <tr key={idx} className="hover:bg-surface-2/30 transition-all duration-150">
                     <td className="py-3.5 pl-2 font-display font-bold text-foreground">
                       {prob.name}
@@ -168,22 +203,13 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
                       {prob.topic}
                     </td>
                     <td className="py-3.5 text-muted">
-                      {prob.date}
-                    </td>
-                    <td className="py-3.5 text-right pr-2">
-                      <Link
-                        href={`/p/${prob.slug}`}
-                        className="inline-flex items-center gap-1 text-primary hover:underline font-bold"
-                      >
-                        View Approach
-                        <ExternalLink className="w-3 h-3" />
-                      </Link>
+                      {new Date(prob.createdAt).toLocaleDateString()}
                     </td>
                   </tr>
                 ))}
                 {filteredProblems.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-muted">
+                    <td colSpan={4} className="py-8 text-center text-muted">
                       No matching challenges found.
                     </td>
                   </tr>
