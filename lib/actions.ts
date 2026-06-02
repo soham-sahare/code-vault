@@ -61,8 +61,8 @@ export async function createProblem(data: {
       diffColor,
       topic: data.topic,
       url: data.url || "#",
-      status: "Due Today",
-      statusColor: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+      status: "Unsolved",
+      statusColor: "text-rose-500 bg-rose-500/10 border-rose-500/20",
       interval: "Recall Stage 1",
       isPublic: !!data.isPublic,
     },
@@ -175,6 +175,16 @@ export async function addSolution(problemId: string, data: {
       }
     },
     include: { notes: true }
+  });
+
+  // Automatically advance parent problem status to Solved and set spaced interval
+  await db.problem.update({
+    where: { id: problemId },
+    data: {
+      status: "Solved",
+      statusColor: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+      interval: "Due in 3d",
+    }
   });
 
   revalidatePath("/dashboard");
