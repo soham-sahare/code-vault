@@ -17,7 +17,7 @@ import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-go";
 import "prismjs/components/prism-rust";
 import "prismjs/themes/prism-tomorrow.css";
-import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, addNote, deleteNote, markRevisited } from "@/lib/actions";
+import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, addNote, updateNote, deleteNote, markRevisited } from "@/lib/actions";
 
 function highlightCode(code: string, lang: string) {
   if (!code) return "";
@@ -57,6 +57,8 @@ function getCodePlaceholder(lang: string): string {
 }
 
 interface Problem {
+  id: string;
+  userId: string;
   num: number;
   name: string;
   difficulty: string;
@@ -69,8 +71,8 @@ interface Problem {
   isFavorite: boolean;
   isPublic?: boolean;
   solutions: any[];
-  notes: string[];
-  history: any[];
+  notes: any[];
+  history?: any[];
 }
 
 export default function DashboardPage() {
@@ -184,22 +186,29 @@ export default function DashboardPage() {
     }
   }, []);
 
-  useEffect(() => {
-    const stored = localStorage.getItem("codevault_problems");
-    if (stored) {
-      try {
-        setProblemsList(JSON.parse(stored));
-      } catch (e) {
-        console.error(e);
+  const [loading, setLoading] = useState(true);
+
+  const loadProblems = async () => {
+    try {
+      const data = await getProblems();
+      setProblemsList(data);
+      if (activeProblem) {
+        const updatedActive = data.find((p) => p.id === activeProblem.id);
+        setActiveProblem(updatedActive || null);
       }
+    } catch (err) {
+      console.error("Failed to load problems:", err);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    if (problemsList.length > 0) {
-      localStorage.setItem("codevault_problems", JSON.stringify(problemsList));
+    async function init() {
+      setLoading(true);
+      await loadProblems();
+      setLoading(false);
     }
-  }, [problemsList]);
+    init();
+  }, [activeProblem?.id]);
 
   const handleSaveOnboarding = () => {
     localStorage.setItem("hasCompletedOnboarding", "true");
@@ -211,143 +220,105 @@ export default function DashboardPage() {
 
 
 
-  const handleSaveSolution = (e: React.FormEvent) => {
+  const handleSaveSolution = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSolName || !newSolCode) return;
 
-    const newSolObj = {
-      name: newSolName,
-      lang: newSolLang,
-      intuition: newSolIntuition || "Optimal approach.",
-      approach: newSolApproach || "Standard implementation.",
-      time: newSolTime,
-      space: newSolSpace,
-      code: newSolCode,
-      tags: editingSolIdx !== null ? (activeProblem.solutions[editingSolIdx]?.tags || []) : [],
-      notes: editingSolIdx !== null ? (activeProblem.solutions[editingSolIdx]?.notes || []) : []
-    };
+    try {
+      if (editingSolIdx !== null) {
+        const sol = activeProblem.solutions[editingSolIdx];
+        await deleteSolution(sol.id);
+      }
+      
+      const newSol = await addSolution(activeProblem.id, {
+        name: newSolName,
+        lang: newSolLang,
+        intuition: newSolIntuition || "Optimal approach.",
+        approach: newSolApproach || "Standard implementation.",
+        time: newSolTime,
+        space: newSolSpace,
+        code: newSolCode,
+        tags: [],
+        notes: []
+      });
 
-    setProblemsList((prev) =>
-      prev.map((prob) => {
-        if (prob.num === activeProblem.num) {
-          let updatedSols = [...prob.solutions];
-          if (editingSolIdx !== null) {
-            updatedSols[editingSolIdx] = newSolObj;
-          } else {
-            updatedSols.push(newSolObj);
-          }
-          setActiveProblem({ ...prob, solutions: updatedSols });
-          setSelSolIdx(editingSolIdx !== null ? editingSolIdx : updatedSols.length - 1);
-          return { ...prob, solutions: updatedSols };
-        }
-        return prob;
-      })
-    );
+      await loadProblems();
 
-    showToast(editingSolIdx !== null ? "Solution updated successfully!" : "Solution added successfully!", "success");
+      showToast(editingSolIdx !== null ? "Solution updated successfully!" : "Solution added successfully!", "success");
 
-    // Reset inputs
-    setIsAddingSol(false);
-    setEditingSolIdx(null);
-    setNewSolName("");
-    setNewSolLang(defaultLanguage);
-    setNewSolIntuition("");
-    setNewSolApproach("");
-    setNewSolCode("");
-    setNewSolTime("O(N)");
-    setNewSolSpace("O(1)");
+      // Reset inputs
+      setIsAddingSol(false);
+      setEditingSolIdx(null);
+      setNewSolName("");
+      setNewSolLang(defaultLanguage);
+      setNewSolIntuition("");
+      setNewSolApproach("");
+      setNewSolCode("");
+      setNewSolTime("O(N)");
+      setNewSolSpace("O(1)");
+    } catch (err) {
+      console.error(err);
+      showToast("Error saving solution", "error");
+    }
   };
 
   // Handler for simulated revisited
-  const handleMarkRevisited = (num: number) => {
-    setProblemsList((prev) =>
-      prev.map((prob) => {
-        if (prob.num === num) {
-          return {
-            ...prob,
-            status: "Solved",
-            statusColor: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
-            interval: "Due in 3d"
-          };
-        }
-        return prob;
-      })
-    );
-    setActiveProblem(null);
-    showToast("Problem marked as revisited!", "success");
+  const handleMarkRevisited = async (num: number) => {
+    try {
+      await markRevisited(num);
+      await loadProblems();
+      setActiveProblem(null);
+      showToast("Problem marked as revisited!", "success");
+    } catch (err) {
+      console.error(err);
+      showToast("Error marking revisit", "error");
+    }
   };
 
   // Handler for adding/editing problem simulated
-  const handleAddProblem = (e: React.FormEvent) => {
+  const handleAddProblem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addName) return;
 
     const finalTopic = selectedTopics.length > 0 ? selectedTopics.join(", ") : "General DSA";
 
-    if (editingProblemNum !== null) {
-      // Edit existing problem
-      setProblemsList((prev) =>
-        prev.map((prob) => {
-          if (prob.num === editingProblemNum) {
-            return {
-              ...prob,
-              name: addName,
-              difficulty: addDiff,
-              diffColor:
-                addDiff === "EASY"
-                  ? "text-emerald-500 bg-emerald-500/10"
-                  : addDiff === "MED"
-                    ? "text-amber-500 bg-amber-500/10"
-                    : "text-rose-500 bg-rose-500/10",
-              topic: finalTopic,
-              url: addUrl || "#",
-              isPublic: addIsPublic
-            };
-          }
-          return prob;
-        })
-      );
+    try {
+      if (editingProblemNum !== null) {
+        await updateProblem(editingProblemNum, {
+          name: addName,
+          difficulty: addDiff,
+          topic: finalTopic,
+          url: addUrl || "#",
+          isPublic: addIsPublic
+        });
+        showToast("Problem updated successfully!", "success");
+      } else {
+        await createProblem({
+          name: addName,
+          difficulty: addDiff,
+          topic: finalTopic,
+          url: addUrl || "#",
+          isPublic: addIsPublic
+        });
+        showToast("Problem created successfully!", "success");
+      }
+
+      await loadProblems();
       setEditingProblemNum(null);
-      showToast("Problem updated successfully!", "success");
-    } else {
-      // Add new problem
-      const finalNum = addNum ? parseInt(addNum) : Math.floor(Math.random() * 1000) + 1;
-      const newProbObj = {
-        num: finalNum,
-        name: addName,
-        difficulty: addDiff,
-        diffColor:
-          addDiff === "EASY"
-            ? "text-emerald-500 bg-emerald-500/10"
-            : addDiff === "MED"
-              ? "text-amber-500 bg-amber-500/10"
-              : "text-rose-500 bg-rose-500/10",
-        topic: finalTopic,
-        status: "Due Today",
-        statusColor: "text-amber-500 bg-amber-500/10 border-amber-500/20",
-        interval: "Recall Stage 1",
-        url: addUrl || "#",
-        isFavorite: false,
-        isPublic: addIsPublic,
-        solutions: [],
-        notes: [],
-        history: []
-      };
-      setProblemsList((prev) => [newProbObj, ...prev]);
-      showToast("Problem created successfully!", "success");
+      setIsAddProblemOpen(false);
+
+      // Reset inputs
+      setAddName("");
+      setAddNum("");
+      setAddUrl("");
+      setSelectedTopics([]);
+      setAddDiff("EASY");
+      setAddIsPublic(false);
+    } catch (err) {
+      console.error(err);
+      showToast("Error saving problem", "error");
     }
-
-    setIsAddProblemOpen(false);
-
-    // Reset inputs
-    setAddName("");
-    setAddNum("");
-    setAddUrl("");
-    setSelectedTopics([]);
-    setAddDiff("EASY");
-    setAddIsPublic(false);
   };
-
   const handleCopyCode = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedCode(true);
@@ -896,11 +867,20 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   {/* Public Sharing Toggle */}
                   <button
-                    onClick={() => {
-                      const updatedProb = { ...activeProblem, isPublic: !activeProblem.isPublic };
-                      setProblemsList((prev) => prev.map((p) => p.num === activeProblem.num ? updatedProb : p));
-                      setActiveProblem(updatedProb);
-                      showToast(updatedProb.isPublic ? "Public sharing enabled!" : "Public sharing disabled", "success");
+                    onClick={async () => {
+                      try {
+                        const updated = await updateProblem(activeProblem.num, {
+                          name: activeProblem.name,
+                          difficulty: activeProblem.difficulty,
+                          topic: activeProblem.topic,
+                          url: activeProblem.url,
+                          isPublic: !activeProblem.isPublic
+                        });
+                        await loadProblems();
+                        showToast(updated.isPublic ? "Public sharing enabled!" : "Public sharing disabled", "success");
+                      } catch (err) {
+                        console.error(err);
+                      }
                     }}
                     className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-all cursor-pointer ${
                       activeProblem.isPublic 
@@ -914,11 +894,14 @@ export default function DashboardPage() {
 
                   {/* Favorite Toggle */}
                   <button
-                    onClick={() => {
-                      const updatedProb = { ...activeProblem, isFavorite: !activeProblem.isFavorite };
-                      setProblemsList((prev) => prev.map((p) => p.num === activeProblem.num ? updatedProb : p));
-                      setActiveProblem(updatedProb);
-                      showToast(updatedProb.isFavorite ? "Added to favorites!" : "Removed from favorites!", "success");
+                    onClick={async () => {
+                      try {
+                        await toggleFavorite(activeProblem.num);
+                        await loadProblems();
+                        showToast(!activeProblem.isFavorite ? "Added to favorites!" : "Removed from favorites!", "success");
+                      } catch (err) {
+                        console.error(err);
+                      }
                     }}
                     className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-foreground active:scale-95 transition-all cursor-pointer"
                   >
@@ -927,11 +910,20 @@ export default function DashboardPage() {
 
                   {/* Share button */}
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!activeProblem.isPublic) {
-                        const updatedProb = { ...activeProblem, isPublic: true };
-                        setProblemsList((prev) => prev.map((p) => p.num === activeProblem.num ? updatedProb : p));
-                        setActiveProblem(updatedProb);
+                        try {
+                          await updateProblem(activeProblem.num, {
+                            name: activeProblem.name,
+                            difficulty: activeProblem.difficulty,
+                            topic: activeProblem.topic,
+                            url: activeProblem.url,
+                            isPublic: true
+                          });
+                          await loadProblems();
+                        } catch (err) {
+                          console.error(err);
+                        }
                       }
                       const slug = activeProblem.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
                       const shareUrl = `${window.location.origin}/p/${slug}`;
@@ -1372,14 +1364,16 @@ export default function DashboardPage() {
                         className="flex-1 px-4 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none font-sans text-xs text-foreground placeholder:text-muted/60 transition-all"
                       />
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (!newNoteText) return;
-                          const updatedNotes = [...activeProblem.notes, newNoteText];
-                          const updatedProb = { ...activeProblem, notes: updatedNotes };
-                          setProblemsList((prev) => prev.map((p) => p.num === activeProblem.num ? updatedProb : p));
-                          setActiveProblem(updatedProb);
-                          setNewNoteText("");
-                          showToast("Note added successfully!", "success");
+                          try {
+                            await addNote(activeProblem.id, newNoteText);
+                            await loadProblems();
+                            setNewNoteText("");
+                            showToast("Note added successfully!", "success");
+                          } catch (err) {
+                            console.error(err);
+                          }
                         }}
                         className="inline-flex items-center gap-1 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-sans font-bold text-xs shadow-md shadow-primary/10 cursor-pointer"
                       >
@@ -1391,8 +1385,8 @@ export default function DashboardPage() {
                       {activeProblem.notes.length === 0 ? (
                         <p className="text-center font-sans text-xs text-muted py-4">No custom notes written for this problem</p>
                       ) : (
-                        activeProblem.notes.map((note: string, i: number) => (
-                          <div key={i} className="p-4 rounded-xl bg-surface-2 border border-border/40 font-sans text-xs text-foreground/80 leading-relaxed flex items-center justify-between gap-4 group">
+                        activeProblem.notes.map((note: any, i: number) => (
+                          <div key={note.id || i} className="p-4 rounded-xl bg-surface-2 border border-border/40 font-sans text-xs text-foreground/80 leading-relaxed flex items-center justify-between gap-4 group">
                             {editingNoteIdx === i ? (
                               <div className="flex-1 flex gap-2 items-center">
                                 <input
@@ -1402,16 +1396,17 @@ export default function DashboardPage() {
                                   className="flex-1 px-3 py-1.5 rounded-lg bg-surface border border-primary/50 focus:outline-none font-sans text-xs text-foreground"
                                 />
                                 <button
-                                  onClick={() => {
+                                  onClick={async () => {
                                     if (!editingNoteText) return;
-                                    const updatedNotes = [...activeProblem.notes];
-                                    updatedNotes[i] = editingNoteText;
-                                    const updatedProb = { ...activeProblem, notes: updatedNotes };
-                                    setProblemsList((prev) => prev.map((p) => p.num === activeProblem.num ? updatedProb : p));
-                                    setActiveProblem(updatedProb);
-                                    setEditingNoteIdx(null);
-                                    setEditingNoteText("");
-                                    showToast("Note updated successfully!", "success");
+                                    try {
+                                      await updateNote(note.id, editingNoteText);
+                                      await loadProblems();
+                                      setEditingNoteIdx(null);
+                                      setEditingNoteText("");
+                                      showToast("Note updated successfully!", "success");
+                                    } catch (err) {
+                                      console.error(err);
+                                    }
                                   }}
                                   className="p-1 text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
                                   title="Save Note"
@@ -1431,12 +1426,12 @@ export default function DashboardPage() {
                               </div>
                             ) : (
                               <>
-                                <span className="flex-1">{note}</span>
+                                <span className="flex-1">{note.text}</span>
                                 <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <button
                                     onClick={() => {
                                       setEditingNoteIdx(i);
-                                      setEditingNoteText(note);
+                                      setEditingNoteText(note.text);
                                     }}
                                     className="p-1 text-amber-500 hover:text-amber-400 transition-colors cursor-pointer"
                                     title="Edit Note"
@@ -1444,12 +1439,14 @@ export default function DashboardPage() {
                                     <Pencil className="w-3.5 h-3.5" />
                                   </button>
                                   <button
-                                    onClick={() => {
-                                      const updatedNotes = activeProblem.notes.filter((_: any, idx: number) => idx !== i);
-                                      const updatedProb = { ...activeProblem, notes: updatedNotes };
-                                      setProblemsList((prev) => prev.map((p) => p.num === activeProblem.num ? updatedProb : p));
-                                      setActiveProblem(updatedProb);
-                                      showToast("Note deleted successfully!", "success");
+                                    onClick={async () => {
+                                      try {
+                                        await deleteNote(note.id);
+                                        await loadProblems();
+                                        showToast("Note deleted successfully!", "success");
+                                      } catch (err) {
+                                        console.error(err);
+                                      }
                                     }}
                                     className="p-1 text-rose-500 hover:text-rose-400 transition-colors cursor-pointer"
                                     title="Delete Note"

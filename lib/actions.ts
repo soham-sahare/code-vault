@@ -218,11 +218,24 @@ export async function addNote(problemId: string, text: string) {
   return note;
 }
 
+export async function updateNote(noteId: string, text: string) {
+  await requireAuth();
+
+  const note = await db.note.update({
+    where: { id: noteId },
+    data: { text }
+  });
+
+  revalidatePath("/dashboard");
+  return note;
+}
+
 export async function deleteNote(noteId: string) {
   await requireAuth();
 
   await db.note.delete({
     where: { id: noteId }
+
   });
 
   revalidatePath("/dashboard");
