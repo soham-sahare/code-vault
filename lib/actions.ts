@@ -326,3 +326,112 @@ export async function deleteSheet(id: string) {
   revalidatePath("/sheets");
   return { success: true };
 }
+
+export async function updateSheet(id: string, name: string, description?: string, isPublic?: boolean) {
+  const userId = await requireAuth();
+  const existing = await db.sheet.findFirst({
+    where: { id, userId }
+  });
+  if (!existing) throw new Error("Sheet not found");
+
+  const shareSlug = existing.shareSlug || (name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "_" + Math.floor(Math.random() * 1000));
+
+  const sheet = await db.sheet.update({
+    where: { id },
+    data: {
+      name,
+      description,
+      isPublic: !!isPublic,
+      shareSlug: isPublic ? shareSlug : null,
+    }
+  });
+
+  revalidatePath("/sheets");
+  return sheet;
+}
+
+export async function addProblemToSheet(sheetId: string, problemId: string) {
+  const userId = await requireAuth();
+  
+  // Verify sheet belongs to user
+  const sheet = await db.sheet.findFirst({
+    where: { id: sheetId, userId }
+  });
+  if (!sheet) throw new Error("Sheet not found");
+
+  // Get max order
+  const lastProblem = await db.sheetProblem.findFirst({
+    where: { sheetId },
+    orderBy: { order: "desc" }
+  });
+  const nextOrder = lastProblem ? lastProblem.order + 1 : 0;
+
+  const res = await db.sheetProblem.upsert({
+    where: {
+      sheetId_problemId: { sheetId, problemId }
+    },
+    create: {
+      sheetId,
+      problemId,
+      order: nextOrder
+    },
+    update: {}
+  });
+
+  revalidatePath("/sheets");
+  return res;
+}
+
+export async function removeProblemFromSheet(sheetId: string, problemId: string) {
+  const userId = await requireAuth();
+  
+  // Verify sheet belongs to user
+  const sheet = await db.sheet.findFirst({
+    where: { id: sheetId, userId }
+  });
+  if (!sheet) throw new Error("Sheet not found");
+
+  await db.sheetProblem.delete({
+    where: {
+      sheetId_problemId: { sheetId, problemId }
+    }
+  });
+
+  revalidatePath("/sheets");
+  return { success: true };
+}
+
+export async function getPublicSheetBySlug(slug: string) {
+  return db.sheet.findFirst({
+    where: {
+      shareSlug: slug,
+      isPublic: true,
+    },
+    include: {
+      problems: {
+        include: { problem: true }
+      }
+    }
+  });
+}
+
+export async function getPublicProfileByUsername(username: string) {
+  return db.user.findFirst({
+    where: {
+      username,
+      isPublicProfile: true,
+    },
+    select: {
+      id: true,
+      username: true,
+      name: true,
+      createdAt: true,
+      problems: {
+        where: { isPublic: true },
+        orderBy: { createdAt: "desc" }
+      }
+    }
+  });
+}
+
+

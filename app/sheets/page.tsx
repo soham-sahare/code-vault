@@ -95,6 +95,9 @@ export default function SheetsPage() {
     }
   };
 
+  const activeProblemsCount = activeSheet?.problems?.length || 0;
+  const activeSolvedCount = activeSheet?.problems?.filter((p: any) => p.problem.status === "Solved").length || 0;
+
   if (loading) {
     return (
       <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
@@ -146,142 +149,137 @@ export default function SheetsPage() {
           </div>
         </div>
 
-        {activeSheet ? {
-          const problemsCount = activeSheet.problems?.length || 0;
-          const solvedCount = activeSheet.problems?.filter((p: any) => p.problem.status === "Solved").length || 0;
-
-          return (
-            /* SINGLE SHEET DETAIL MODE */
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-6"
-            >
-              {/* Sheet Banner */}
-              <div className="p-6 rounded-3xl bg-surface border border-border flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm">
-                <div className="space-y-2">
-                  <button
-                    onClick={() => setActiveSheet(null)}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline cursor-pointer font-sans"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to Sheets
-                  </button>
-                  <div className="flex items-center gap-2.5">
-                    <h2 className="font-display font-extrabold text-xl text-foreground">
-                      {activeSheet.name}
-                    </h2>
-                    {activeSheet.isPublic ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-sans">
-                        <Globe className="w-2.5 h-2.5" />
-                        Public
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-muted/10 border border-border/80 text-muted font-sans">
-                        <Lock className="w-2.5 h-2.5" />
-                        Private
-                      </span>
-                    )}
-                  </div>
-                  <p className="font-sans text-xs text-muted max-w-xl">
-                    {activeSheet.description || "No description provided."}
-                  </p>
-                </div>
-
-                {/* Progress and Share widget */}
-                <div className="flex flex-col items-end gap-3 min-w-[200px]">
-                  <div className="w-full text-right font-sans text-xs font-bold text-muted">
-                    Progress: <span className="text-primary">{solvedCount}</span> / {problemsCount} Solved
-                    <div className="w-full h-2 bg-surface-2 border border-border/40 rounded-full mt-1.5 overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full transition-all duration-500"
-                        style={{ width: `${problemsCount > 0 ? (solvedCount / problemsCount) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {activeSheet.isPublic && activeSheet.shareSlug && (
-                    <button
-                      onClick={() => {
-                        const shareUrl = `${window.location.origin}/s/${activeSheet.shareSlug}`;
-                        navigator.clipboard.writeText(shareUrl);
-                        alert("Shared sheet link copied to clipboard!");
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-surface-2 hover:bg-border/20 text-muted hover:text-foreground font-sans font-bold text-[11px] cursor-pointer transition-colors"
-                    >
-                      <Share2 className="w-3.5 h-3.5" />
-                      Copy Share Link
-                    </button>
+        {activeSheet ? (
+          /* SINGLE SHEET DETAIL MODE */
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            {/* Sheet Banner */}
+            <div className="p-6 rounded-3xl bg-surface border border-border flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm">
+              <div className="space-y-2">
+                <button
+                  onClick={() => setActiveSheet(null)}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline cursor-pointer font-sans"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Sheets
+                </button>
+                <div className="flex items-center gap-2.5">
+                  <h2 className="font-display font-extrabold text-xl text-foreground">
+                    {activeSheet.name}
+                  </h2>
+                  {activeSheet.isPublic ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-sans">
+                      <Globe className="w-2.5 h-2.5" />
+                      Public
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-muted/10 border border-border/80 text-muted font-sans">
+                      <Lock className="w-2.5 h-2.5" />
+                      Private
+                    </span>
                   )}
                 </div>
+                <p className="font-sans text-xs text-muted max-w-xl">
+                  {activeSheet.description || "No description provided."}
+                </p>
               </div>
 
-              {/* Problems in Sheet Table list */}
-              <div className="p-6 rounded-3xl bg-surface border border-border shadow-sm">
-                <h3 className="font-display font-bold text-sm text-foreground mb-4">
-                  Saved Challenges ({problemsCount})
-                </h3>
-                
-                {problemsCount === 0 ? (
-                  <div className="text-center py-12 text-muted font-sans text-xs">
-                    <Library className="w-12 h-12 text-muted/40 mx-auto mb-3" />
-                    No problems added to this sheet yet. Go to Dashboard to add.
+              {/* Progress and Share widget */}
+              <div className="flex flex-col items-end gap-3 min-w-[200px]">
+                <div className="w-full text-right font-sans text-xs font-bold text-muted">
+                  Progress: <span className="text-primary">{activeSolvedCount}</span> / {activeProblemsCount} Solved
+                  <div className="w-full h-2 bg-surface-2 border border-border/40 rounded-full mt-1.5 overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-500"
+                      style={{ width: `${activeProblemsCount > 0 ? (activeSolvedCount / activeProblemsCount) * 100 : 0}%` }}
+                    />
                   </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-left text-xs font-sans">
-                      <thead>
-                        <tr className="border-b border-border/80 text-muted font-bold tracking-wider uppercase text-[9px]">
-                          <th className="pb-3.5 pl-2">Problem Name</th>
-                          <th className="pb-3.5">Difficulty</th>
-                          <th className="pb-3.5">Status</th>
-                          <th className="pb-3.5 text-right pr-2">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/40 font-medium">
-                        {activeSheet.problems?.map((prob: any, idx: number) => {
-                          const p = prob.problem;
-                          return (
-                            <tr key={idx} className="hover:bg-surface-2/30 transition-all duration-150">
-                              <td className="py-3.5 pl-2 font-display font-bold text-foreground">
-                                {p.name}
-                              </td>
-                              <td className="py-3.5">
-                                <span className={`font-display font-bold text-[9px] px-2 py-0.5 rounded ${
-                                  p.difficulty === "EASY" ? "text-emerald-500 bg-emerald-500/10" : p.difficulty === "HARD" ? "text-rose-500 bg-rose-500/10" : "text-amber-500 bg-amber-500/10"
-                                }`}>
-                                  {p.difficulty}
-                                </span>
-                              </td>
-                              <td className="py-3.5">
-                                <span className={`inline-flex items-center gap-1 font-sans font-bold text-[10px] border px-2 py-0.5 rounded-full ${
-                                  p.status === "Solved" ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" : "text-amber-500 bg-amber-500/10 border-amber-500/20"
-                                }`}>
-                                  {p.status}
-                                </span>
-                              </td>
-                              <td className="py-3.5 text-right pr-2">
-                                <button
-                                  onClick={async () => {
-                                    await removeProblemFromSheet(activeSheet.id, p.id);
-                                    await loadSheets();
-                                  }}
-                                  className="text-rose-500 hover:underline font-semibold font-sans cursor-pointer text-xs"
-                                >
-                                  Remove
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                </div>
+
+                {activeSheet.isPublic && activeSheet.shareSlug && (
+                  <button
+                    onClick={() => {
+                      const shareUrl = `${window.location.origin}/s/${activeSheet.shareSlug}`;
+                      navigator.clipboard.writeText(shareUrl);
+                      alert("Shared sheet link copied to clipboard!");
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-surface-2 hover:bg-border/20 text-muted hover:text-foreground font-sans font-bold text-[11px] cursor-pointer transition-colors"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    Copy Share Link
+                  </button>
                 )}
               </div>
-            </motion.div>
-          );
-        } : (
+            </div>
+
+            {/* Problems in Sheet Table list */}
+            <div className="p-6 rounded-3xl bg-surface border border-border shadow-sm">
+              <h3 className="font-display font-bold text-sm text-foreground mb-4">
+                Saved Challenges ({activeProblemsCount})
+              </h3>
+              
+              {activeProblemsCount === 0 ? (
+                <div className="text-center py-12 text-muted font-sans text-xs">
+                  <Library className="w-12 h-12 text-muted/40 mx-auto mb-3" />
+                  No problems added to this sheet yet. Go to Dashboard to add.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-xs font-sans">
+                    <thead>
+                      <tr className="border-b border-border/80 text-muted font-bold tracking-wider uppercase text-[9px]">
+                        <th className="pb-3.5 pl-2">Problem Name</th>
+                        <th className="pb-3.5">Difficulty</th>
+                        <th className="pb-3.5">Status</th>
+                        <th className="pb-3.5 text-right pr-2">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40 font-medium">
+                      {activeSheet.problems?.map((prob: any, idx: number) => {
+                        const p = prob.problem;
+                        return (
+                          <tr key={idx} className="hover:bg-surface-2/30 transition-all duration-150">
+                            <td className="py-3.5 pl-2 font-display font-bold text-foreground">
+                              {p.name}
+                            </td>
+                            <td className="py-3.5">
+                              <span className={`font-display font-bold text-[9px] px-2 py-0.5 rounded ${
+                                p.difficulty === "EASY" ? "text-emerald-500 bg-emerald-500/10" : p.difficulty === "HARD" ? "text-rose-500 bg-rose-500/10" : "text-amber-500 bg-amber-500/10"
+                              }`}>
+                                {p.difficulty}
+                              </span>
+                            </td>
+                            <td className="py-3.5">
+                              <span className={`inline-flex items-center gap-1 font-sans font-bold text-[10px] border px-2 py-0.5 rounded-full ${
+                                p.status === "Solved" ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" : "text-amber-500 bg-amber-500/10 border-amber-500/20"
+                              }`}>
+                                {p.status}
+                              </span>
+                            </td>
+                            <td className="py-3.5 text-right pr-2">
+                              <button
+                                onClick={async () => {
+                                  await removeProblemFromSheet(activeSheet.id, p.id);
+                                  await loadSheets();
+                                }}
+                                className="text-rose-500 hover:underline font-semibold font-sans cursor-pointer text-xs"
+                              >
+                                Remove
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        ) : (
           /* GRID VIEW OF SHEETS */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sheetsList.map((sheet) => {
