@@ -405,7 +405,9 @@ export default function DashboardPage() {
             {/* Notification Bell */}
             <button className="relative w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center text-foreground hover:scale-105 active:scale-95 transition-all cursor-pointer">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-surface" />
+              {problemsList.some((p) => p.status === "Due Today" || p.status === "Overdue") && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-surface" />
+              )}
             </button>
 
             {/* Profile Button */}
