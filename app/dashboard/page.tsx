@@ -1669,13 +1669,15 @@ export default function DashboardPage() {
                 >
                   Close
                 </button>
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleMarkRevisited(activeProblem.num)}
-                  className="px-4.5 py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-sans font-bold text-xs shadow-md shadow-primary/20 cursor-pointer"
-                >
-                  Mark Revisited
-                </motion.button>
+                {(activeProblem.status === "Due Today" || activeProblem.status === "Overdue") && (
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleMarkRevisited(activeProblem.num)}
+                    className="px-4.5 py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-sans font-bold text-xs shadow-md shadow-primary/20 cursor-pointer"
+                  >
+                    Mark Revisited
+                  </motion.button>
+                )}
               </div>
 
             </motion.div>
