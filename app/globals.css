@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F6F6F4;
+  --surface: #FFFFFF;
+  --surface-2: #F0F0EC;
+  --foreground: #16161A;
+  --muted: #6B7280;
+  --border: #E8E8E4;
+  --primary: #B7A8F5;
+  --primary-hover: #B7A8F5;
+  --accent: #EE8E5A;
+  --accent-hover: #E7783D;
+  --highlight-card: #B7A8F5;
+}
+
+.dark {
+  --background: #161619;
+  --surface: #1F1F24;
+  --surface-2: #26262C;
+  --foreground: #F4F4F5;
+  --muted: #9A9AA2;
+  --border: #2C2C32;
+  --primary: #B7A8F5;
+  --primary-hover: #B7A8F5;
+  --accent: #EE8E5A;
+  --accent-hover: #E7783D;
+  --highlight-card: #B7A8F5;
+}
+
+@theme {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-highlight-card: var(--highlight-card);
+
+  --font-sans: var(--font-inter), sans-serif;
+  --font-display: var(--font-plus-jakarta-sans), sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), sans-serif;
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Premium sleek scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 9999px;
+  border: 2px solid var(--background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* Dots pattern for hero grid background */
+.dots-pattern {
+  background-image: radial-gradient(var(--border) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+.dark .dots-pattern {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1.5px, transparent 1.5px);
+}
+
+/* Bulletproof custom warning classes */
+.text-warning {
+  color: #fbbf24 !important; /* yellow-400 */
+}
+.border-warning-active {
+  border-color: rgba(245, 158, 11, 0.5) !important; /* yellow-500/50 */
+}
+.bg-warning-active {
+  background-color: rgba(245, 158, 11, 0.2) !important; /* yellow-500/20 */
+}
+.bg-warning-card {
+  background-color: rgba(245, 158, 11, 0.05) !important; /* yellow-500/5 */
+}
+.border-warning-card {
+  border-color: rgba(245, 158, 11, 0.3) !important; /* yellow-500/30 */
+}
+.hover-border-warning:hover {
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+.hover-text-warning:hover {
+  color: #fbbf24 !important;
+}
