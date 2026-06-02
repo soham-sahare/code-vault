@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/shell/Sidebar";
 import { Search, Bell, Library, Plus, Trash2, Edit, ExternalLink, Share2, Globe, Lock, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getSheets, createSheet, updateSheet, deleteSheet, removeProblemFromSheet } from "@/lib/actions";
+import { getSheets, createSheet, updateSheet, deleteSheet, removeProblemFromSheet, getProblems, addProblemToSheet } from "@/lib/actions";
 
 export default function SheetsPage() {
   const [loading, setLoading] = useState(true);
@@ -17,6 +17,20 @@ export default function SheetsPage() {
   const [sheetName, setSheetName] = useState("");
   const [sheetDesc, setSheetDesc] = useState("");
   const [sheetPublic, setSheetPublic] = useState(false);
+
+  // Add problem modal states
+  const [isAddProblemModalOpen, setIsAddProblemModalOpen] = useState(false);
+  const [allProblems, setAllProblems] = useState<any[]>([]);
+  const [probSearchQuery, setProbSearchQuery] = useState("");
+
+  const loadAllProblems = async () => {
+    try {
+      const data = await getProblems();
+      setAllProblems(data);
+    } catch (err) {
+      console.error("Failed to load problems:", err);
+    }
+  };
 
   const loadSheets = async () => {
     try {
@@ -217,9 +231,22 @@ export default function SheetsPage() {
 
             {/* Problems in Sheet Table list */}
             <div className="p-6 rounded-3xl bg-surface border border-border shadow-sm">
-              <h3 className="font-display font-bold text-sm text-foreground mb-4">
-                Saved Challenges ({activeProblemsCount})
-              </h3>
+              <div className="flex items-center justify-between mb-4 gap-4">
+                <h3 className="font-display font-bold text-sm text-foreground">
+                  Saved Challenges ({activeProblemsCount})
+                </h3>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await loadAllProblems();
+                    setIsAddProblemModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-sans font-bold text-[11px] cursor-pointer transition-colors shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Problems
+                </button>
+              </div>
               
               {activeProblemsCount === 0 ? (
                 <div className="text-center py-12 text-muted font-sans text-xs">
@@ -439,6 +466,131 @@ export default function SheetsPage() {
                 </div>
 
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* ADD PROBLEMS TO SHEET MODAL */}
+        {isAddProblemModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddProblemModalOpen(false)}
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative z-10 w-full max-w-lg bg-surface border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+            >
+              {/* Modal Header */}
+              <div className="p-6 pb-4 border-b border-border/80 flex items-center justify-between">
+                <div>
+                  <h3 className="font-display font-extrabold text-lg text-foreground">
+                    Add Problems to Sheet
+                  </h3>
+                  <p className="font-sans text-[11px] text-muted mt-0.5">Select problems from your dashboard to add to {activeSheet?.name}</p>
+                </div>
+                <button
+                  onClick={() => setIsAddProblemModalOpen(false)}
+                  className="p-1 rounded-lg border border-border bg-surface-2 hover:bg-border/20 text-muted hover:text-foreground cursor-pointer transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="p-4 border-b border-border/40 bg-surface-2/20">
+                <div className="relative font-sans text-xs">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-muted">
+                    <Search className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Search by problem name or topic..."
+                    value={probSearchQuery}
+                    onChange={(e) => setProbSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-foreground font-semibold placeholder:text-muted/60"
+                  />
+                </div>
+              </div>
+
+              {/* Problems List */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-3 min-h-[250px]">
+                {(() => {
+                  const alreadyAddedIds = new Set(activeSheet?.problems?.map((p: any) => p.problem.id) || []);
+                  const filtered = allProblems.filter((p: any) => {
+                    if (alreadyAddedIds.has(p.id)) return false;
+                    if (probSearchQuery.trim()) {
+                      const q = probSearchQuery.toLowerCase();
+                      return p.name.toLowerCase().includes(q) || p.topic.toLowerCase().includes(q);
+                    }
+                    return true;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="flex flex-col items-center justify-center py-12 text-center text-muted font-sans text-xs">
+                        <Library className="w-10 h-10 text-muted/30 mb-2" />
+                        <p className="font-semibold text-foreground/80">No problems available to add</p>
+                        <p className="text-[10px] mt-0.5 text-muted/80">Either all problems are already in this sheet, or none match your search.</p>
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((p: any) => (
+                    <div
+                      key={p.id}
+                      className="p-3.5 rounded-2xl border border-border/80 bg-surface-2/20 hover:border-primary/30 flex items-center justify-between gap-4 transition-all"
+                    >
+                      <div className="space-y-1 text-xs">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-display font-extrabold text-foreground">
+                            #{p.num} {p.name}
+                          </span>
+                          <span className={`font-display font-bold text-[9px] px-1.5 py-0.5 rounded ${
+                            p.difficulty === "EASY" ? "text-emerald-500 bg-emerald-500/10" : p.difficulty === "HARD" ? "text-rose-500 bg-rose-500/10" : "text-amber-500 bg-amber-500/10"
+                          }`}>
+                            {p.difficulty}
+                          </span>
+                        </div>
+                        <p className="font-sans text-[10px] text-muted">Topic: {p.topic}</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await addProblemToSheet(activeSheet.id, p.id);
+                            await loadSheets();
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-sans font-bold text-[10px] cursor-pointer transition-colors shrink-0 shadow-sm"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ));
+                })()}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-border bg-surface-2/40 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsAddProblemModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-border bg-surface hover:bg-surface-2 text-foreground font-bold text-xs cursor-pointer transition-colors"
+                >
+                  Done
+                </button>
+              </div>
+
             </motion.div>
           </div>
         )}
