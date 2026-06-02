@@ -252,3 +252,77 @@ export async function markRevisited(num: number) {
   revalidatePath("/dashboard");
   return problem;
 }
+
+// 5. SETTINGS & ONBOARDING ACTIONS
+export async function saveOnboarding(lang: string) {
+  const userId = await requireAuth();
+  const user = await db.user.update({
+    where: { id: userId },
+    data: {
+      hasCompletedOnboarding: true,
+      defaultLanguage: lang,
+    }
+  });
+  return user;
+}
+
+export async function getUserProfile() {
+  const userId = await requireAuth();
+  return db.user.findUnique({
+    where: { id: userId }
+  });
+}
+
+export async function updateUserProfile(data: {
+  name?: string;
+  username?: string;
+  defaultLanguage?: string;
+  isPublicProfile?: boolean;
+  theme?: string;
+}) {
+  const userId = await requireAuth();
+  const user = await db.user.update({
+    where: { id: userId },
+    data
+  });
+  return user;
+}
+
+// 6. SHEETS PLAYLIST ACTIONS
+export async function getSheets() {
+  const userId = await requireAuth();
+  return db.sheet.findMany({
+    where: { userId },
+    include: {
+      problems: {
+        include: { problem: true }
+      }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+}
+
+export async function createSheet(name: string, description?: string, isPublic?: boolean) {
+  const userId = await requireAuth();
+  const shareSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "_" + Math.floor(Math.random() * 1000);
+  const sheet = await db.sheet.create({
+    data: {
+      userId,
+      name,
+      description,
+      isPublic: !!isPublic,
+      shareSlug,
+    }
+  });
+  revalidatePath("/sheets");
+  return sheet;
+}
+
+export async function deleteSheet(id: string) {
+  const userId = await requireAuth();
+  await db.sheet.deleteMany({
+    where: { id, userId }
+  });
+  revalidatePath("/sheets");
+  return { success: true };
+}
