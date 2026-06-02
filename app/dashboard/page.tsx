@@ -17,7 +17,7 @@ import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-go";
 import "prismjs/components/prism-rust";
 import "prismjs/themes/prism-tomorrow.css";
-import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile } from "@/lib/actions";
+import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile, addSolutionNote, deleteSolutionNote, updateSolutionNote } from "@/lib/actions";
 
 function highlightCode(code: string, lang: string) {
   if (!code) return "";
@@ -1209,40 +1209,34 @@ export default function DashboardPage() {
                                             value={editingSolNoteText}
                                             onChange={(e) => setEditingSolNoteText(e.target.value)}
                                             className="flex-1 px-3 py-1.5 rounded-lg bg-surface border border-primary/50 focus:outline-none font-sans text-xs text-foreground"
-                                            onKeyDown={(e) => {
+                                            onKeyDown={async (e) => {
                                               if (e.key === "Enter" && editingSolNoteText.trim()) {
-                                                const updatedSols = activeProblem.solutions.map((s: any, si: number) => {
-                                                  if (si !== selSolIdx) return s;
-                                                  const newNotes = [...(s.notes || [])];
-                                                  newNotes[ni] = { ...newNotes[ni], text: editingSolNoteText.trim() };
-                                                  return { ...s, notes: newNotes };
-                                                });
-                                                const up = { ...activeProblem, solutions: updatedSols };
-                                                setProblemsList(prev => prev.map(p => p.num === activeProblem.num ? up : p));
-                                                setActiveProblem(up);
-                                                setEditingSolNoteIdx(null);
-                                                setEditingSolNoteSolIdx(null);
-                                                setEditingSolNoteText("");
-                                                showToast("Solution note updated", "success");
+                                                try {
+                                                  await updateSolutionNote(n.id, editingSolNoteText.trim());
+                                                  await loadProblems();
+                                                  setEditingSolNoteIdx(null);
+                                                  setEditingSolNoteSolIdx(null);
+                                                  setEditingSolNoteText("");
+                                                  showToast("Solution note updated", "success");
+                                                } catch (err) {
+                                                  console.error(err);
+                                                }
                                               }
                                             }}
                                           />
                                           <button
-                                            onClick={() => {
+                                            onClick={async () => {
                                               if (!editingSolNoteText.trim()) return;
-                                              const updatedSols = activeProblem.solutions.map((s: any, si: number) => {
-                                                if (si !== selSolIdx) return s;
-                                                const newNotes = [...(s.notes || [])];
-                                                newNotes[ni] = { ...newNotes[ni], text: editingSolNoteText.trim() };
-                                                return { ...s, notes: newNotes };
-                                              });
-                                              const up = { ...activeProblem, solutions: updatedSols };
-                                              setProblemsList(prev => prev.map(p => p.num === activeProblem.num ? up : p));
-                                              setActiveProblem(up);
-                                              setEditingSolNoteIdx(null);
-                                              setEditingSolNoteSolIdx(null);
-                                              setEditingSolNoteText("");
-                                              showToast("Solution note updated", "success");
+                                              try {
+                                                await updateSolutionNote(n.id, editingSolNoteText.trim());
+                                                await loadProblems();
+                                                setEditingSolNoteIdx(null);
+                                                setEditingSolNoteSolIdx(null);
+                                                setEditingSolNoteText("");
+                                                showToast("Solution note updated", "success");
+                                              } catch (err) {
+                                                console.error(err);
+                                              }
                                             }}
                                             className="p-1 text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
                                             title="Save Note"
@@ -1285,15 +1279,14 @@ export default function DashboardPage() {
                                               <Pencil className="w-3.5 h-3.5" />
                                             </button>
                                             <button
-                                              onClick={() => {
-                                                const updatedSols = activeProblem.solutions.map((s: any, si: number) => {
-                                                  if (si !== selSolIdx) return s;
-                                                  return { ...s, notes: (s.notes || []).filter((_: any, fi: number) => fi !== ni) };
-                                                });
-                                                const up = { ...activeProblem, solutions: updatedSols };
-                                                setProblemsList(prev => prev.map(p => p.num === activeProblem.num ? up : p));
-                                                setActiveProblem(up);
-                                                showToast("Solution note deleted", "success");
+                                              onClick={async () => {
+                                                try {
+                                                  await deleteSolutionNote(n.id);
+                                                  await loadProblems();
+                                                  showToast("Solution note deleted", "success");
+                                                } catch (err) {
+                                                  console.error(err);
+                                                }
                                               }}
                                               className="p-1 text-rose-400 hover:text-rose-300 transition-all cursor-pointer shrink-0"
                                               title="Delete note"
@@ -1346,35 +1339,33 @@ export default function DashboardPage() {
                                   placeholder={`Add a ${newSolNoteType} for this solution…`}
                                   value={newSolNoteText}
                                   onChange={e => setNewSolNoteText(e.target.value)}
-                                  onKeyDown={e => {
+                                  onKeyDown={async (e) => {
                                     if (e.key === "Enter" && newSolNoteText.trim()) {
-                                      const newNote = { type: newSolNoteType, text: newSolNoteText.trim() };
-                                      const updatedSols = activeProblem.solutions.map((s: any, si: number) => {
-                                        if (si !== selSolIdx) return s;
-                                        return { ...s, notes: [...(s.notes || []), newNote] };
-                                      });
-                                      const up = { ...activeProblem, solutions: updatedSols };
-                                      setProblemsList(prev => prev.map(p => p.num === activeProblem.num ? up : p));
-                                      setActiveProblem(up);
-                                      setNewSolNoteText("");
-                                      showToast("Solution note added!", "success");
+                                      try {
+                                        const sol = activeProblem.solutions[selSolIdx];
+                                        await addSolutionNote(sol.id, newSolNoteType, newSolNoteText.trim());
+                                        await loadProblems();
+                                        setNewSolNoteText("");
+                                        showToast("Solution note added!", "success");
+                                      } catch (err) {
+                                        console.error(err);
+                                      }
                                     }
                                   }}
                                   className="flex-1 px-3 py-2 rounded-lg bg-surface border border-border focus:border-primary/50 focus:outline-none font-sans text-xs text-foreground placeholder:text-muted/60 transition-all"
                                 />
                                 <button
-                                  onClick={() => {
+                                  onClick={async () => {
                                     if (!newSolNoteText.trim()) return;
-                                    const newNote = { type: newSolNoteType, text: newSolNoteText.trim() };
-                                    const updatedSols = activeProblem.solutions.map((s: any, si: number) => {
-                                      if (si !== selSolIdx) return s;
-                                      return { ...s, notes: [...(s.notes || []), newNote] };
-                                    });
-                                    const up = { ...activeProblem, solutions: updatedSols };
-                                    setProblemsList(prev => prev.map(p => p.num === activeProblem.num ? up : p));
-                                    setActiveProblem(up);
-                                    setNewSolNoteText("");
-                                    showToast("Solution note added!", "success");
+                                    try {
+                                      const sol = activeProblem.solutions[selSolIdx];
+                                      await addSolutionNote(sol.id, newSolNoteType, newSolNoteText.trim());
+                                      await loadProblems();
+                                      setNewSolNoteText("");
+                                      showToast("Solution note added!", "success");
+                                    } catch (err) {
+                                      console.error(err);
+                                    }
                                   }}
                                   className="px-3 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white font-sans font-bold text-xs transition-all cursor-pointer shrink-0"
                                 >

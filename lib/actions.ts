@@ -457,4 +457,44 @@ export async function getPublicProfileByUsername(username: string) {
   });
 }
 
+export async function addSolutionNote(solutionId: string, type: string, text: string) {
+  await requireAuth();
+
+  const note = await db.solutionNote.create({
+    data: {
+      solutionId,
+      type,
+      text,
+    }
+  });
+
+  revalidatePath("/dashboard");
+  return note;
+}
+
+export async function updateSolutionNote(noteId: string, text: string) {
+  await requireAuth();
+
+  const note = await db.solutionNote.update({
+    where: { id: noteId },
+    data: { text }
+  });
+
+  revalidatePath("/dashboard");
+  return note;
+}
+
+export async function deleteSolutionNote(noteId: string) {
+  await requireAuth();
+
+  await db.solutionNote.delete({
+    where: { id: noteId }
+  });
+
+  revalidatePath("/dashboard");
+  return { success: true };
+}
+
+
+
 
