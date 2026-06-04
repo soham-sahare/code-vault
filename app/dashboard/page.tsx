@@ -1651,13 +1651,46 @@ export default function DashboardPage() {
 
                 {/* 3. HISTORY TAB */}
                 {activeTab === "history" && (() => {
-                  const historyList = (activeProblem.history || []).length > 0
-                    ? activeProblem.history
-                    : (activeProblem.reminders || []).map((r: any) => ({
-                        status: r.status === "PENDING" ? "Pending" : "Done",
-                        date: new Date(r.dueDate).toLocaleDateString(),
-                        stage: r.stage,
-                      }));
+                  const stages = ["3d", "7d", "15d", "30d"];
+                  let currentStageIdx = 0;
+
+                  if (activeProblem.interval.includes("7d")) {
+                    currentStageIdx = 1;
+                  } else if (activeProblem.interval.includes("15d")) {
+                    currentStageIdx = 2;
+                  } else if (activeProblem.interval.includes("30d")) {
+                    currentStageIdx = 3;
+                  } else if (activeProblem.interval === "Recall Stage 1" || activeProblem.status === "Unsolved") {
+                    currentStageIdx = -1;
+                  }
+
+                  const historyList = stages.map((stage, idx) => {
+                    let status = "Upcoming";
+                    if (currentStageIdx === -1) {
+                      status = "Pending";
+                    } else if (idx < currentStageIdx) {
+                      status = "Done";
+                    } else if (idx === currentStageIdx) {
+                      status = activeProblem.status === "Solved" ? "Done" : "Pending";
+                    }
+                    
+                    const updatedDate = new Date(activeProblem.updatedAt);
+                    let daysOffset = 0;
+                    if (stage === "3d") daysOffset = 3;
+                    else if (stage === "7d") daysOffset = 7;
+                    else if (stage === "15d") daysOffset = 15;
+                    else if (stage === "30d") daysOffset = 30;
+
+                    const dateObj = new Date(updatedDate.getTime() + daysOffset * 24 * 60 * 60 * 1000);
+                    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    const dateFormatted = `${String(dateObj.getDate()).padStart(2, '0')}-${months[dateObj.getMonth()]}-${dateObj.getFullYear()}`;
+
+                    return {
+                      stage: `Stage ${idx + 1} (${stage})`,
+                      status,
+                      date: dateFormatted,
+                    };
+                  });
 
                   return (
                     <div className="w-full py-8 px-4 relative">
@@ -1671,12 +1704,24 @@ export default function DashboardPage() {
                           <div className="flex flex-row items-stretch justify-between relative z-10 w-full">
                             {historyList.map((hist: any, i: number) => {
                               const isDone = hist.status === "Done";
+                              const isPending = hist.status === "Pending";
                               return (
                                 <div key={i} className="flex flex-col items-center text-center flex-1 px-1 relative">
                                   {/* Node circle */}
-                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md border-[3px] border-surface z-10 mb-3.5 transition-transform hover:scale-115 ${isDone ? "bg-emerald-500 text-white" : "bg-surface-2 border-border/80 text-muted"
-                                    }`}>
-                                    {isDone ? <Check className="w-4.5 h-4.5" /> : <Clock className="w-4 h-4 text-amber-500" />}
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-md border-[3px] border-surface z-10 mb-3.5 transition-transform hover:scale-115 ${
+                                    isDone 
+                                      ? "bg-emerald-500 text-white" 
+                                      : isPending 
+                                        ? "bg-amber-500/15 border-amber-500/40 text-amber-500" 
+                                        : "bg-surface-2 border-border/80 text-muted/40"
+                                  }`}>
+                                    {isDone ? (
+                                      <Check className="w-4.5 h-4.5" />
+                                    ) : isPending ? (
+                                      <Clock className="w-4 h-4 text-amber-500" />
+                                    ) : (
+                                      <Lock className="w-3.5 h-3.5" />
+                                    )}
                                   </div>
 
                                   {/* Date Badge */}
@@ -1690,7 +1735,13 @@ export default function DashboardPage() {
                                   </h4>
 
                                   {/* Status */}
-                                  <p className={`font-sans text-[10px] font-bold mt-1 ${isDone ? "text-emerald-500" : "text-amber-500"}`}>
+                                  <p className={`font-sans text-[10px] font-bold mt-1 ${
+                                    isDone 
+                                      ? "text-emerald-500" 
+                                      : isPending 
+                                        ? "text-amber-500" 
+                                        : "text-muted/60"
+                                  }`}>
                                     {hist.status}
                                   </p>
                                 </div>
