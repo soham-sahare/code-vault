@@ -13,10 +13,60 @@ async function requireAuth() {
   return session.user.id;
 }
 
+// Helper to dynamically check and persist due/overdue status based on spaced repetition intervals
+async function checkAndSyncStatus(p: any) {
+  if (p.status !== "Solved") return p;
+
+  let days = 0;
+  if (p.interval.includes("3d")) days = 3;
+  else if (p.interval.includes("7d")) days = 7;
+  else if (p.interval.includes("15d")) days = 15;
+  else if (p.interval.includes("30d")) days = 30;
+
+  if (days === 0) return p;
+
+  const updatedDate = new Date(p.updatedAt);
+  const dueDate = new Date(updatedDate.getTime() + days * 24 * 60 * 60 * 1000);
+  const now = new Date();
+
+  const getISTDayString = (d: Date) => {
+    const istTime = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
+    return istTime.toISOString().split('T')[0];
+  };
+
+  const todayStr = getISTDayString(now);
+  const dueStr = getISTDayString(dueDate);
+
+  let newStatus = p.status;
+  let newStatusColor = p.statusColor;
+
+  if (todayStr > dueStr) {
+    newStatus = "Overdue";
+    newStatusColor = "text-rose-500 bg-rose-500/10 border-rose-500/20";
+  } else if (todayStr === dueStr) {
+    newStatus = "Due Today";
+    newStatusColor = "text-amber-500 bg-amber-500/10 border-amber-500/20";
+  }
+
+  if (newStatus !== p.status) {
+    await db.problem.update({
+      where: { id: p.id },
+      data: {
+        status: newStatus,
+        statusColor: newStatusColor,
+      }
+    });
+    p.status = newStatus;
+    p.statusColor = newStatusColor;
+  }
+
+  return p;
+}
+
 // 1. PROBLEMS MUTATIONS
 export async function getProblems() {
   const userId = await requireAuth();
-  return db.problem.findMany({
+  const problems = await db.problem.findMany({
     where: { userId },
     include: {
       solutions: {
@@ -27,6 +77,12 @@ export async function getProblems() {
     },
     orderBy: { createdAt: "desc" },
   });
+
+  for (let i = 0; i < problems.length; i++) {
+    problems[i] = await checkAndSyncStatus(problems[i]);
+  }
+
+  return problems;
 }
 
 export async function createProblem(data: {
@@ -200,6 +256,36 @@ export async function deleteSolution(solutionId: string) {
 
   revalidatePath("/dashboard");
   return { success: true };
+}
+
+export async function updateSolution(solutionId: string, data: {
+  name: string;
+  lang: string;
+  intuition: string;
+  approach: string;
+  code: string;
+  time: string;
+  space: string;
+  tags?: string[];
+}) {
+  await requireAuth();
+
+  const solution = await db.solution.update({
+    where: { id: solutionId },
+    data: {
+      name: data.name,
+      lang: data.lang,
+      intuition: data.intuition,
+      approach: data.approach,
+      code: data.code,
+      time: data.time,
+      space: data.space,
+      tags: data.tags || [],
+    }
+  });
+
+  revalidatePath("/dashboard");
+  return solution;
 }
 
 // 3. NOTES MUTATIONS
