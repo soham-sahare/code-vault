@@ -3,13 +3,47 @@
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/shell/Sidebar";
 import Link from "next/link";
-import { Clock, AlertTriangle, CheckSquare, Calendar, ChevronRight } from "lucide-react";
-import { motion } from "framer-motion";
-import { getProblems, markRevisited } from "@/lib/actions";
+import { Clock, AlertTriangle, CheckSquare, Calendar, ChevronRight, Sun, Moon, Bell } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "next-themes";
+import { getProblems, markRevisited, getUserProfile } from "@/lib/actions";
 
 export default function RemindersPage() {
   const [loading, setLoading] = useState(true);
   const [problems, setProblems] = useState<any[]>([]);
+  const { resolvedTheme, setTheme } = useTheme();
+  const [themeMounted, setThemeMounted] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isBellDropdownOpen, setIsBellDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    setThemeMounted(true);
+  }, []);
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const profile = await getUserProfile();
+        setUserProfile(profile);
+      } catch (err) {
+        console.error("Failed to load user profile:", err);
+      }
+    }
+    fetchUser();
+  }, []);
+
+  const getInitials = () => {
+    const name = userProfile?.name || userProfile?.username || userProfile?.email || "User";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    if (name.length >= 2) {
+      return name.substring(0, 2).toUpperCase();
+    }
+    return name[0].toUpperCase();
+  };
 
   useEffect(() => {
     async function load() {
@@ -64,13 +98,135 @@ export default function RemindersPage() {
       {/* Main content area */}
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto max-w-7xl mx-auto w-full">
         
-        {/* Page Header */}
-        <div className="mb-10">
-          <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-foreground flex items-center gap-2.5">
-            <Clock className="w-8 h-8 text-primary" />
-            Reminders
-          </h1>
-          <p className="font-sans text-xs text-muted mt-1">Your memory-spaced practice agenda</p>
+        {/* Top Header Bar */}
+        <div className="flex items-center justify-between mb-10 gap-4">
+          <div>
+            <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-foreground flex items-center gap-2.5">
+              <Clock className="w-8 h-8 text-primary" />
+              Reminders
+            </h1>
+            <p className="font-sans text-xs text-muted mt-1">Your memory-spaced practice agenda</p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Theme Toggle Icon */}
+            {themeMounted && (
+              <button
+                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                className="w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center text-muted hover:text-foreground hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                title={resolvedTheme === "dark" ? "Switch to Light mode" : "Switch to Dark mode"}
+              >
+                {resolvedTheme === "dark" ? <Sun className="w-4.5 h-4.5 text-accent" /> : <Moon className="w-4.5 h-4.5 text-primary" />}
+              </button>
+            )}
+
+            {/* Notification Bell */}
+            <div className="relative">
+              <button 
+                onClick={() => setIsBellDropdownOpen(!isBellDropdownOpen)}
+                className="relative w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center text-foreground hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <Bell className="w-5 h-5" />
+                {problems.some((p) => p.status === "Due Today" || p.status === "Overdue") && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-surface" />
+                )}
+              </button>
+
+              <AnimatePresence>
+                {isBellDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsBellDropdownOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute right-0 mt-2.5 w-80 bg-surface border border-border rounded-2xl shadow-2xl z-50 p-4 font-sans text-xs space-y-3.5 max-h-[400px] overflow-y-auto"
+                    >
+                      <h4 className="font-display font-extrabold text-sm text-foreground pb-2 border-b border-border/80 flex items-center justify-between">
+                        <span>Revisit Reminders</span>
+                        <span className="text-[10px] font-sans font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                          {problems.filter((p) => p.status === "Due Today" || p.status === "Overdue").length} Due
+                        </span>
+                      </h4>
+
+                      <div className="space-y-2">
+                        {(() => {
+                          const dueList = problems.filter((p) => p.status === "Due Today" || p.status === "Overdue");
+                          if (dueList.length === 0) {
+                            return (
+                              <p className="text-center font-sans text-xs text-muted py-6">All caught up! No reminders for today.</p>
+                            );
+                          }
+                          return dueList.map((p) => (
+                            <Link
+                              key={p.id}
+                              href={`/dashboard?p=${p.id}`}
+                              onClick={() => {
+                                setIsBellDropdownOpen(false);
+                              }}
+                              className="w-full text-left p-2.5 rounded-xl border border-border/60 bg-surface-2/30 hover:bg-surface-2 transition-all flex items-start gap-2.5 cursor-pointer block"
+                            >
+                              <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${p.status === "Overdue" ? "bg-rose-500" : "bg-amber-500"}`} />
+                              <div className="space-y-0.5 flex-1 min-w-0">
+                                <h5 className="font-display font-bold text-foreground truncate">#{p.num} {p.name}</h5>
+                                <div className="flex items-center gap-2 text-[10px] text-muted font-semibold">
+                                  <span className={p.difficulty === "EASY" ? "text-emerald-500" : p.difficulty === "MED" ? "text-amber-500" : "text-rose-500"}>{p.difficulty}</span>
+                                  <span>•</span>
+                                  <span>{p.topic}</span>
+                                </div>
+                              </div>
+                            </Link>
+                          ));
+                        })()}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* User Avatar Circle with Initials & Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-display font-extrabold text-xs text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-sm select-none"
+              >
+                {getInitials()}
+              </button>
+
+              <AnimatePresence>
+                {isProfileDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsProfileDropdownOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute right-0 mt-2.5 w-48 bg-surface border border-border rounded-2xl shadow-2xl z-50 p-2 font-sans text-xs flex flex-col gap-1"
+                    >
+                      <span className="px-3 py-2 text-muted font-bold text-[10px] uppercase tracking-wide border-b border-border/40 mb-1">
+                        Options
+                      </span>
+                      <Link
+                        href="/settings"
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="px-3 py-2.5 rounded-xl hover:bg-surface-2 text-foreground font-semibold flex items-center gap-2.5 transition-colors cursor-pointer"
+                      >
+                        Profile Settings
+                      </Link>
+                      <Link
+                        href="/login"
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="px-3 py-2.5 rounded-xl hover:bg-rose-500/10 text-rose-500 font-semibold flex items-center gap-2.5 transition-colors cursor-pointer"
+                      >
+                        Log out
+                      </Link>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
 
         {problems.length === 0 ? (
