@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Sidebar from "@/components/shell/Sidebar";
-import { Search, Bell, Star, AlertCircle, AlertTriangle, Clock, CheckCircle2, ChevronRight, Filter, X, ExternalLink, Share2, Plus, Code, PlusCircle, Check, Copy, Sun, Moon, Pencil, Trash2, FileText, Globe, Lock } from "lucide-react";
+import { Search, Bell, Star, AlertCircle, AlertTriangle, Clock, CheckCircle2, ChevronRight, Filter, X, ExternalLink, Share2, Plus, Code, PlusCircle, Check, Copy, Sun, Moon, Pencil, Trash2, FileText, Globe, Lock, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import Prism from "prismjs";
@@ -80,6 +80,9 @@ export default function DashboardPage() {
   const [problemsList, setProblemsList] = useState<Problem[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isBellDropdownOpen, setIsBellDropdownOpen] = useState(false);
+  const [showRevisitDaysPopup, setShowRevisitDaysPopup] = useState(false);
+  const [customRevisitDays, setCustomRevisitDays] = useState("3");
 
   useEffect(() => {
     async function fetchUser() {
@@ -298,11 +301,17 @@ export default function DashboardPage() {
   };
 
   // Handler for simulated revisited
-  const handleMarkRevisited = async (num: number) => {
+  const handleMarkRevisited = async (num: number, customDays?: number) => {
+    if (activeProblem?.interval?.includes("30d") && customDays === undefined && !showRevisitDaysPopup) {
+      setShowRevisitDaysPopup(true);
+      return;
+    }
+
     try {
-      await markRevisited(num);
+      await markRevisited(num, customDays);
       await loadProblems();
       setActiveProblem(null);
+      setShowRevisitDaysPopup(false);
       showToast("Problem marked as revisited!", "success");
     } catch (err) {
       console.error(err);
@@ -409,12 +418,69 @@ export default function DashboardPage() {
             )}
 
             {/* Notification Bell */}
-            <button className="relative w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center text-foreground hover:scale-105 active:scale-95 transition-all cursor-pointer">
-              <Bell className="w-5 h-5" />
-              {problemsList.some((p) => p.status === "Due Today" || p.status === "Overdue") && (
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-surface" />
-              )}
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsBellDropdownOpen(!isBellDropdownOpen)}
+                className="relative w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center text-foreground hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <Bell className="w-5 h-5" />
+                {problemsList.some((p) => p.status === "Due Today" || p.status === "Overdue") && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-surface" />
+                )}
+              </button>
+
+              <AnimatePresence>
+                {isBellDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsBellDropdownOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute right-0 mt-2.5 w-80 bg-surface border border-border rounded-2xl shadow-2xl z-50 p-4 font-sans text-xs space-y-3.5 max-h-[400px] overflow-y-auto"
+                    >
+                      <h4 className="font-display font-extrabold text-sm text-foreground pb-2 border-b border-border/80 flex items-center justify-between">
+                        <span>Revisit Reminders</span>
+                        <span className="text-[10px] font-sans font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                          {problemsList.filter((p) => p.status === "Due Today" || p.status === "Overdue").length} Due
+                        </span>
+                      </h4>
+
+                      <div className="space-y-2">
+                        {(() => {
+                          const dueList = problemsList.filter((p) => p.status === "Due Today" || p.status === "Overdue");
+                          if (dueList.length === 0) {
+                            return (
+                              <p className="text-center font-sans text-xs text-muted py-6">All caught up! No reminders for today.</p>
+                            );
+                          }
+                          return dueList.map((p) => (
+                            <button
+                              key={p.id}
+                              onClick={() => {
+                                setActiveProblem(p);
+                                setIsBellDropdownOpen(false);
+                              }}
+                              className="w-full text-left p-2.5 rounded-xl border border-border/60 bg-surface-2/30 hover:bg-surface-2 transition-all flex items-start gap-2.5 cursor-pointer"
+                            >
+                              <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${p.status === "Overdue" ? "bg-rose-500" : "bg-amber-500"}`} />
+                              <div className="space-y-0.5 flex-1 min-w-0">
+                                <h5 className="font-display font-bold text-foreground truncate">#{p.num} {p.name}</h5>
+                                <div className="flex items-center gap-2 text-[10px] text-muted font-semibold">
+                                  <span className={p.difficulty === "EASY" ? "text-emerald-500" : p.difficulty === "MED" ? "text-amber-500" : "text-rose-500"}>{p.difficulty}</span>
+                                  <span>•</span>
+                                  <span>{p.topic}</span>
+                                </div>
+                              </div>
+                            </button>
+                          ));
+                        })()}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* User Avatar Circle with Initials & Dropdown */}
             <div className="relative">
@@ -1775,6 +1841,86 @@ export default function DashboardPage() {
                 )}
               </div>
 
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 4.5. CUSTOM REVISIT DAYS SELECTION MODAL (Stage 4 Complete) */}
+      <AnimatePresence>
+        {showRevisitDaysPopup && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="w-full max-w-md rounded-3xl bg-surface border border-border shadow-2xl overflow-hidden p-6 text-foreground font-sans space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-display font-extrabold text-base">Stage 4 Complete!</h3>
+                  <p className="text-muted text-[11px] mt-0.5">Choose when you want to schedule the next practice cycle</p>
+                </div>
+              </div>
+
+              <p className="text-foreground/80 text-xs leading-relaxed">
+                You've successfully completed the entire 4-stage recall loop for <span className="font-bold text-primary">#{activeProblem?.num} {activeProblem?.name}</span>!
+                In how many days should we remind you to practice this again?
+              </p>
+
+              <div className="grid grid-cols-4 gap-2 pt-2">
+                {["3", "7", "15", "30"].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setCustomRevisitDays(d)}
+                    className={`py-2.5 rounded-xl font-bold text-xs cursor-pointer border transition-all text-center ${
+                      customRevisitDays === d
+                        ? "bg-primary border-primary text-white"
+                        : "bg-surface-2 border-border hover:bg-border/20 text-muted"
+                    }`}
+                  >
+                    {d} Days
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-1.5 pt-2">
+                <label className="block text-[10px] font-semibold text-muted uppercase tracking-wide">Or set custom number of days</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={customRevisitDays}
+                  onChange={(e) => setCustomRevisitDays(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none font-semibold text-xs text-foreground"
+                  placeholder="Enter custom days..."
+                />
+              </div>
+
+              <div className="pt-4 border-t border-border/80 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowRevisitDaysPopup(false)}
+                  className="px-4 py-2.5 rounded-xl border border-border bg-surface hover:bg-surface-2 text-foreground font-bold text-xs cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const days = parseInt(customRevisitDays, 10);
+                    if (isNaN(days) || days <= 0) return;
+                    handleMarkRevisited(activeProblem.num, days);
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold text-xs cursor-pointer transition-all shadow-md shadow-primary/10"
+                >
+                  Confirm & Restart
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
