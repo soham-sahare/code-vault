@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/shell/Sidebar";
+import Link from "next/link";
 import { Clock, AlertTriangle, CheckSquare, Calendar, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { getProblems, markRevisited } from "@/lib/actions";
@@ -98,40 +99,32 @@ export default function RemindersPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {overdueReminders.map((rem, idx) => (
-                    <motion.div
+                    <Link
                       key={idx}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="p-5 rounded-2xl bg-surface border border-rose-500/30 hover:border-rose-500 transition-colors shadow-sm flex flex-col justify-between"
+                      href={`/dashboard?p=${rem.id}`}
+                      className="block"
                     >
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="font-sans font-bold text-[10px] text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            Overdue
-                          </span>
-                          <span className="text-[10px] font-display font-bold text-muted uppercase">
-                            {rem.interval}
-                          </span>
+                      <motion.div
+                        whileHover={{ y: -3, borderColor: "rgba(239, 68, 68, 0.4)" }}
+                        className="p-5 rounded-2xl bg-surface border border-rose-500/20 hover:border-rose-500/50 transition-all shadow-sm cursor-pointer flex items-center justify-between group"
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <h3 className="font-display font-extrabold text-sm text-foreground truncate group-hover:text-rose-500 transition-colors">
+                            #{rem.num} {rem.name}
+                          </h3>
+                          <div className="flex items-center gap-2 text-[10px] text-muted font-semibold">
+                            <span className="text-rose-500 uppercase">Overdue</span>
+                            <span>•</span>
+                            <span className={rem.difficulty === "EASY" ? "text-emerald-500" : rem.difficulty === "MED" ? "text-amber-500" : "text-rose-500"}>
+                              {rem.difficulty}
+                            </span>
+                            <span>•</span>
+                            <span>{rem.topic}</span>
+                          </div>
                         </div>
-                        <h3 className="font-display font-bold text-sm text-foreground">
-                          {rem.name}
-                        </h3>
-                        <p className="font-sans text-xs text-muted mt-1">{rem.topic}</p>
-                      </div>
-
-                      <div className="mt-5.5 pt-4.5 border-t border-border flex items-center justify-between">
-                        <span className={`font-display font-bold text-[9px] px-2 py-0.5 rounded ${rem.diffColor}`}>
-                          {rem.difficulty === "MED" ? "MEDIUM" : rem.difficulty}
-                        </span>
-                        <button
-                          onClick={() => handleComplete(rem.num)}
-                          className="inline-flex items-center justify-center gap-1 py-1.5 px-3 rounded-lg bg-primary hover:bg-primary/95 text-white font-sans font-bold text-xs shadow-sm hover:shadow active:scale-98 transition-all cursor-pointer"
-                        >
-                          Revisit Complete
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </motion.div>
+                        <ChevronRight className="w-4 h-4 text-muted/40 group-hover:text-rose-500 transition-colors shrink-0" />
+                      </motion.div>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -152,41 +145,32 @@ export default function RemindersPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {dueTodayReminders.map((rem, idx) => (
-                    <motion.div
+                    <Link
                       key={idx}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className="p-5 rounded-2xl bg-surface border border-border hover:border-primary/40 transition-colors shadow-sm flex flex-col justify-between"
+                      href={`/dashboard?p=${rem.id}`}
+                      className="block"
                     >
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="font-sans font-bold text-[10px] text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            Due Now
-                          </span>
-                          <span className="text-[10px] font-display font-bold text-muted uppercase">
-                            {rem.interval}
-                          </span>
+                      <motion.div
+                        whileHover={{ y: -3, borderColor: "rgba(245, 158, 11, 0.4)" }}
+                        className="p-5 rounded-2xl bg-surface border border-amber-500/20 hover:border-amber-500/50 transition-all shadow-sm cursor-pointer flex items-center justify-between group"
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <h3 className="font-display font-extrabold text-sm text-foreground truncate group-hover:text-amber-500 transition-colors">
+                            #{rem.num} {rem.name}
+                          </h3>
+                          <div className="flex items-center gap-2 text-[10px] text-muted font-semibold">
+                            <span className="text-amber-500 uppercase">Due Today</span>
+                            <span>•</span>
+                            <span className={rem.difficulty === "EASY" ? "text-emerald-500" : rem.difficulty === "MED" ? "text-amber-500" : "text-rose-500"}>
+                              {rem.difficulty}
+                            </span>
+                            <span>•</span>
+                            <span>{rem.topic}</span>
+                          </div>
                         </div>
-                        <h3 className="font-display font-bold text-sm text-foreground">
-                          {rem.name}
-                        </h3>
-                        <p className="font-sans text-xs text-muted mt-1">{rem.topic}</p>
-                      </div>
-
-                      <div className="mt-5.5 pt-4.5 border-t border-border flex items-center justify-between">
-                        <span className={`font-display font-bold text-[9px] px-2 py-0.5 rounded ${rem.diffColor}`}>
-                          {rem.difficulty === "MED" ? "MEDIUM" : rem.difficulty}
-                        </span>
-                        <button
-                          onClick={() => handleComplete(rem.num)}
-                          className="inline-flex items-center justify-center gap-1 py-1.5 px-3 rounded-lg bg-primary hover:bg-primary/95 text-white font-sans font-bold text-xs shadow-sm hover:shadow active:scale-98 transition-all cursor-pointer"
-                        >
-                          Revisit Complete
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </motion.div>
+                        <ChevronRight className="w-4 h-4 text-muted/40 group-hover:text-amber-500 transition-colors shrink-0" />
+                      </motion.div>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -196,7 +180,7 @@ export default function RemindersPage() {
             {upcomingReminders.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-4 border-b border-border/80 pb-2">
-                  <Calendar className="w-5 h-5 text-emerald-500 animate-pulse" />
+                  <Calendar className="w-5 h-5 text-emerald-500" />
                   <h2 className="font-display font-bold text-base text-emerald-500">
                     Upcoming Spacing Schedule
                   </h2>
@@ -207,37 +191,32 @@ export default function RemindersPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {upcomingReminders.map((rem, idx) => (
-                    <motion.div
+                    <Link
                       key={idx}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className="p-5 rounded-2xl bg-surface border border-border/60 opacity-80 hover:opacity-100 transition-all shadow-sm flex flex-col justify-between"
+                      href={`/dashboard?p=${rem.id}`}
+                      className="block"
                     >
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="font-sans font-bold text-[10px] text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            Upcoming
-                          </span>
-                          <span className="text-[10px] font-display font-bold text-muted uppercase">
-                            {rem.interval}
-                          </span>
+                      <motion.div
+                        whileHover={{ y: -3, borderColor: "rgba(16, 185, 129, 0.4)" }}
+                        className="p-5 rounded-2xl bg-surface border border-border/80 hover:border-emerald-500/50 transition-all shadow-sm cursor-pointer flex items-center justify-between group"
+                      >
+                        <div className="space-y-1 min-w-0">
+                          <h3 className="font-display font-extrabold text-sm text-foreground truncate group-hover:text-emerald-500 transition-colors">
+                            #{rem.num} {rem.name}
+                          </h3>
+                          <div className="flex items-center gap-2 text-[10px] text-muted font-semibold">
+                            <span className="text-emerald-500 uppercase">{rem.interval}</span>
+                            <span>•</span>
+                            <span className={rem.difficulty === "EASY" ? "text-emerald-500" : rem.difficulty === "MED" ? "text-amber-500" : "text-rose-500"}>
+                              {rem.difficulty}
+                            </span>
+                            <span>•</span>
+                            <span>{rem.topic}</span>
+                          </div>
                         </div>
-                        <h3 className="font-display font-bold text-sm text-foreground">
-                          {rem.name}
-                        </h3>
-                        <p className="font-sans text-xs text-muted mt-1">{rem.topic}</p>
-                      </div>
-
-                      <div className="mt-5.5 pt-4.5 border-t border-border flex items-center justify-between">
-                        <span className={`font-display font-bold text-[9px] px-2 py-0.5 rounded ${rem.diffColor}`}>
-                          {rem.difficulty === "MED" ? "MEDIUM" : rem.difficulty}
-                        </span>
-                        <span className="text-[10px] font-sans font-bold text-muted italic">
-                          Locked
-                        </span>
-                      </div>
-                    </motion.div>
+                        <ChevronRight className="w-4 h-4 text-muted/40 group-hover:text-emerald-500 transition-colors shrink-0" />
+                      </motion.div>
+                    </Link>
                   ))}
                 </div>
               </div>
