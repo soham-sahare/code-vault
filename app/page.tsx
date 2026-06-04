@@ -6,7 +6,6 @@ import Features from "@/components/landing/Features";
 import HowItWorks from "@/components/landing/HowItWorks";
 import SpacedTimeline from "@/components/landing/SpacedTimeline";
 import About from "@/components/landing/About";
-import Pricing from "@/components/landing/Pricing";
 import Footer from "@/components/landing/Footer";
 import { ArrowRight, Sparkles, BookOpen, Clock, Activity } from "lucide-react";
 import { motion } from "framer-motion";
@@ -19,13 +18,13 @@ export default function Home() {
       <Header />
 
       {/* 2. Hero Wrapper Section with Dot Grid Pattern */}
-      <main className="flex-1 relative flex flex-col items-center justify-center py-20 px-6 dots-pattern">
+      <main className="flex-1 relative flex flex-col items-center justify-start lg:justify-center py-12 lg:py-20 px-6 dots-pattern">
         
         {/* Glow Effects */}
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-primary/10 to-accent/5 blur-[120px] pointer-events-none" />
 
         {/* Outer relative container that holds both text and mockups */}
-        <div className="relative w-full max-w-7xl mx-auto min-h-[620px] lg:min-h-[700px] flex flex-col items-center justify-center py-6 px-4">
+        <div className="relative w-full max-w-7xl mx-auto min-h-0 lg:min-h-[700px] flex flex-col items-center justify-start lg:justify-center py-6 px-4">
           
           {/* Centered Hero Content Block */}
           <div className="relative z-25 max-w-3xl mx-auto flex flex-col items-center text-center">
@@ -154,22 +153,19 @@ export default function Home() {
 
       </main>
 
-      {/* 3. Features Section */}
-      <Features />
+      {/* 3. About Section */}
+      <About />
 
       {/* 4. How It Works Section */}
       <HowItWorks />
 
-      {/* 5. Spaced Repetition Timeline */}
+      {/* 5. Features Section */}
+      <Features />
+
+      {/* 6. Spaced Repetition Timeline */}
       <SpacedTimeline />
 
-      {/* 6. About Section */}
-      <About />
-
-      {/* 7. Pricing Section */}
-      <Pricing />
-
-      {/* 8. Footer Section */}
+      {/* 7. Footer Section */}
       <Footer />
 
     </div>

@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/shell/Sidebar";
-import { Search, Bell, Library, Plus, Trash2, Edit, ExternalLink, Share2, Globe, Lock, ArrowLeft } from "lucide-react";
+import { Search, Bell, Library, Plus, Trash2, Edit, ExternalLink, Share2, Globe, Lock, ArrowLeft, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getSheets, createSheet, updateSheet, deleteSheet, removeProblemFromSheet, getProblems, addProblemToSheet } from "@/lib/actions";
+import { useTheme } from "next-themes";
+import Link from "next/link";
+import { getSheets, createSheet, updateSheet, deleteSheet, removeProblemFromSheet, getProblems, addProblemToSheet, getUserProfile } from "@/lib/actions";
 
 export default function SheetsPage() {
   const [loading, setLoading] = useState(true);
@@ -17,6 +19,41 @@ export default function SheetsPage() {
   const [sheetName, setSheetName] = useState("");
   const [sheetDesc, setSheetDesc] = useState("");
   const [sheetPublic, setSheetPublic] = useState(false);
+
+  // Topbar states
+  const { resolvedTheme, setTheme } = useTheme();
+  const [themeMounted, setThemeMounted] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isBellDropdownOpen, setIsBellDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    setThemeMounted(true);
+  }, []);
+
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const profile = await getUserProfile();
+        setUserProfile(profile);
+      } catch (err) {
+        console.error("Failed to load user profile:", err);
+      }
+    }
+    fetchUser();
+  }, []);
+
+  const getInitials = () => {
+    const name = userProfile?.name || userProfile?.username || userProfile?.email || "User";
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    if (name.length >= 2) {
+      return name.substring(0, 2).toUpperCase();
+    }
+    return name[0].toUpperCase();
+  };
 
   // Add problem modal states
   const [isAddProblemModalOpen, setIsAddProblemModalOpen] = useState(false);
@@ -48,7 +85,7 @@ export default function SheetsPage() {
   useEffect(() => {
     async function init() {
       setLoading(true);
-      await loadSheets();
+      await Promise.all([loadSheets(), loadAllProblems()]);
       setLoading(false);
     }
     init();
@@ -135,7 +172,7 @@ export default function SheetsPage() {
       {/* Main Container */}
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto max-w-7xl mx-auto w-full">
         
-        {/* Header Section */}
+        {/* Top Header Bar */}
         <div className="flex items-center justify-between mb-10 gap-4">
           <div>
             <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-foreground flex items-center gap-2.5">
@@ -145,7 +182,7 @@ export default function SheetsPage() {
             <p className="font-sans text-xs text-muted mt-1">Organize and track curated sets of coding challenges</p>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => {
@@ -155,11 +192,129 @@ export default function SheetsPage() {
                 setSheetPublic(false);
                 setIsAddSheetOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-sans font-bold text-xs cursor-pointer transition-colors shadow-md shadow-primary/10"
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-sans font-bold text-xs cursor-pointer transition-colors shadow-md shadow-primary/10 mr-1"
             >
               <Plus className="w-4 h-4" />
               New Sheet
             </motion.button>
+
+            {/* Theme Toggle Icon */}
+            {themeMounted && (
+              <button
+                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                className="w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center text-muted hover:text-foreground hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                title={resolvedTheme === "dark" ? "Switch to Light mode" : "Switch to Dark mode"}
+              >
+                {resolvedTheme === "dark" ? <Sun className="w-4.5 h-4.5 text-accent" /> : <Moon className="w-4.5 h-4.5 text-primary" />}
+              </button>
+            )}
+
+            {/* Notification Bell */}
+            <div className="relative">
+              <button 
+                onClick={() => setIsBellDropdownOpen(!isBellDropdownOpen)}
+                className="relative w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center text-foreground hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <Bell className="w-5 h-5" />
+                {allProblems.some((p) => p.status === "Due Today" || p.status === "Overdue") && (
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-surface" />
+                )}
+              </button>
+
+              <AnimatePresence>
+                {isBellDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsBellDropdownOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute right-0 mt-2.5 w-80 bg-surface border border-border rounded-2xl shadow-2xl z-50 p-4 font-sans text-xs space-y-3.5 max-h-[400px] overflow-y-auto"
+                    >
+                      <h4 className="font-display font-extrabold text-sm text-foreground pb-2 border-b border-border/80 flex items-center justify-between">
+                        <span>Revisit Reminders</span>
+                        <span className="text-[10px] font-sans font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                          {allProblems.filter((p) => p.status === "Due Today" || p.status === "Overdue").length} Due
+                        </span>
+                      </h4>
+
+                      <div className="space-y-2">
+                        {(() => {
+                          const dueList = allProblems.filter((p) => p.status === "Due Today" || p.status === "Overdue");
+                          if (dueList.length === 0) {
+                            return (
+                              <p className="text-center font-sans text-xs text-muted py-6">All caught up! No reminders for today.</p>
+                            );
+                          }
+                          return dueList.map((p) => (
+                            <Link
+                              key={p.id}
+                              href={`/dashboard?p=${p.id}`}
+                              onClick={() => {
+                                setIsBellDropdownOpen(false);
+                              }}
+                              className="w-full text-left p-2.5 rounded-xl border border-border/60 bg-surface-2/30 hover:bg-surface-2 transition-all flex items-start gap-2.5 cursor-pointer block"
+                            >
+                              <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${p.status === "Overdue" ? "bg-rose-500" : "bg-amber-500"}`} />
+                              <div className="space-y-0.5 flex-1 min-w-0">
+                                <h5 className="font-display font-bold text-foreground truncate">#{p.num} {p.name}</h5>
+                                <div className="flex items-center gap-2 text-[10px] text-muted font-semibold">
+                                  <span className={p.difficulty === "EASY" ? "text-emerald-500" : p.difficulty === "MED" ? "text-amber-500" : "text-rose-500"}>{p.difficulty}</span>
+                                  <span>•</span>
+                                  <span>{p.topic}</span>
+                                </div>
+                              </div>
+                            </Link>
+                          ));
+                        })()}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* User Avatar Circle with Initials & Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-display font-extrabold text-xs text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-sm select-none"
+              >
+                {getInitials()}
+              </button>
+
+              <AnimatePresence>
+                {isProfileDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsProfileDropdownOpen(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute right-0 mt-2.5 w-48 bg-surface border border-border rounded-2xl shadow-2xl z-50 p-2 font-sans text-xs flex flex-col gap-1"
+                    >
+                      <span className="px-3 py-2 text-muted font-bold text-[10px] uppercase tracking-wide border-b border-border/40 mb-1">
+                        Options
+                      </span>
+                      <Link
+                        href="/settings"
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="px-3 py-2.5 rounded-xl hover:bg-surface-2 text-foreground font-semibold flex items-center gap-2.5 transition-colors cursor-pointer"
+                      >
+                        Profile Settings
+                      </Link>
+                      <Link
+                        href="/login"
+                        onClick={() => setIsProfileDropdownOpen(false)}
+                        className="px-3 py-2.5 rounded-xl hover:bg-rose-500/10 text-rose-500 font-semibold flex items-center gap-2.5 transition-colors cursor-pointer"
+                      >
+                        Log out
+                      </Link>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 

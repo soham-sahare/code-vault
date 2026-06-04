@@ -239,6 +239,20 @@ export default function DashboardPage() {
     init();
   }, [activeProblem?.id]);
 
+  useEffect(() => {
+    if (problemsList.length > 0 && typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const problemIdParam = params.get("p");
+      if (problemIdParam) {
+        const prob = problemsList.find((p: any) => p.id === problemIdParam);
+        if (prob) {
+          setActiveProblem(prob);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    }
+  }, [problemsList]);
+
   const handleSaveOnboarding = () => {
     localStorage.setItem("hasCompletedOnboarding", "true");
     localStorage.setItem("defaultLanguage", defaultLanguage);

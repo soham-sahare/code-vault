@@ -64,7 +64,7 @@ async function checkAndSyncStatus(p: any) {
 }
 
 // 1. PROBLEMS MUTATIONS
-export async function getProblems() {
+export async function getProblems(skip?: number, take?: number) {
   const userId = await requireAuth();
   const problems = await db.problem.findMany({
     where: { userId },
@@ -76,6 +76,8 @@ export async function getProblems() {
       reminders: true,
     },
     orderBy: { createdAt: "desc" },
+    skip,
+    take,
   });
 
   for (let i = 0; i < problems.length; i++) {
@@ -329,7 +331,7 @@ export async function deleteNote(noteId: string) {
 }
 
 // 4. SPACED REPETITION ENGINE ADVANCEMENT
-export async function markRevisited(num: number) {
+export async function markRevisited(num: number, customDays?: number) {
   const userId = await requireAuth();
 
   const existing = await db.problem.findFirst({
@@ -339,7 +341,9 @@ export async function markRevisited(num: number) {
 
   // Determine stage and set appropriate spacing interval values
   let nextInterval = "Due in 3d";
-  if (existing.interval.includes("Stage 1") || existing.interval.includes("3d")) {
+  if (customDays !== undefined) {
+    nextInterval = `Due in ${customDays}d`;
+  } else if (existing.interval.includes("Stage 1") || existing.interval.includes("3d")) {
     nextInterval = "Due in 7d";
   } else if (existing.interval.includes("7d")) {
     nextInterval = "Due in 15d";

@@ -10,10 +10,27 @@ export default function FloatingMockups() {
       y: [-8, 8, -8],
     },
     transition: {
-      duration,
-      repeat: Infinity,
-      ease: "easeInOut" as const,
-      delay,
+      y: {
+        duration,
+        repeat: Infinity,
+        ease: "easeInOut" as const,
+        delay,
+      },
+      scale: {
+        type: "spring" as const,
+        stiffness: 400,
+        damping: 20,
+      },
+      rotate: {
+        type: "spring" as const,
+        stiffness: 400,
+        damping: 20,
+      },
+      default: {
+        type: "spring" as const,
+        stiffness: 400,
+        damping: 20,
+      }
     },
   });
 

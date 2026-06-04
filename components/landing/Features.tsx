@@ -64,9 +64,13 @@ export default function Features() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.5, delay: idx * 0.08 }}
-            whileHover={{ scale: 1.025, translateY: -4 }}
-            className="h-full flex flex-col p-6 rounded-3xl bg-surface border border-border shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-200 group cursor-pointer"
+            transition={{
+              opacity: { duration: 0.5, delay: idx * 0.08 },
+              y: { type: "spring", stiffness: 300, damping: 20 },
+              scale: { type: "spring", stiffness: 300, damping: 20 }
+            }}
+            whileHover={{ scale: 1.025, y: -4 }}
+            className="h-full flex flex-col p-6 rounded-3xl bg-surface border border-border shadow-sm hover:shadow-md hover:border-primary/20 transition-colors duration-200 group cursor-pointer"
           >
             <div className="w-12 h-12 rounded-2xl bg-surface-2 border border-border/80 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform shrink-0">
               {feature.icon}
