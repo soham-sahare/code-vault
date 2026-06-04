@@ -17,7 +17,7 @@ import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-go";
 import "prismjs/components/prism-rust";
 import "prismjs/themes/prism-tomorrow.css";
-import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile, addSolutionNote, deleteSolutionNote, updateSolutionNote } from "@/lib/actions";
+import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, updateSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile, addSolutionNote, deleteSolutionNote, updateSolutionNote } from "@/lib/actions";
 
 function highlightCode(code: string, lang: string) {
   if (!code) return "";
@@ -253,20 +253,29 @@ export default function DashboardPage() {
     try {
       if (editingSolIdx !== null) {
         const sol = activeProblem.solutions[editingSolIdx];
-        await deleteSolution(sol.id);
+        await updateSolution(sol.id, {
+          name: newSolName,
+          lang: newSolLang,
+          intuition: newSolIntuition || "Optimal approach.",
+          approach: newSolApproach || "Standard implementation.",
+          time: newSolTime,
+          space: newSolSpace,
+          code: newSolCode,
+          tags: []
+        });
+      } else {
+        await addSolution(activeProblem.id, {
+          name: newSolName,
+          lang: newSolLang,
+          intuition: newSolIntuition || "Optimal approach.",
+          approach: newSolApproach || "Standard implementation.",
+          time: newSolTime,
+          space: newSolSpace,
+          code: newSolCode,
+          tags: [],
+          notes: []
+        });
       }
-      
-      const newSol = await addSolution(activeProblem.id, {
-        name: newSolName,
-        lang: newSolLang,
-        intuition: newSolIntuition || "Optimal approach.",
-        approach: newSolApproach || "Standard implementation.",
-        time: newSolTime,
-        space: newSolSpace,
-        code: newSolCode,
-        tags: [],
-        notes: []
-      });
 
       await loadProblems();
 
@@ -459,26 +468,19 @@ export default function DashboardPage() {
           className="p-6 rounded-3xl bg-surface border border-border shadow-sm"
         >
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 relative z-30">
-            <div>
-              <h2 className="font-display font-bold text-base text-foreground">
-                In-Practice Problems
-              </h2>
-              <p className="font-sans text-[10px] text-muted mt-0.5">Click any problem row to open solutions detail modal</p>
+            {/* Search Bar on the left */}
+            <div className="relative w-full lg:w-72">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+              <input
+                type="text"
+                placeholder="Search problems..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none font-sans text-xs text-foreground placeholder:text-muted/60 transition-all"
+              />
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-
-              {/* Search Bar next to Filter (matching ss2) */}
-              <div className="relative w-64">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                <input
-                  type="text"
-                  placeholder="Search problems..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none font-sans text-xs text-foreground placeholder:text-muted/60 transition-all"
-                />
-              </div>
 
               {/* Filter Dropdown Toggle */}
               <div className="relative">
