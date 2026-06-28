@@ -6,10 +6,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { checkAuthSession } from "@/lib/actions";
+import { checkAuthSession, validateCredentials } from "@/lib/actions";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(""); // This stores email or username
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,6 +41,15 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
+      // 1. First validate credentials via server action to get respective error messages
+      const validation = await validateCredentials(email, password);
+      if (validation.error) {
+        setError(validation.message || "Invalid credentials");
+        setLoading(false);
+        return;
+      }
+
+      // 2. Proceed to NextAuth sign-in if validated
       const res = await signIn("credentials", {
         email,
         password,
@@ -48,7 +57,7 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        setError("Invalid email or password");
+        setError("Invalid email/username or password");
       } else {
         router.push("/dashboard");
         router.refresh();
@@ -104,12 +113,12 @@ export default function LoginPage() {
         <form className="mt-8 space-y-4" onSubmit={handleLogin}>
           <div>
             <label className="block font-sans font-semibold text-xs text-muted mb-2 uppercase tracking-wide">
-              Email Address
+              Email or Username
             </label>
             <input
-              type="email"
+              type="text"
               required
-              placeholder="hunter@codevault.dev"
+              placeholder="hunter@codevault.dev or hunter"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-3 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none font-sans text-sm text-foreground transition-all placeholder:text-muted/60"

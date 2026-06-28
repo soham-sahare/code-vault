@@ -16,13 +16,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         const parsedCredentials = z
-          .object({ email: z.string().email(), password: z.string().min(6) })
+          .object({ email: z.string(), password: z.string().min(6) })
           .safeParse(credentials);
 
         if (!parsedCredentials.success) return null;
 
-        const { email, password } = parsedCredentials.data;
-        const user = await db.user.findUnique({ where: { email } });
+        const { email: identifier, password } = parsedCredentials.data;
+        const isEmail = identifier.includes("@");
+        
+        const user = isEmail
+          ? await db.user.findUnique({ where: { email: identifier } })
+          : await db.user.findUnique({ where: { username: identifier } });
+
         if (!user || !user.passwordHash) return null;
 
         const passwordsMatch = await bcrypt.compare(password, user.passwordHash);

@@ -1562,3 +1562,38 @@ export async function checkAuthSession() {
   return session && session.user ? { signedIn: true } : { signedIn: false };
 }
 
+export async function validateCredentials(identifier: string, password: string) {
+  if (!identifier || !password) {
+    return { error: true, message: "Please enter both username/email and password." };
+  }
+
+  const isEmail = identifier.includes("@");
+  const user = isEmail
+    ? await db.user.findUnique({ where: { email: identifier } })
+    : await db.user.findUnique({ where: { username: identifier } });
+
+  if (!user) {
+    return {
+      error: true,
+      message: isEmail
+        ? "No account found with this email address."
+        : "No account found with this username.",
+    };
+  }
+
+  if (!user.passwordHash) {
+    return {
+      error: true,
+      message: "This account does not have a password configured.",
+    };
+  }
+
+  const bcrypt = await import("bcryptjs");
+  const passwordsMatch = await bcrypt.compare(password, user.passwordHash);
+  if (!passwordsMatch) {
+    return { error: true, message: "Incorrect password. Please try again." };
+  }
+
+  return { success: true };
+}
+
