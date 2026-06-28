@@ -1326,8 +1326,8 @@ export default function DashboardPage() {
                     ) : (
                       <div className="space-y-6 w-full">
                         {/* Inline Language Selector Tabs (Replacing Sidebar) */}
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/40 pb-4 w-full">
-                          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full pb-1 -mb-1 sm:overflow-visible sm:pb-0 sm:mb-0 shrink-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/40 pb-4 w-full min-w-0">
+                          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full pb-2 -mb-2 shrink min-w-0">
                             {activeProblem.solutions.map((sol: any, idx: number) => (
                               <button
                                 key={idx}
