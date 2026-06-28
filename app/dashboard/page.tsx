@@ -239,18 +239,19 @@ export default function DashboardPage() {
     if (activeProblem && activeProblem.solutions && activeProblem.solutions[selSolIdx]) {
       const sol = activeProblem.solutions[selSolIdx];
       setIsCodeLoading(true);
-      const currentTheme = themeMounted ? (resolvedTheme === "light" ? "light" : "dark") : "light";
-      getHighlightedHtml(sol.code, sol.lang, currentTheme).then((html) => {
-        setHighlightedSolCode(html);
-        setIsCodeLoading(false);
-      }).catch((err) => {
+      try {
+        const highlighted = highlightCode(sol.code, sol.lang);
+        const wrapped = `<pre class="p-5 overflow-x-auto w-full language-${sol.lang.toLowerCase()}"><code>${highlighted}</code></pre>`;
+        setHighlightedSolCode(wrapped);
+      } catch (err) {
         console.error(err);
-        setIsCodeLoading(false);
-      });
+        setHighlightedSolCode(`<pre class="p-5 overflow-x-auto w-full"><code>${sol.code}</code></pre>`);
+      }
+      setIsCodeLoading(false);
     } else {
       setHighlightedSolCode("");
     }
-  }, [activeProblem, selSolIdx, resolvedTheme, themeMounted]);
+  }, [activeProblem, selSolIdx]);
 
   useEffect(() => {
     if (userProfile) {
