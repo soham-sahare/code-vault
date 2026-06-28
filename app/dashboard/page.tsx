@@ -1056,7 +1056,7 @@ export default function DashboardPage() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-4xl max-h-[85vh] rounded-3xl bg-surface border border-border shadow-2xl overflow-y-auto flex flex-col justify-between"
+              className="w-full max-w-4xl max-h-[85vh] rounded-3xl bg-surface border border-border shadow-2xl overflow-hidden flex flex-col justify-between"
             >
 
               {/* Modal Header */}
