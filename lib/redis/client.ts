@@ -23,16 +23,16 @@ export type RedisClient = {
 let redisInstance: RedisClient | null = null;
 
 function createRedisClient(): RedisClient {
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+
   // Upstash (production / Vercel): HTTP-based, no persistent TCP connections
-  if (
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  ) {
+  if (upstashUrl && upstashToken) {
     // Dynamic import to avoid bundling issues in environments without it
     const { Redis } = require("@upstash/redis");
     const upstash = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      url: upstashUrl,
+      token: upstashToken,
     });
 
     return {
@@ -51,7 +51,7 @@ function createRedisClient(): RedisClient {
     };
   }
 
-  if (!process.env.UPSTASH_REDIS_REST_URL && !process.env.REDIS_URL) {
+  if (!upstashUrl && !process.env.REDIS_URL) {
     // No Redis configured -> return no-op client to avoid connection attempts and timeouts
     return {
       zadd: async () => {},
