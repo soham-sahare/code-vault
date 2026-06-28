@@ -1,9 +1,6 @@
 {
   "framework": "nextjs",
   "regions": ["bom1"],
-  "env": {
-    "TZ": "UTC"
-  },
   "headers": [
     {
       "source": "/(.*)",
