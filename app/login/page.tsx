@@ -113,7 +113,7 @@ export default function LoginPage() {
         <form className="mt-8 space-y-4" onSubmit={handleLogin}>
           <div>
             <label className="block font-sans font-semibold text-xs text-muted mb-2 uppercase tracking-wide">
-              Email or Username
+              Email/Username
             </label>
             <input
               type="text"
