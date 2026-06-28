@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "NODE_OPTIONS='--no-deprecation' next dev",
-    "build": "NODE_OPTIONS='--no-deprecation' next build",
+    "build": "prisma generate && NODE_OPTIONS='--no-deprecation' next build",
     "start": "NODE_OPTIONS='--no-deprecation' next start",
     "lint": "eslint"
   },
