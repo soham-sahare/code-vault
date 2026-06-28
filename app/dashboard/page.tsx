@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import Sidebar from "@/components/shell/Sidebar";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { formatISTDate } from "@/lib/timestamps/ist";
@@ -562,13 +563,15 @@ export default function DashboardPage() {
                       >
                         Profile Settings
                       </Link>
-                      <Link
-                        href="/login"
-                        className="flex items-center gap-2 px-4 py-2.5 text-rose-500 hover:bg-rose-500/5 transition-colors border-t border-border"
-                        onClick={() => setIsProfileDropdownOpen(false)}
+                      <button
+                        onClick={() => {
+                          setIsProfileDropdownOpen(false);
+                          signOut({ callbackUrl: "/login" });
+                        }}
+                        className="w-full text-left flex items-center gap-2 px-4 py-2.5 text-rose-500 hover:bg-rose-500/5 transition-colors border-t border-border cursor-pointer"
                       >
                         Logout
-                      </Link>
+                      </button>
                     </motion.div>
                   </>
                 )}

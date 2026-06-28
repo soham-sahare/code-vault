@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, Clock, BarChart3, LogOut, Library, Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { signOut } from "next-auth/react";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -126,16 +127,16 @@ export default function Sidebar() {
             {!isCollapsed && <span className="text-sm font-sans font-semibold">Settings</span>}
           </Link>
 
-          <Link
-            href="/login"
-            className={`flex items-center rounded-xl border border-transparent text-muted hover:text-rose-500 hover:bg-rose-500/5 transition-all font-sans font-semibold ${
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className={`w-full flex items-center rounded-xl border border-transparent text-muted hover:text-rose-500 hover:bg-rose-500/5 transition-all font-sans font-semibold cursor-pointer ${
               isCollapsed ? "justify-center p-3.5" : "px-4.5 py-3.5 gap-3.5"
             }`}
             title={isCollapsed ? "Log out" : ""}
           >
             <LogOut className="w-5 h-5 shrink-0" />
             {!isCollapsed && <span className="text-sm font-sans font-semibold">Log out</span>}
-          </Link>
+          </button>
         </div>
 
       </aside>
@@ -163,13 +164,13 @@ export default function Sidebar() {
           <Settings className="w-5 h-5" />
           <span className="text-[9px] font-semibold mt-1 font-sans">Settings</span>
         </Link>
-        <Link
-          href="/login"
-          className="flex flex-col items-center justify-center w-12 h-12 rounded-lg text-muted hover:text-rose-500 transition-colors"
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="flex flex-col items-center justify-center w-12 h-12 rounded-lg text-muted hover:text-rose-500 transition-colors cursor-pointer"
         >
           <LogOut className="w-5 h-5" />
           <span className="text-[9px] font-semibold mt-1 font-sans">Log out</span>
-        </Link>
+        </button>
       </nav>
     </>
   );

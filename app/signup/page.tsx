@@ -172,35 +172,7 @@ export default function SignupPage() {
           </div>
         </form>
 
-        {/* Separator */}
-        <div className="relative flex items-center justify-center my-6">
-          <div className="absolute inset-x-0 h-0.5 bg-border/60" />
-          <span className="font-sans font-semibold text-[10px] text-muted bg-surface px-3 relative z-10 uppercase tracking-widest">
-            Or register with
-          </span>
-        </div>
 
-        {/* Social Authentication buttons */}
-        <div className="grid grid-cols-2 gap-4">
-          <button 
-            onClick={() => window.location.href = "/dashboard"}
-            className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border hover:bg-surface-2 font-sans font-semibold text-xs text-foreground cursor-pointer transition-colors"
-          >
-            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-              <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
-            </svg>
-            GitHub
-          </button>
-          <button 
-            onClick={() => window.location.href = "/dashboard"}
-            className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border hover:bg-surface-2 font-sans font-semibold text-xs text-foreground cursor-pointer transition-colors"
-          >
-            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-              <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.478 0 10.793-4.537 10.793-10.988 0-.746-.08-1.32-.176-1.886H12.24z"/>
-            </svg>
-            Google
-          </button>
-        </div>
 
         {/* Footer Link */}
         <p className="font-sans text-xs text-muted text-center mt-8">
