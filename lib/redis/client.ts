@@ -51,6 +51,21 @@ function createRedisClient(): RedisClient {
     };
   }
 
+  if (!process.env.UPSTASH_REDIS_REST_URL && !process.env.REDIS_URL) {
+    // No Redis configured -> return no-op client to avoid connection attempts and timeouts
+    return {
+      zadd: async () => {},
+      zrem: async () => {},
+      zrangebyscore: async () => [],
+      zcount: async () => 0,
+      get: async () => null,
+      set: async () => {},
+      del: async () => {},
+      incr: async () => 0,
+      expire: async () => {},
+    };
+  }
+
   // Local dev fallback: ioredis (TCP, requires a running Redis server)
   const IoRedis = require("ioredis");
   const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";

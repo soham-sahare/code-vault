@@ -100,6 +100,8 @@ model SolutionNote {
   updatedAt  DateTime @updatedAt
 
   solution   Solution @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+
+  @@index([solutionId])
 }
 
 model Note {
@@ -114,6 +116,9 @@ model Note {
 
   problem    Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([problemId])
+  @@index([userId])
 }
 
 model Reminder {
@@ -251,4 +256,5 @@ model SheetProblem {
   problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
   @@id([sheetId, problemId])
+  @@index([problemId])
 }
