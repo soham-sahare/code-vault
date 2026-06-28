@@ -20,20 +20,21 @@ export default function Header() {
         {/* Logo */}
         <a href="/" className="flex items-center gap-2.5 group">
           <div className="relative w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white overflow-hidden shadow-md shadow-primary/30 group-hover:scale-105 transition-transform duration-200">
-            {/* Visual shape representing vault/bracket */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
+            {/* Premium CodeVault Logo Layout - Safe Dial locked inside brackets */}
             <svg
-              className="w-4 h-4 text-white"
+              className="w-5 h-5 text-white"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
-              strokeWidth="2.5"
+              strokeWidth="2"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
+              {/* Outer Brackets */}
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 17L2 12l4-5M18 7l4 5-4 5" />
+              {/* Vault Circular Lock Body */}
+              <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.1" />
+              {/* Dial Notch Indicator */}
+              <line x1="12" y1="9.5" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="12" cy="12" r="1" fill="currentColor" />
             </svg>
           </div>
           <span className="font-display font-bold text-xl tracking-tight bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text text-transparent group-hover:opacity-90">
@@ -56,7 +57,7 @@ export default function Header() {
           {/* Sun / Moon Toggle - Colored in Lavender B7A8F5 */}
           <button
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-            className="w-10 h-10 rounded-xl bg-surface hover:bg-primary/5 border-2 border-primary/50 text-primary flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-sm shadow-primary/10"
+            className="w-10 h-10 rounded-xl bg-surface hover:bg-surface-2 border border-border text-muted hover:text-foreground flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-sm"
             aria-label="Toggle theme"
           >
             {mounted && (resolvedTheme === "dark" ? (

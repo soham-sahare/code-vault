@@ -7,11 +7,11 @@
   --foreground: #16161A;
   --muted: #6B7280;
   --border: #E8E8E4;
-  --primary: #B7A8F5;
-  --primary-hover: #B7A8F5;
+  --primary: #7C3AED;
+  --primary-hover: #6D28D9;
   --accent: #EE8E5A;
   --accent-hover: #E7783D;
-  --highlight-card: #B7A8F5;
+  --highlight-card: #7C3AED;
 }
 
 .dark {
@@ -107,4 +107,24 @@ body {
 }
 .hover-text-warning:hover {
   color: #fbbf24 !important;
+}
+
+/* IDE-style line numbers for code blocks */
+.has-line-numbers pre code {
+  counter-reset: step;
+  counter-increment: step 0;
+}
+
+.has-line-numbers pre code .line::before {
+  content: counter(step);
+  counter-increment: step;
+  width: 1.5rem;
+  margin-right: 1.25rem;
+  display: inline-block;
+  text-align: right;
+  color: var(--muted);
+  opacity: 0.45;
+  user-select: none;
+  border-right: 1px solid var(--border);
+  padding-right: 0.75rem;
 }

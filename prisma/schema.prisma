@@ -9,51 +9,68 @@ generator client {
 }
 
 model User {
-  id                      String     @id @default(uuid())
-  email                   String     @unique
+  id                      String           @id @default(uuid())
+  email                   String           @unique
   name                    String?
-  username                String?    @unique
+  username                String?          @unique
   passwordHash            String?
-  defaultLanguage         String     @default("Python")
-  hasCompletedOnboarding  Boolean    @default(false)
-  isPublicProfile         Boolean    @default(false)
-  theme                   String     @default("SYSTEM")
-  createdAt               DateTime   @default(now())
-  updatedAt               DateTime   @updatedAt
+  defaultLanguage         String           @default("Python")
+  hasCompletedOnboarding  Boolean          @default(false)
+  isPublicProfile         Boolean          @default(false)
+  theme                   String           @default("SYSTEM")
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
 
   problems                Problem[]
   notes                   Note[]
   reminders               Reminder[]
   sheets                  Sheet[]
+  revisitCycles           SrsRevisitCycle[]
+  analyticsCache          AnalyticsCache[]
+  notifications           Notification[]
 }
 
 model Problem {
-  id            String         @id @default(uuid())
-  userId        String
-  num           Int
-  name          String
-  url           String         @default("#")
-  topic         String
-  difficulty    String
-  diffColor     String
-  status        String         @default("Due Today")
-  statusColor   String
-  interval      String         @default("Recall Stage 1")
-  isFavorite    Boolean        @default(false)
-  isPublic      Boolean        @default(false)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                 String           @id @default(uuid())
+  userId             String
+  num                Int
+  name               String
+  url                String           @default("#")
+  sourcePlatform     String           @default("other")
+  topic              String
+  difficulty         String
+  diffColor          String
+  status             String           @default("Due Today")
+  statusColor        String
+  interval           String           @default("Recall Stage 1")
+  isFavorite         Boolean          @default(false)
+  isPublic           Boolean          @default(false)
+  solvedAt           DateTime?
+  revisitRequestedAt DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  solutions     Solution[]
-  notes         Note[]
-  reminders     Reminder[]
-  sheets        SheetProblem[]
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  solutions          Solution[]
+  notes              Note[]
+  reminders          Reminder[]
+  sheets             SheetProblem[]
+  companies          ProblemCompany[]
+  patterns           ProblemPattern[]
+  revisitCycles      SrsRevisitCycle[]
+
+  // PLAN.md §12.1 Performance Indices
+  @@index([userId, createdAt(sort: Desc)])          // Primary list fetch sorted by creation
+  @@index([userId, status])                          // Filter by status
+  @@index([userId, difficulty])                      // Filter by difficulty
+  @@index([userId, isFavorite, createdAt(sort: Desc)]) // Favorites view
+  @@index([userId, isPublic, createdAt(sort: Desc)]) // Public problems
 }
 
 model Solution {
   id         String         @id @default(uuid())
   problemId  String
+  userId     String         @default("") // Denormalized for direct queries (PLAN.md §5.5)
   name       String
   lang       String
   intuition  String
@@ -67,13 +84,20 @@ model Solution {
 
   problem    Problem        @relation(fields: [problemId], references: [id], onDelete: Cascade)
   notes      SolutionNote[]
+
+  // PLAN.md §12.1 Performance Indices
+  @@index([problemId, createdAt])   // Fast solution list per problem
+  @@index([userId, lang])           // Language distribution analytics
 }
 
 model SolutionNote {
   id         String   @id @default(uuid())
   solutionId String
-  type       String
+  type       String   @default("note")
   text       String
+  isShared   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   solution   Solution @relation(fields: [solutionId], references: [id], onDelete: Cascade)
 }
@@ -82,7 +106,9 @@ model Note {
   id         String   @id @default(uuid())
   problemId  String
   userId     String
+  type       String   @default("note")
   text       String
+  isShared   Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -103,6 +129,99 @@ model Reminder {
 
   problem     Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // PLAN.md §12.1: SRS hot path — polled every 5 minutes
+  @@index([userId, dueDate])        // Fetch pending due items by user
+  @@index([problemId, stage])       // Problem-level schedule lookup
+}
+
+model SrsRevisitCycle {
+  id          String    @id @default(uuid())
+  problemId   String
+  userId      String
+  cycleNumber Int
+  status      String    @default("active") // active, paused, ended
+  pauseReason String?
+  startedAt   DateTime  @default(now())
+  pausedAt    DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now())
+
+  problem     Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([problemId, userId, status]) // only one active/paused revisit cycle at a time
+}
+
+model CompanyTag {
+  id        String           @id @default(uuid())
+  name      String
+  slug      String           @unique
+  logoUrl   String?
+  problems  ProblemCompany[]
+}
+
+model ProblemCompany {
+  problemId String
+  companyId String
+
+  problem   Problem    @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  company   CompanyTag @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([problemId, companyId])
+}
+
+model Pattern {
+  id          String           @id @default(uuid())
+  name        String
+  slug        String           @unique
+  description String?
+  parentTopic String
+  problems    ProblemPattern[]
+}
+
+model ProblemPattern {
+  problemId String
+  patternId String
+
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  pattern   Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
+
+  @@id([problemId, patternId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  message   String
+  relatedId String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // PLAN.md §12.1: Unread notification index (bell badge hot path)
+  @@index([userId, isRead, createdAt(sort: Desc)])
+}
+
+model AnalyticsCache {
+  id                     String   @id @default(uuid())
+  userId                 String
+  snapshotDate           DateTime @db.Date
+  problemsSolved         Int      @default(0)
+  currentStreak          Int      @default(0)
+  longestStreak          Int      @default(0)
+  topicDistribution      Json     @default("{}")
+  difficultyDistribution Json     @default("{}")
+  complexityDistribution Json     @default("{}")
+  companyDistribution    Json     @default("{}")
+  patternDistribution    Json     @default("{}")
+  cachedAt               DateTime @default(now())
+
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, snapshotDate])
 }
 
 model Sheet {
@@ -112,11 +231,15 @@ model Sheet {
   description String?
   isPublic    Boolean        @default(false)
   shareSlug   String?        @unique
+  isCurated   Boolean        @default(false)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   problems    SheetProblem[]
+
+  // PLAN.md §12.1
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model SheetProblem {

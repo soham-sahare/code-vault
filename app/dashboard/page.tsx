@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Sidebar from "@/components/shell/Sidebar";
-import { Search, Bell, Star, AlertCircle, AlertTriangle, Clock, CheckCircle2, ChevronRight, Filter, X, ExternalLink, Share2, Plus, Code, PlusCircle, Check, Copy, Sun, Moon, Pencil, Trash2, FileText, Globe, Lock, Sparkles } from "lucide-react";
+import NotificationBell from "@/components/notifications/NotificationBell";
+import { formatISTDate } from "@/lib/timestamps/ist";
+import { Search, Bell, Star, AlertCircle, AlertTriangle, Clock, CheckCircle2, ChevronRight, Filter, X, ExternalLink, Share2, Plus, Code, PlusCircle, Check, Copy, Sun, Moon, Pencil, Trash2, FileText, Globe, Lock, Sparkles, MoreVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import Prism from "prismjs";
@@ -17,7 +19,7 @@ import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-go";
 import "prismjs/components/prism-rust";
 import "prismjs/themes/prism-tomorrow.css";
-import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, updateSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile, addSolutionNote, deleteSolutionNote, updateSolutionNote } from "@/lib/actions";
+import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, updateSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile, addSolutionNote, deleteSolutionNote, updateSolutionNote, saveOnboarding, getHighlightedHtml, getProblemDetails, getPaginatedProblems } from "@/lib/actions";
 
 function highlightCode(code: string, lang: string) {
   if (!code) return "";
@@ -71,7 +73,7 @@ interface Problem {
   isFavorite: boolean;
   isPublic?: boolean;
   solutions: any[];
-  notes: any[];
+  notes?: any[];
   history?: any[];
 }
 
@@ -139,6 +141,8 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDiff, setFilterDiff] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [filterTopic, setFilterTopic] = useState("ALL");
+  const [topicSearchQuery, setTopicSearchQuery] = useState("");
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const [filterPresets, setFilterPresets] = useState([
     { name: "All Problems", diff: "ALL", status: "ALL" },
@@ -153,10 +157,11 @@ export default function DashboardPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [isRowsDropdownOpen, setIsRowsDropdownOpen] = useState(false);
+  const [totalProblemsCount, setTotalProblemsCount] = useState(0);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterDiff, filterStatus, rowsPerPage]);
+  }, [searchQuery, filterDiff, filterStatus, filterTopic, rowsPerPage]);
 
   // Form input hooks for simulated problem adding
   const [addName, setAddName] = useState("");
@@ -167,9 +172,30 @@ export default function DashboardPage() {
 
   // Custom dropdown & pill tags selector states
   const [isDiffDropdownOpen, setIsDiffDropdownOpen] = useState(false);
-  const [predefinedTopics, setPredefinedTopics] = useState([
-    "Array", "Two Pointers", "Hash Table", "Stack", "Sliding Window", "Dynamic Programming", "Trees", "Graphs"
-  ]);
+  const defaultTopics = [
+    "array", "string", "dynamic programming", "stack", "queue", "recursion",
+    "graphs", "trees", "tries", "linkedlist", "binary search", "heaps", "maths",
+    "hashing", "sorting", "searching"
+  ];
+  const [customPredefinedTopics, setCustomPredefinedTopics] = useState<string[]>([]);
+
+  const getSelectableTopics = () => {
+    const topicsSet = new Set(defaultTopics.map(t => t.toLowerCase()));
+    customPredefinedTopics.forEach((t) => topicsSet.add(t.toLowerCase()));
+    problemsList.forEach((p) => {
+      if (p.topic) {
+        p.topic.split(",").forEach((t) => {
+          const trimmed = t.trim().toLowerCase();
+          if (trimmed) {
+            topicsSet.add(trimmed);
+          }
+        });
+      }
+    });
+    return Array.from(topicsSet);
+  };
+
+  const predefinedTopics = getSelectableTopics();
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [customTopicInput, setCustomTopicInput] = useState("");
 
@@ -194,6 +220,7 @@ export default function DashboardPage() {
   const [defaultLanguage, setDefaultLanguage] = useState("Python");
   const [isDefaultLangDropdownOpen, setIsDefaultLangDropdownOpen] = useState(false);
   const [editingProblemNum, setEditingProblemNum] = useState<number | null>(null);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
 
   // Confirm delete modals
   const [confirmDeleteProblemNum, setConfirmDeleteProblemNum] = useState<number | null>(null);
@@ -204,26 +231,71 @@ export default function DashboardPage() {
   const [themeMounted, setThemeMounted] = useState(false);
   useEffect(() => { setThemeMounted(true); }, []);
 
+  const [highlightedSolCode, setHighlightedSolCode] = useState("");
+  const [isCodeLoading, setIsCodeLoading] = useState(false);
+
   useEffect(() => {
-    const onboardingCompleted = localStorage.getItem("hasCompletedOnboarding") === "true";
-    if (!onboardingCompleted) {
-      setShowOnboarding(true);
+    if (activeProblem && activeProblem.solutions && activeProblem.solutions[selSolIdx]) {
+      const sol = activeProblem.solutions[selSolIdx];
+      setIsCodeLoading(true);
+      const currentTheme = themeMounted ? (resolvedTheme === "light" ? "light" : "dark") : "light";
+      getHighlightedHtml(sol.code, sol.lang, currentTheme).then((html) => {
+        setHighlightedSolCode(html);
+        setIsCodeLoading(false);
+      }).catch((err) => {
+        console.error(err);
+        setIsCodeLoading(false);
+      });
     } else {
-      const storedLang = localStorage.getItem("defaultLanguage") || "Python";
-      setDefaultLanguage(storedLang);
-      setNewSolLang(storedLang);
+      setHighlightedSolCode("");
     }
-  }, []);
+  }, [activeProblem, selSolIdx, resolvedTheme, themeMounted]);
+
+  useEffect(() => {
+    if (userProfile) {
+      if (!userProfile.hasCompletedOnboarding) {
+        setShowOnboarding(true);
+      } else {
+        const storedLang = userProfile.defaultLanguage || "Python";
+        setDefaultLanguage(storedLang);
+        setNewSolLang(storedLang);
+      }
+    }
+  }, [userProfile]);
 
   const [loading, setLoading] = useState(true);
 
+  const handleSelectProblem = async (prob: any) => {
+    if (!prob) {
+      setActiveProblem(null);
+      return;
+    }
+    setActiveProblem(prob);
+    setActiveTab("solutions");
+    setSelSolIdx(0);
+    try {
+      const fullDetails = await getProblemDetails(prob.id);
+      setActiveProblem(fullDetails);
+    } catch (err) {
+      console.error("Failed to load problem details:", err);
+    }
+  };
+
   const loadProblems = async () => {
     try {
-      const data = await getProblems();
-      setProblemsList(data);
+      const data = await getPaginatedProblems({
+        page: currentPage,
+        limit: rowsPerPage,
+        q: searchQuery,
+        difficulty: filterDiff,
+        status: filterStatus,
+        tag: filterTopic
+      });
+      setProblemsList(data.items);
+      setTotalProblemsCount(data.totalCount || 0);
       if (activeProblem) {
-        const updatedActive = data.find((p: any) => p.id === activeProblem.id);
-        setActiveProblem(updatedActive || null);
+        const fullDetails = await getProblemDetails(activeProblem.id);
+        setActiveProblem(fullDetails);
       }
     } catch (err) {
       console.error("Failed to load problems:", err);
@@ -237,28 +309,42 @@ export default function DashboardPage() {
       setLoading(false);
     }
     init();
-  }, [activeProblem?.id]);
+  }, [currentPage, rowsPerPage, searchQuery, filterDiff, filterStatus, filterTopic]);
 
   useEffect(() => {
-    if (problemsList.length > 0 && typeof window !== "undefined") {
+    if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const problemIdParam = params.get("p");
       if (problemIdParam) {
-        const prob = problemsList.find((p: any) => p.id === problemIdParam);
-        if (prob) {
-          setActiveProblem(prob);
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
+        getProblemDetails(problemIdParam)
+          .then((prob) => {
+            if (prob) {
+              setActiveProblem(prob);
+              setActiveTab("solutions");
+              setSelSolIdx(0);
+            }
+          })
+          .catch(console.error);
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
-  }, [problemsList]);
+  }, []);
 
-  const handleSaveOnboarding = () => {
-    localStorage.setItem("hasCompletedOnboarding", "true");
-    localStorage.setItem("defaultLanguage", defaultLanguage);
-    setNewSolLang(defaultLanguage);
-    setShowOnboarding(false);
-    showToast("Default language saved!", "success");
+  const handleSaveOnboarding = async () => {
+    try {
+      await saveOnboarding(defaultLanguage);
+      setUserProfile((prev: any) => ({
+        ...prev,
+        hasCompletedOnboarding: true,
+        defaultLanguage,
+      }));
+      setNewSolLang(defaultLanguage);
+      setShowOnboarding(false);
+      showToast("Default language saved!", "success");
+    } catch (err) {
+      console.error("Failed to save onboarding:", err);
+      showToast("Failed to save default language.", "error");
+    }
   };
 
 
@@ -384,22 +470,33 @@ export default function DashboardPage() {
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
-  const filteredProblems = problemsList.filter((prob) => {
-    const matchesSearch =
-      prob.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prob.num.toString().includes(searchQuery) ||
-      prob.topic.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDiff = filterDiff === "ALL" || prob.difficulty === filterDiff;
-    const matchesStatus = filterStatus === "ALL" || prob.status === filterStatus;
-    return matchesSearch && matchesDiff && matchesStatus;
-  });
-
-  const totalProblemsCount = filteredProblems.length;
+  const filteredProblems = problemsList;
   const totalPages = Math.ceil(totalProblemsCount / rowsPerPage);
-  const paginatedProblems = filteredProblems.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
+  const paginatedProblems = problemsList;
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+      if (currentPage > 3) {
+        pages.push("...");
+      }
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      if (currentPage < totalPages - 2) {
+        pages.push("...");
+      }
+      pages.push(totalPages);
+    }
+    return pages;
+  };
 
   return (
     <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
@@ -431,70 +528,10 @@ export default function DashboardPage() {
               </button>
             )}
 
-            {/* Notification Bell */}
-            <div className="relative">
-              <button 
-                onClick={() => setIsBellDropdownOpen(!isBellDropdownOpen)}
-                className="relative w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center text-foreground hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              >
-                <Bell className="w-5 h-5" />
-                {problemsList.some((p) => p.status === "Due Today" || p.status === "Overdue") && (
-                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border border-surface" />
-                )}
-              </button>
-
-              <AnimatePresence>
-                {isBellDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsBellDropdownOpen(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute right-0 mt-2.5 w-80 bg-surface border border-border rounded-2xl shadow-2xl z-50 p-4 font-sans text-xs space-y-3.5 max-h-[400px] overflow-y-auto"
-                    >
-                      <h4 className="font-display font-extrabold text-sm text-foreground pb-2 border-b border-border/80 flex items-center justify-between">
-                        <span>Revisit Reminders</span>
-                        <span className="text-[10px] font-sans font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                          {problemsList.filter((p) => p.status === "Due Today" || p.status === "Overdue").length} Due
-                        </span>
-                      </h4>
-
-                      <div className="space-y-2">
-                        {(() => {
-                          const dueList = problemsList.filter((p) => p.status === "Due Today" || p.status === "Overdue");
-                          if (dueList.length === 0) {
-                            return (
-                              <p className="text-center font-sans text-xs text-muted py-6">All caught up! No reminders for today.</p>
-                            );
-                          }
-                          return dueList.map((p) => (
-                            <button
-                              key={p.id}
-                              onClick={() => {
-                                setActiveProblem(p);
-                                setIsBellDropdownOpen(false);
-                              }}
-                              className="w-full text-left p-2.5 rounded-xl border border-border/60 bg-surface-2/30 hover:bg-surface-2 transition-all flex items-start gap-2.5 cursor-pointer"
-                            >
-                              <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${p.status === "Overdue" ? "bg-rose-500" : "bg-amber-500"}`} />
-                              <div className="space-y-0.5 flex-1 min-w-0">
-                                <h5 className="font-display font-bold text-foreground truncate">#{p.num} {p.name}</h5>
-                                <div className="flex items-center gap-2 text-[10px] text-muted font-semibold">
-                                  <span className={p.difficulty === "EASY" ? "text-emerald-500" : p.difficulty === "MED" ? "text-amber-500" : "text-rose-500"}>{p.difficulty}</span>
-                                  <span>•</span>
-                                  <span>{p.topic}</span>
-                                </div>
-                              </div>
-                            </button>
-                          ));
-                        })()}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
+            <NotificationBell onSelectProblem={(pid) => {
+              const prob = problemsList.find(p => p.id === pid);
+              if (prob) handleSelectProblem(prob);
+            }} />
 
             {/* User Avatar Circle with Initials & Dropdown */}
             <div className="relative">
@@ -556,8 +593,18 @@ export default function DashboardPage() {
                 placeholder="Search problems..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none font-sans text-xs text-foreground placeholder:text-muted/60 transition-all"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none font-sans text-xs text-foreground placeholder:text-muted/60 transition-all"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-lg flex items-center justify-center text-muted hover:text-foreground hover:bg-border/20 transition-all cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
@@ -566,14 +613,14 @@ export default function DashboardPage() {
               <div className="relative">
                 <button
                   onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border font-sans font-bold text-xs cursor-pointer transition-all shadow-sm ${isFilterDropdownOpen || filterDiff !== "ALL" || filterStatus !== "ALL"
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border font-sans font-bold text-xs cursor-pointer transition-all shadow-sm ${isFilterDropdownOpen || filterDiff !== "ALL" || filterStatus !== "ALL" || filterTopic !== "ALL"
                       ? "bg-primary/10 border-primary text-primary"
                       : "bg-surface-2 border-border hover:bg-border/20 text-foreground"
                     }`}
                 >
                   <Filter className="w-3.5 h-3.5" />
                   <span>Filter</span>
-                  {(filterDiff !== "ALL" || filterStatus !== "ALL") && (
+                  {(filterDiff !== "ALL" || filterStatus !== "ALL" || filterTopic !== "ALL") && (
                     <span className="w-2 h-2 rounded-full bg-primary" />
                   )}
                 </button>
@@ -586,7 +633,7 @@ export default function DashboardPage() {
                         initial={{ opacity: 0, y: -8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -8 }}
-                        className="absolute right-0 mt-2 z-20 w-56 bg-surface border border-border rounded-xl shadow-xl p-4 font-sans text-xs space-y-3"
+                        className="absolute right-0 mt-2 z-20 w-64 bg-surface border border-border rounded-xl shadow-xl p-4 font-sans text-xs space-y-3"
                       >
                         <div>
                           <span className="block font-semibold text-muted mb-1.5 uppercase tracking-wide text-[9px]">Difficulty</span>
@@ -624,13 +671,51 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        {(filterDiff !== "ALL" || filterStatus !== "ALL" || searchQuery !== "") && (
+                        <div className="pt-2.5 border-t border-border/40">
+                          <span className="block font-semibold text-muted mb-1.5 uppercase tracking-wide text-[9px]">Tags</span>
+                          <input
+                            type="text"
+                            placeholder="Search topics..."
+                            value={topicSearchQuery}
+                            onChange={(e) => setTopicSearchQuery(e.target.value)}
+                            className="w-full px-2 py-1.5 mb-2 rounded bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-[10px] text-foreground placeholder:text-muted/65"
+                          />
+                          <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+                            <button
+                              onClick={() => setFilterTopic("ALL")}
+                              className={`px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterTopic === "ALL"
+                                  ? "bg-primary/10 border-primary text-primary"
+                                  : "bg-surface-2 border-border text-muted hover:text-foreground"
+                                }`}
+                            >
+                              ALL
+                            </button>
+                            {predefinedTopics
+                              .filter((topic) => topic.toLowerCase().includes(topicSearchQuery.toLowerCase()))
+                              .map((topic) => (
+                                <button
+                                  key={topic}
+                                  onClick={() => setFilterTopic(topic)}
+                                  className={`px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterTopic === topic
+                                      ? "bg-primary/10 border-primary text-primary"
+                                      : "bg-surface-2 border-border text-muted hover:text-foreground"
+                                    }`}
+                                >
+                                  {topic}
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+
+                        {(filterDiff !== "ALL" || filterStatus !== "ALL" || filterTopic !== "ALL" || searchQuery !== "") && (
                           <div className="pt-2 border-t border-border/40 flex justify-end">
                             <button
                               onClick={() => {
                                 setFilterDiff("ALL");
                                 setFilterStatus("ALL");
+                                setFilterTopic("ALL");
                                 setSearchQuery("");
+                                setTopicSearchQuery("");
                               }}
                               className="text-[9px] font-bold text-rose-500 hover:underline cursor-pointer"
                             >
@@ -740,85 +825,110 @@ export default function DashboardPage() {
             <table className="w-full min-w-[650px] border-collapse text-left text-xs font-sans">
               <thead>
                 <tr className="border-b border-border/80 text-muted font-bold tracking-wider uppercase text-[9px]">
-                  <th className="pb-3.5 pl-2">Difficulty</th>
-                  <th className="pb-3.5">Problem</th>
-                  <th className="pb-3.5">Topic</th>
-                  <th className="pb-3.5">Status</th>
-                  <th className="pb-3.5 text-right pr-2">Action</th>
+                  <th className="pb-3.5 pl-2 w-20 min-w-[80px]">Difficulty</th>
+                  <th className="pb-3.5 min-w-[180px]">Problem</th>
+                  <th className="pb-3.5 min-w-[150px]">Tags</th>
+                  <th className="pb-3.5 min-w-[100px]">Status</th>
+                  <th className="pb-3.5 text-right pr-2 min-w-[90px]">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40 font-medium">
-                {paginatedProblems.map((prob, idx) => (
-                  <tr
-                    key={idx}
-                    onClick={() => {
-                      setActiveProblem(prob);
-                      setActiveTab("solutions");
-                      setSelSolIdx(0);
-                    }}
-                    className="hover:bg-surface-2/35 transition-colors duration-150 group cursor-pointer"
-                  >
-                    {/* Difficulty */}
-                    <td className="py-4 pl-2">
-                      <span className={`font-display font-bold text-[9px] px-2 py-0.5 rounded shrink-0 ${prob.diffColor}`}>
-                        {prob.difficulty === "MED" ? "MEDIUM" : prob.difficulty}
-                      </span>
-                    </td>
-
-                    {/* Name */}
-                    <td className="py-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-display font-bold text-xs text-foreground group-hover:text-primary transition-colors">
-                          {prob.name}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Topic */}
-                    <td className="py-4 text-muted text-xs font-sans">
-                      {prob.topic}
-                    </td>
-
-                    {/* Status badge */}
-                    <td className="py-4">
-                      <span className={`inline-flex items-center gap-1 font-sans font-bold text-[10px] border px-2 py-0.5 rounded-full ${prob.statusColor}`}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                        {prob.status}
-                      </span>
-                    </td>
-
-                    {/* Action buttons — icon only */}
-                    <td className="py-4 text-right pr-2" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-2">
-                        {/* Edit Problem */}
-                        <button
-                          onClick={() => {
-                            setEditingProblemNum(prob.num);
-                            setAddName(prob.name);
-                            setAddUrl(prob.url === "#" ? "" : prob.url);
-                            setAddDiff(prob.difficulty);
-                            setSelectedTopics(prob.topic.split(",").map((t) => t.trim()));
-                            setAddIsPublic(!!prob.isPublic);
-                            setIsAddProblemOpen(true);
-                          }}
-                          className="w-8 h-8 rounded-lg bg-amber-500/5 border border-amber-500/20 flex items-center justify-center text-amber-500 hover:bg-amber-500/10 transition-all cursor-pointer"
-                          title="Edit Problem"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Delete Problem — triggers confirm modal */}
-                        <button
-                          onClick={() => setConfirmDeleteProblemNum(prob.num)}
-                          className="w-8 h-8 rounded-lg bg-rose-500/5 border border-rose-500/20 flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
-                          title="Delete Problem"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="py-20 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <div className="w-8 h-8 border-3 border-t-primary border-border/40 rounded-full animate-spin" />
+                        <span className="font-bold text-muted uppercase tracking-wider text-[9px] font-sans">Loading Recall Vault…</span>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : paginatedProblems.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-20 text-center text-muted font-sans text-xs">
+                      No problems found.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedProblems.map((prob, idx) => (
+                    <tr
+                      key={idx}
+                      onClick={() => {
+                        handleSelectProblem(prob);
+                      }}
+                      className="hover:bg-surface-2/35 transition-colors duration-150 group cursor-pointer"
+                    >
+                      {/* Difficulty */}
+                      <td className="py-4 pl-2">
+                        <span className={`font-display font-bold text-[9px] px-2 py-0.5 rounded shrink-0 ${prob.diffColor}`}>
+                          {prob.difficulty === "MED" ? "MEDIUM" : prob.difficulty}
+                        </span>
+                      </td>
+
+                      {/* Name */}
+                      <td className="py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-display font-bold text-xs text-foreground group-hover:text-primary transition-colors">
+                            {prob.name}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Tags */}
+                      <td className="py-4 font-sans text-xs">
+                        <div className="flex flex-wrap gap-1.5 max-w-xs sm:max-w-md">
+                          {prob.topic.split(",").map((topic: string, i: number) => {
+                            const trimmed = topic.trim();
+                            if (!trimmed) return null;
+                            return (
+                              <span key={i} className="px-2 py-0.5 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 text-primary dark:text-primary-foreground font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                                {trimmed}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </td>
+
+                      {/* Status badge */}
+                      <td className="py-4">
+                        <span className={`inline-flex items-center gap-1 font-sans font-bold text-[10px] border px-2 py-0.5 rounded-full ${prob.statusColor}`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                          {prob.status}
+                        </span>
+                      </td>
+
+                      {/* Action buttons — icon only */}
+                      <td className="py-4 text-right pr-2" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Edit Problem */}
+                          <button
+                            onClick={() => {
+                              setEditingProblemNum(prob.num);
+                              setAddName(prob.name);
+                              setAddUrl(prob.url === "#" ? "" : prob.url);
+                              setAddDiff(prob.difficulty);
+                              setSelectedTopics(prob.topic.split(",").map((t) => t.trim()));
+                              setAddIsPublic(!!prob.isPublic);
+                              setIsAddProblemOpen(true);
+                            }}
+                            className="w-8 h-8 rounded-lg bg-amber-500/5 border border-amber-500/20 flex items-center justify-center text-amber-500 hover:bg-amber-500/10 transition-all cursor-pointer"
+                            title="Edit Problem"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Delete Problem — triggers confirm modal */}
+                          <button
+                            onClick={() => setConfirmDeleteProblemNum(prob.num)}
+                            className="w-8 h-8 rounded-lg bg-rose-500/5 border border-rose-500/20 flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
+                            title="Delete Problem"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -843,12 +953,18 @@ export default function DashboardPage() {
                   >
                     Prev
                   </button>
-                  {Array.from({ length: totalPages }).map((_, i) => {
-                    const pageNum = i + 1;
+                  {getPageNumbers().map((pageNum, idx) => {
+                    if (pageNum === "...") {
+                      return (
+                        <span key={`ellipsis-${idx}`} className="px-2.5 py-1.5 text-muted select-none font-bold">
+                          ...
+                        </span>
+                      );
+                    }
                     return (
                       <button
                         key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
+                        onClick={() => setCurrentPage(pageNum as number)}
                         className={`px-3 py-1.5 rounded-lg border font-bold transition-all cursor-pointer ${
                           currentPage === pageNum
                             ? "bg-primary border-primary text-white"
@@ -940,17 +1056,17 @@ export default function DashboardPage() {
             >
 
               {/* Modal Header */}
-              <div className="p-6 border-b border-border/80 flex items-start justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="font-display font-extrabold text-xl text-foreground">
+              <div className="p-4 sm:p-6 border-b border-border/80 flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+                    <span className="font-display font-extrabold text-xl text-foreground break-words min-w-0">
                       {activeProblem.name}
                     </span>
                     <a
                       href={activeProblem.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-7 h-7 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-foreground transition-colors"
+                      className="w-7 h-7 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-foreground transition-colors shrink-0"
                       title="Open LeetCode URL"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
@@ -967,7 +1083,7 @@ export default function DashboardPage() {
                       const trimmed = topic.trim();
                       if (!trimmed) return null;
                       return (
-                        <span key={i} className="px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/20 text-primary font-bold text-[9px] font-sans">
+                        <span key={i} className="px-2 py-0.5 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 text-primary dark:text-primary-foreground font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
                           {trimmed}
                         </span>
                       );
@@ -976,93 +1092,180 @@ export default function DashboardPage() {
                     <span>•</span>
                     <span className="italic">{activeProblem.interval}</span>
                   </div>
-                  {activeProblem.isPublic && (
-                    <div className="flex items-center gap-1.5 mt-2.5 px-3 py-1.5 rounded-xl bg-emerald-500/5 border border-emerald-500/15 text-[10px] text-emerald-400 font-sans font-bold w-fit">
-                      <Globe className="w-3.5 h-3.5 shrink-0" />
-                      <span>Public Link:</span>
-                      <span className="text-foreground/75 font-mono select-all underline decoration-emerald-500/30">
-                        {typeof window !== "undefined" ? `${window.location.origin}/p/${activeProblem.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}` : ""}
-                      </span>
-                    </div>
-                  )}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Public Sharing Toggle */}
-                  <button
-                    onClick={async () => {
-                      try {
-                        const updated = await updateProblem(activeProblem.num, {
-                          name: activeProblem.name,
-                          difficulty: activeProblem.difficulty,
-                          topic: activeProblem.topic,
-                          url: activeProblem.url,
-                          isPublic: !activeProblem.isPublic
-                        });
-                        await loadProblems();
-                        showToast(updated.isPublic ? "Public sharing enabled!" : "Public sharing disabled", "success");
-                      } catch (err) {
-                        console.error(err);
-                      }
-                    }}
-                    className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-all cursor-pointer ${
-                      activeProblem.isPublic 
-                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
-                        : "bg-surface-2 border-border text-muted hover:text-foreground"
-                    }`}
-                    title={activeProblem.isPublic ? "Public Sharing Enabled" : "Enable Public Sharing"}
-                  >
-                    {activeProblem.isPublic ? <Globe className="w-4.5 h-4.5" /> : <Lock className="w-4.5 h-4.5" />}
-                  </button>
-
-                  {/* Favorite Toggle */}
-                  <button
-                    onClick={async () => {
-                      try {
-                        await toggleFavorite(activeProblem.num);
-                        await loadProblems();
-                        showToast(!activeProblem.isFavorite ? "Added to favorites!" : "Removed from favorites!", "success");
-                      } catch (err) {
-                        console.error(err);
-                      }
-                    }}
-                    className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-foreground active:scale-95 transition-all cursor-pointer"
-                  >
-                    <Star className={`w-5 h-5 ${activeProblem.isFavorite ? "text-accent fill-accent" : "text-muted"}`} />
-                  </button>
-
-                  {/* Share button */}
-                  <button
-                    onClick={async () => {
-                      if (!activeProblem.isPublic) {
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Desktop Actions (hidden on mobile) */}
+                  <div className="hidden sm:flex items-center gap-2">
+                    {/* Public Sharing Toggle */}
+                    <button
+                      onClick={async () => {
                         try {
-                          await updateProblem(activeProblem.num, {
+                          const updated = await updateProblem(activeProblem.num, {
                             name: activeProblem.name,
                             difficulty: activeProblem.difficulty,
                             topic: activeProblem.topic,
                             url: activeProblem.url,
-                            isPublic: true
+                            isPublic: !activeProblem.isPublic
                           });
                           await loadProblems();
+                          showToast(updated.isPublic ? "Public sharing enabled!" : "Public sharing disabled", "success");
                         } catch (err) {
                           console.error(err);
                         }
-                      }
-                      const slug = activeProblem.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-                      const shareUrl = `${window.location.origin}/p/${slug}`;
-                      navigator.clipboard.writeText(shareUrl);
-                      showToast("Public shareable link copied!", "success");
-                    }}
-                    className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-foreground active:scale-95 transition-all cursor-pointer"
-                    title="Copy Public Share Link"
-                  >
-                    <Share2 className="w-4 h-4" />
-                  </button>
+                      }}
+                      className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-all cursor-pointer ${
+                        activeProblem.isPublic 
+                          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
+                          : "bg-surface-2 border-border text-muted hover:text-foreground"
+                      }`}
+                      title={activeProblem.isPublic ? "Public Sharing Enabled" : "Enable Public Sharing"}
+                    >
+                      {activeProblem.isPublic ? <Globe className="w-4.5 h-4.5" /> : <Lock className="w-4.5 h-4.5" />}
+                    </button>
 
-                  {/* Close button */}
+                    {/* Favorite Toggle */}
+                    <button
+                      onClick={async () => {
+                        try {
+                          await toggleFavorite(activeProblem.num);
+                          await loadProblems();
+                          showToast(!activeProblem.isFavorite ? "Added to favorites!" : "Removed from favorites!", "success");
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                      className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-foreground active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Star className={`w-5 h-5 ${activeProblem.isFavorite ? "text-accent fill-accent" : "text-muted"}`} />
+                    </button>
+
+                    {/* Share button */}
+                    {activeProblem.isPublic && (
+                      <button
+                        onClick={() => {
+                          const slug = activeProblem.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+                          const shareUrl = `${window.location.origin}/problem/${slug}`;
+                          navigator.clipboard.writeText(shareUrl);
+                          showToast("Public link copied to clipboard!", "success");
+                        }}
+                        className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-foreground active:scale-95 transition-all cursor-pointer"
+                        title="Copy Public Share Link"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Mobile Dropdown Trigger & Options */}
+                  <div className="relative sm:hidden">
+                    <button
+                      onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                      className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-all cursor-pointer z-50 relative ${
+                        isMoreMenuOpen 
+                          ? "bg-surface-3 border-primary/30 text-primary" 
+                          : "bg-surface-2 border-border text-muted hover:text-foreground"
+                      }`}
+                      title="More Options"
+                    >
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+
+                    {isMoreMenuOpen && (
+                      <div 
+                        className="fixed inset-0 z-40 cursor-default" 
+                        onClick={() => setIsMoreMenuOpen(false)} 
+                      />
+                    )}
+
+                    <AnimatePresence>
+                      {isMoreMenuOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute right-0 mt-2 w-56 origin-top-right rounded-xl border border-border bg-surface-2 p-1.5 shadow-xl z-50 font-sans"
+                        >
+                          {/* Toggle Public Sharing */}
+                          <button
+                            onClick={async () => {
+                              setIsMoreMenuOpen(false);
+                              try {
+                                const updated = await updateProblem(activeProblem.num, {
+                                  name: activeProblem.name,
+                                  difficulty: activeProblem.difficulty,
+                                  topic: activeProblem.topic,
+                                  url: activeProblem.url,
+                                  isPublic: !activeProblem.isPublic
+                                });
+                                await loadProblems();
+                                showToast(updated.isPublic ? "Public sharing enabled!" : "Public sharing disabled", "success");
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            }}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+                          >
+                            {activeProblem.isPublic ? (
+                              <>
+                                <Lock className="w-4 h-4 text-muted shrink-0" />
+                                <span>Make Private</span>
+                              </>
+                            ) : (
+                              <>
+                                <Globe className="w-4 h-4 text-emerald-500 shrink-0" />
+                                <span>Make Public</span>
+                              </>
+                            )}
+                          </button>
+
+                          {/* Toggle Favorite */}
+                          <button
+                            onClick={async () => {
+                              setIsMoreMenuOpen(false);
+                              try {
+                                await toggleFavorite(activeProblem.num);
+                                await loadProblems();
+                                showToast(!activeProblem.isFavorite ? "Added to favorites!" : "Removed from favorites!", "success");
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            }}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+                          >
+                            <Star className={`w-4 h-4 shrink-0 ${activeProblem.isFavorite ? "text-accent fill-accent" : "text-muted"}`} />
+                            <span>{activeProblem.isFavorite ? "Remove Favorite" : "Mark as Favorite"}</span>
+                          </button>
+
+                          {/* Copy Share Link */}
+                          {activeProblem.isPublic && (
+                            <button
+                              onClick={() => {
+                                setIsMoreMenuOpen(false);
+                                const slug = activeProblem.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+                                const shareUrl = `${window.location.origin}/problem/${slug}`;
+                                navigator.clipboard.writeText(shareUrl);
+                                showToast("Public link copied to clipboard!", "success");
+                              }}
+                              className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
+                            >
+                              <Share2 className="w-4 h-4 shrink-0" />
+                              <span>Copy Share Link</span>
+                            </button>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                   {/* Close button */}
                   <button
-                    onClick={() => setActiveProblem(null)}
-                    className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-rose-500 active:scale-95 transition-all cursor-pointer"
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setActiveProblem(null);
+                    }}
+                    className="hidden sm:flex w-10 h-10 rounded-xl bg-surface-2 border border-border items-center justify-center text-muted hover:text-rose-500 active:scale-95 transition-all cursor-pointer z-10"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1118,15 +1321,14 @@ export default function DashboardPage() {
                       </div>
                     ) : (
                       <div className="space-y-6 w-full">
-
                         {/* Inline Language Selector Tabs (Replacing Sidebar) */}
-                        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/40 pb-4">
-                          <div className="flex items-center gap-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/40 pb-4 w-full">
+                          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full pb-1 -mb-1 sm:overflow-visible sm:pb-0 sm:mb-0 shrink-0">
                             {activeProblem.solutions.map((sol: any, idx: number) => (
                               <button
                                 key={idx}
                                 onClick={() => setSelSolIdx(idx)}
-                                className={`px-4 py-2 rounded-xl border font-sans font-bold text-xs transition-all cursor-pointer flex items-center gap-2 ${selSolIdx === idx
+                                className={`px-4 py-2 rounded-xl border font-sans font-bold text-xs transition-all cursor-pointer flex items-center gap-2 shrink-0 ${selSolIdx === idx
                                     ? "bg-primary/10 border-primary text-primary"
                                     : "border-border bg-surface-2/40 text-muted hover:bg-surface-2 hover:text-foreground"
                                   }`}
@@ -1137,7 +1339,7 @@ export default function DashboardPage() {
                             ))}
                           </div>
 
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-start sm:justify-end shrink-0">
                             {/* Edit selected solution — icon only */}
                             <button
                               onClick={() => {
@@ -1214,39 +1416,19 @@ export default function DashboardPage() {
                             <span className="flex items-center gap-1">Space: <span className="text-accent font-extrabold">{activeProblem.solutions[selSolIdx].space}</span></span>
                           </div>
 
-                          {/* Code Block - Premium Syntax highlighting */}
-                          <div className="rounded-2xl border border-border bg-[#1A1A1F] overflow-hidden relative group">
-
-                            {/* Editor Header */}
-                            <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-surface/5">
-                              <span className="font-mono text-[10px] text-muted font-bold uppercase tracking-wider">
-                                {activeProblem.solutions[selSolIdx].lang} Source
-                              </span>
-
-                              {/* Copy button */}
-                              <button
-                                onClick={() => handleCopyCode(activeProblem.solutions[selSolIdx].code)}
-                                className="inline-flex items-center gap-1 text-[10px] font-sans font-bold text-muted hover:text-foreground active:scale-95 transition-all cursor-pointer"
-                              >
-                                {copiedCode ? (
-                                  <>
-                                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                    <span className="text-emerald-400">Copied</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="w-3 h-3" />
-                                    <span>Copy</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-
-                            {/* Simulated Monaco code */}
-                            <pre className="p-5 overflow-x-auto font-mono text-[11px] leading-relaxed text-slate-300">
-                              <code dangerouslySetInnerHTML={{ __html: highlightCode(activeProblem.solutions[selSolIdx].code, activeProblem.solutions[selSolIdx].lang) }} />
-                            </pre>
-
+                          {/* Simulated Monaco code */}
+                          <div className="rounded-xl overflow-hidden font-mono text-[11px] leading-relaxed [&>pre]:p-5 [&>pre]:overflow-x-auto [&>pre]:w-full min-h-[150px] flex flex-col justify-center bg-surface dark:bg-[#1A1A1F] border border-border has-line-numbers">
+                            {isCodeLoading || !highlightedSolCode ? (
+                              <div className="flex flex-col items-center justify-center gap-2 py-12">
+                                <div className="w-6 h-6 border-2 border-t-primary border-border/40 rounded-full animate-spin" />
+                                <span className="font-bold text-muted uppercase tracking-wider text-[8px] font-sans">Loading Code…</span>
+                              </div>
+                            ) : (
+                              <div 
+                                className="w-full"
+                                dangerouslySetInnerHTML={{ __html: highlightedSolCode }} 
+                              />
+                            )}
                           </div>
 
                           {/* ── Solution Notes ── */}
@@ -1294,7 +1476,8 @@ export default function DashboardPage() {
                                             onKeyDown={async (e) => {
                                               if (e.key === "Enter" && editingSolNoteText.trim()) {
                                                 try {
-                                                  await updateSolutionNote(n.id, editingSolNoteText.trim());
+                                                  const noteId = n.id;
+                                                  await updateSolutionNote(noteId, editingSolNoteText.trim());
                                                   await loadProblems();
                                                   setEditingSolNoteIdx(null);
                                                   setEditingSolNoteSolIdx(null);
@@ -1302,6 +1485,7 @@ export default function DashboardPage() {
                                                   showToast("Solution note updated", "success");
                                                 } catch (err) {
                                                   console.error(err);
+                                                  showToast("Failed to update note", "error");
                                                 }
                                               }
                                             }}
@@ -1310,7 +1494,8 @@ export default function DashboardPage() {
                                             onClick={async () => {
                                               if (!editingSolNoteText.trim()) return;
                                               try {
-                                                await updateSolutionNote(n.id, editingSolNoteText.trim());
+                                                const noteId = n.id;
+                                                await updateSolutionNote(noteId, editingSolNoteText.trim());
                                                 await loadProblems();
                                                 setEditingSolNoteIdx(null);
                                                 setEditingSolNoteSolIdx(null);
@@ -1318,6 +1503,7 @@ export default function DashboardPage() {
                                                 showToast("Solution note updated", "success");
                                               } catch (err) {
                                                 console.error(err);
+                                                showToast("Failed to update note", "error");
                                               }
                                             }}
                                             className="p-1 text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
@@ -1363,11 +1549,13 @@ export default function DashboardPage() {
                                             <button
                                               onClick={async () => {
                                                 try {
-                                                  await deleteSolutionNote(n.id);
+                                                  const noteId = n.id;
+                                                  await deleteSolutionNote(noteId);
                                                   await loadProblems();
                                                   showToast("Solution note deleted", "success");
                                                 } catch (err) {
                                                   console.error(err);
+                                                  showToast("Failed to delete note", "error");
                                                 }
                                               }}
                                               className="p-1 text-rose-400 hover:text-rose-300 transition-all cursor-pointer shrink-0"
@@ -1954,7 +2142,7 @@ export default function DashboardPage() {
             >
               <div className="p-6 border-b border-border/80 flex items-center justify-between">
                 <h2 className="font-display font-extrabold text-lg text-foreground">
-                  Add Coding Problem
+                  {editingProblemNum !== null ? "Update Coding Problem" : "Add Coding Problem"}
                 </h2>
                 <button
                   onClick={() => setIsAddProblemOpen(false)}
@@ -2038,7 +2226,7 @@ export default function DashboardPage() {
                           if (!customTopicInput.trim()) return;
                           const newTag = customTopicInput.trim();
                           if (!predefinedTopics.includes(newTag)) {
-                            setPredefinedTopics([...predefinedTopics, newTag]);
+                            setCustomPredefinedTopics([...customPredefinedTopics, newTag]);
                           }
                           if (!selectedTopics.includes(newTag)) {
                             setSelectedTopics([...selectedTopics, newTag]);
@@ -2054,7 +2242,7 @@ export default function DashboardPage() {
                         if (!customTopicInput.trim()) return;
                         const newTag = customTopicInput.trim();
                         if (!predefinedTopics.includes(newTag)) {
-                          setPredefinedTopics([...predefinedTopics, newTag]);
+                          setCustomPredefinedTopics([...customPredefinedTopics, newTag]);
                         }
                         if (!selectedTopics.includes(newTag)) {
                           setSelectedTopics([...selectedTopics, newTag]);
@@ -2165,7 +2353,7 @@ export default function DashboardPage() {
                     type="submit"
                     className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold font-sans cursor-pointer transition-all shadow-md shadow-primary/10"
                   >
-                    Add Problem
+                    {editingProblemNum !== null ? "Update Problem" : "Add Problem"}
                   </button>
                 </div>
 
@@ -2608,7 +2796,7 @@ export default function DashboardPage() {
                     placeholder={getCodePlaceholder(newSolLang)}
                     value={newSolCode}
                     onChange={(e) => setNewSolCode(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-[#1A1A1F] border border-border focus:border-primary/50 focus:outline-none text-slate-200 font-mono text-[11px] placeholder:text-slate-600 resize-y overflow-x-hidden leading-relaxed"
+                    className="w-full px-3 py-2.5 rounded-xl bg-surface-2 dark:bg-[#1A1A1F] border border-border focus:border-primary/50 focus:outline-none text-foreground dark:text-slate-200 font-mono text-[11px] placeholder:text-muted/50 resize-y overflow-x-hidden leading-relaxed"
                   />
                 </div>
 

@@ -2,8 +2,9 @@
 
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { Star, Globe, ArrowLeft, ExternalLink, Calendar, Copy, Check, AlertCircle, AlertTriangle, CheckCircle2, FileText, Lock } from "lucide-react";
+import { Star, Globe, ArrowLeft, ExternalLink, Calendar, Copy, Check, AlertCircle, AlertTriangle, CheckCircle2, FileText, Lock, Library } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { formatISTDate } from "@/lib/timestamps/ist";
 import Prism from "prismjs";
 import "prismjs/components/prism-python";
 import "prismjs/components/prism-clike";
@@ -15,6 +16,9 @@ import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-go";
 import "prismjs/components/prism-rust";
 import "prismjs/themes/prism-tomorrow.css";
+import { getPublicProblemBySlug, getHighlightedHtml } from "@/lib/actions";
+import { useTheme } from "next-themes";
+
 
 function highlightCode(code: string, lang: string) {
   if (!code) return "";
@@ -50,65 +54,35 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
   const [selSolIdx, setSelSolIdx] = useState(0);
   const [copiedCode, setCopiedCode] = useState(false);
   const [activeTab, setActiveTab] = useState<"solutions" | "notes" | "history">("solutions");
+  const [highlightedSolHtml, setHighlightedSolHtml] = useState("");
+
+  const { resolvedTheme } = useTheme();
+  const selectedSol = problem?.solutions?.[selSolIdx];
 
   useEffect(() => {
-    let list = [];
-    const stored = localStorage.getItem("codevault_problems");
-    if (stored) {
+    if (selectedSol) {
+      getHighlightedHtml(selectedSol.code, selectedSol.lang, resolvedTheme === "light" ? "light" : "dark").then((html) => {
+        setHighlightedSolHtml(html);
+      });
+    } else {
+      setHighlightedSolHtml("");
+    }
+  }, [selectedSol, resolvedTheme]);
+
+  useEffect(() => {
+    async function load() {
       try {
-        list = JSON.parse(stored);
-      } catch (e) {
-        console.error(e);
+        const found = await getPublicProblemBySlug(slug);
+        if (found) {
+          setProblem(found);
+        }
+      } catch (err) {
+        console.error("Failed to load shared problem from database:", err);
+      } finally {
+        setLoading(false);
       }
     }
-    
-    // Fallback default list if local storage is empty
-    if (list.length === 0) {
-      list = [
-        {
-          num: 15,
-          name: "3Sum",
-          difficulty: "MED",
-          diffColor: "text-amber-500 bg-amber-500/10",
-          topic: "Array, Two Pointers",
-          status: "Solved",
-          interval: "Due in 3d",
-          url: "https://leetcode.com/problems/3sum/",
-          isFavorite: true,
-          isPublic: true,
-          solutions: [
-            {
-              name: "Optimal Two Pointers",
-              lang: "Python",
-              intuition: "Sort array first to easily avoid duplicate triplets using two pointers from outer loops.",
-              approach: "Sort array. Iterate through array with pointer i. For each i, run standard two-pointer check on remaining subarray (i+1 to len-1). Skip duplicate values.",
-              time: "O(N²)",
-              space: "O(1)",
-              code: `class Solution:\n    def threeSum(self, nums: List[int]) -> List[List[int]]:\n        nums.sort()\n        res = []\n        for i in range(len(nums) - 2):\n            if i > 0 and nums[i] == nums[i-1]:\n                continue\n            l, r = i + 1, len(nums) - 1\n            while l < r:\n                s = nums[i] + nums[l] + nums[r]\n                if s < 0:\n                    l += 1\n                elif s > 0:\n                    r -= 1\n                else:\n                    res.append([nums[i], nums[l], nums[r]])\n                    while l < r and nums[l] == nums[l+1]: l += 1\n                    while l < r and nums[r] == nums[r-1]: r -= 1\n                    l += 1\n                    r -= 1\n        return res`,
-              notes: [
-                { type: "mistake", text: "Forgetting to skip duplicates inside the while loop." },
-                { type: "warning", text: "Index underflow if nums size is less than 3." }
-              ]
-            }
-          ],
-          notes: [
-            "Sorting array is key for duplicate checks.",
-            "Check negative boundary conditions at initialization."
-          ],
-          history: [
-            { stage: "Day 0 - Initial", date: "01-Jun-2026", status: "Done" },
-            { stage: "Day 3 - Stage 1", date: "04-Jun-2026", status: "Done" }
-          ]
-        }
-      ];
-    }
-
-    const getSlug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-    const found = list.find((p: any) => getSlug(p.name) === slug);
-    if (found && found.isPublic) {
-      setProblem(found);
-    }
-    setLoading(false);
+    load();
   }, [slug]);
 
   const copyToClipboard = (text: string) => {
@@ -159,7 +133,7 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
     );
   }
 
-  const selectedSol = problem.solutions[selSolIdx];
+  // We already defined selectedSol above
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans text-xs p-6 md:p-12 transition-colors duration-300 dots-pattern">
@@ -189,17 +163,30 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                 </span>
               </div>
               
-              <div className="flex flex-wrap gap-2 pt-1">
-                <span className={`font-display font-bold text-[9px] px-2 py-0.5 rounded ${
+              <div className="flex flex-nowrap items-center gap-2 pt-1 max-w-full overflow-hidden select-none">
+                <span className={`font-display font-bold text-[9px] px-2 py-0.5 rounded whitespace-nowrap shrink-0 ${
                   problem.difficulty === "EASY" ? "text-emerald-500 bg-emerald-500/10" : problem.difficulty === "HARD" ? "text-rose-500 bg-rose-500/10" : "text-amber-500 bg-amber-500/10"
                 }`}>
                   {problem.difficulty === "MED" ? "MEDIUM" : problem.difficulty}
                 </span>
-                {problem.topic.split(",").map((t: string, idx: number) => (
-                  <span key={idx} className="bg-surface-2 border border-border px-2 py-0.5 rounded text-[9px] font-bold text-muted">
-                    {t.trim()}
-                  </span>
-                ))}
+                {(() => {
+                  const parts = (problem.topic || "").split(",").map((t: string) => t.trim()).filter(Boolean);
+                  const displayParts = parts.slice(0, 3);
+                  return (
+                    <>
+                      {displayParts.map((t: string, idx: number) => (
+                        <span key={idx} className="bg-surface-2 border border-border px-2 py-0.5 rounded text-[9px] font-bold text-muted whitespace-nowrap shrink-0">
+                          {t}
+                        </span>
+                      ))}
+                      {parts.length > 3 && (
+                        <span className="bg-surface-2 border border-border px-2 py-0.5 rounded text-[9px] font-bold text-muted whitespace-nowrap shrink-0">
+                          ...
+                        </span>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -208,10 +195,10 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                 href={problem.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-surface-2 hover:bg-border/20 text-muted hover:text-foreground font-sans font-bold text-[11px] cursor-pointer transition-colors"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-xl border border-border bg-surface-2 hover:bg-border/20 text-muted hover:text-foreground cursor-pointer transition-colors"
+                title="View on LeetCode"
               >
-                LeetCode
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-4 h-4" />
               </a>
             </div>
           </div>
@@ -272,7 +259,7 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                         <span className="font-semibold text-primary tracking-wider uppercase text-[9px] block">
                           Intuition
                         </span>
-                        <p className="mt-1.5 text-foreground/80 leading-relaxed font-medium">
+                        <p className="mt-1.5 text-foreground/80 leading-relaxed font-medium whitespace-pre-wrap break-words">
                           {selectedSol.intuition}
                         </p>
                       </div>
@@ -280,7 +267,7 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                         <span className="font-semibold text-primary tracking-wider uppercase text-[9px] block">
                           Approach
                         </span>
-                        <p className="mt-1.5 text-foreground/80 leading-relaxed font-medium">
+                        <p className="mt-1.5 text-foreground/80 leading-relaxed font-medium whitespace-pre-wrap break-words">
                           {selectedSol.approach}
                         </p>
                       </div>
@@ -289,20 +276,12 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
 
                   {/* Right Column: Dynamic Code Box & Complexities */}
                   <div className="lg:col-span-8 space-y-4">
-                    {/* Complexity Pills */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-3 bg-surface border border-border rounded-2xl flex flex-col justify-center">
-                        <span className="text-[9px] text-muted font-bold uppercase tracking-wider">Time Complexity</span>
-                        <span className="text-sm font-display font-extrabold text-foreground mt-0.5">
-                          {selectedSol.time}
-                        </span>
-                      </div>
-                      <div className="p-3 bg-surface border border-border rounded-2xl flex flex-col justify-center">
-                        <span className="text-[9px] text-muted font-bold uppercase tracking-wider">Space Complexity</span>
-                        <span className="text-sm font-display font-extrabold text-foreground mt-0.5">
-                          {selectedSol.space}
-                        </span>
-                      </div>
+                    {/* Complexities bar */}
+                    <div className="flex gap-6 p-4 rounded-xl bg-surface border border-border/40 font-sans text-xs font-bold text-muted justify-start items-center">
+                      <span className="text-[10px] tracking-wider uppercase text-muted/80">Complexities:</span>
+                      <span className="flex items-center gap-1">Time: <span className="text-primary font-extrabold">{selectedSol.time}</span></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-border" />
+                      <span className="flex items-center gap-1">Space: <span className="text-accent font-extrabold">{selectedSol.space}</span></span>
                     </div>
 
                     {/* Code Editor Mock */}
@@ -331,9 +310,10 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                         </button>
                       </div>
 
-                      <pre className="p-5 overflow-x-auto font-mono text-[11px] leading-relaxed text-slate-300">
-                        <code dangerouslySetInnerHTML={{ __html: highlightCode(selectedSol.code, selectedSol.lang) }} />
-                      </pre>
+                      <div 
+                        className="rounded-xl overflow-hidden font-mono text-[11px] leading-relaxed [&>pre]:p-5 [&>pre]:overflow-x-auto [&>pre]:w-full text-foreground dark:text-slate-300 has-line-numbers"
+                        dangerouslySetInnerHTML={{ __html: highlightedSolHtml || "Loading code..." }} 
+                      />
                     </div>
 
                     {/* Solution Notes */}
@@ -399,10 +379,10 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {problem.notes.map((note: string, idx: number) => (
+                  {problem.notes.map((note: any, idx: number) => (
                     <div key={idx} className="p-4 rounded-2xl bg-surface border border-border font-sans text-xs text-foreground/90 leading-relaxed flex items-start gap-2.5 shadow-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                      <span>{note}</span>
+                      <span>{typeof note === "string" ? note : note.text}</span>
                     </div>
                   ))}
                 </div>
@@ -411,20 +391,56 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
           )}
 
           {/* HISTORY TAB */}
-          {activeTab === "history" && (
-            <div className="space-y-6 max-w-2xl mx-auto">
-              <h3 className="font-display font-bold text-sm text-foreground">Revisit History & Spacing Milestones</h3>
-              {problem.history.length === 0 ? (
-                <div className="p-8 text-center text-muted font-sans text-xs bg-surface border border-border rounded-2xl">
-                  No revision log history found.
-                </div>
-              ) : (
+          {activeTab === "history" && (() => {
+            const stages = ["3d", "7d", "15d", "30d"];
+            let currentStageIdx = 0;
+
+            if (problem.interval.includes("7d")) {
+              currentStageIdx = 1;
+            } else if (problem.interval.includes("15d")) {
+              currentStageIdx = 2;
+            } else if (problem.interval.includes("30d")) {
+              currentStageIdx = 3;
+            } else if (problem.interval === "Recall Stage 1" || problem.status === "Unsolved") {
+              currentStageIdx = -1;
+            }
+
+            const historyList = stages.map((stage, idx) => {
+              let status = "Upcoming";
+              if (currentStageIdx === -1) {
+                status = "Pending";
+              } else if (idx < currentStageIdx) {
+                status = "Done";
+              } else if (idx === currentStageIdx) {
+                status = problem.status === "Solved" ? "Done" : "Pending";
+              }
+              
+              const updatedDate = new Date(problem.updatedAt);
+              let daysOffset = 0;
+              if (stage === "3d") daysOffset = 3;
+              else if (stage === "7d") daysOffset = 7;
+              else if (stage === "15d") daysOffset = 15;
+              else if (stage === "30d") daysOffset = 30;
+
+              const dateObj = new Date(updatedDate.getTime() + daysOffset * 24 * 60 * 60 * 1000);
+              const dateFormatted = formatISTDate(dateObj);
+
+              return {
+                stage: `Stage ${idx + 1} (${stage})`,
+                status,
+                date: dateFormatted
+              };
+            });
+
+            return (
+              <div className="space-y-6 max-w-2xl mx-auto">
+                <h3 className="font-display font-bold text-sm text-foreground">Revisit History & Spacing Milestones</h3>
                 <div className="bg-surface border border-border rounded-3xl p-6 shadow-sm">
                   {/* Horizontal steps timeline progress */}
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative">
                     <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-border -translate-y-1/2 hidden sm:block z-0" />
                     
-                    {problem.history.map((step: any, idx: number) => (
+                    {historyList.map((step: any, idx: number) => (
                       <div key={idx} className="flex flex-row sm:flex-col items-center gap-3 sm:gap-2 z-10 w-full sm:w-auto bg-surface sm:px-2">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[11px] font-sans border transition-all ${
                           step.status === "Done"
@@ -433,11 +449,11 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                         }`}>
                           {idx + 1}
                         </div>
-                        <div className="text-left sm:text-center space-y-0.5">
+                        <div className="text-left sm:text-center space-y-0.5 font-sans">
                           <span className="block font-display font-extrabold text-[10px] text-foreground">
                             {step.stage}
                           </span>
-                          <span className="block text-[9px] text-muted flex items-center justify-start sm:justify-center gap-1">
+                          <span className="block text-[9px] text-muted flex items-center justify-start sm:justify-center gap-1 font-semibold">
                             <Calendar className="w-2.5 h-2.5 text-primary" />
                             {step.date}
                           </span>
@@ -446,11 +462,42 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
         </div>
+
+        {/* Creator's Public Sheets */}
+        {problem.user?.sheets && problem.user.sheets.length > 0 && (
+          <div className="p-6 rounded-3xl bg-surface border border-border shadow-sm space-y-4">
+            <h3 className="font-display font-bold text-sm text-foreground flex items-center gap-2">
+              <Library className="w-5 h-5 text-primary" />
+              Creator's Public Sheets
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {problem.user.sheets.map((sheet: any) => (
+                <Link
+                  key={sheet.id}
+                  href={`/sheet/${sheet.shareSlug}`}
+                  className="p-4 rounded-2xl border border-border bg-surface-2/20 hover:bg-surface-2 hover:border-primary/45 transition-all block group"
+                >
+                  <div className="font-display font-extrabold text-foreground group-hover:text-primary transition-colors text-[12px]">
+                    {sheet.name}
+                  </div>
+                  {sheet.description && (
+                    <p className="text-muted text-[11px] mt-1 line-clamp-2 leading-relaxed">
+                      {sheet.description}
+                    </p>
+                  )}
+                  <div className="text-[10px] text-primary/80 font-bold mt-2">
+                    {sheet.problems?.length || 0} Challenges
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

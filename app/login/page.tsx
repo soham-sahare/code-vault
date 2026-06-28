@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
-import { useState } from "react";
+import { ArrowRight, Sparkles, Check, AlertCircle, Info } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { checkAuthSession } from "@/lib/actions";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -13,6 +14,27 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Toast notifications state
+  const [toasts, setToasts] = useState<{ id: string; message: string; type: "success" | "info" | "error" }[]>([]);
+  const showToast = (message: string, type: "success" | "info" | "error" = "success") => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 2500);
+  };
+
+  useEffect(() => {
+    checkAuthSession().then((res) => {
+      if (res && res.signedIn) {
+        showToast("Already signed in!", "info");
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1200);
+      }
+    }).catch(console.error);
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,8 +81,11 @@ export default function LoginPage() {
         <div className="flex flex-col items-center text-center">
           <Link href="/" className="flex items-center gap-2 group mb-6">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-md">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <svg className="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 17L2 12l4-5M18 7l4 5-4 5" />
+                <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.1" />
+                <line x1="12" y1="9.5" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="12" cy="12" r="1" fill="currentColor" />
               </svg>
             </div>
             <span className="font-display font-extrabold text-xl tracking-tight">CodeVault</span>
@@ -162,6 +187,33 @@ export default function LoginPage() {
         </p>
 
       </motion.div>
+
+      {/* ===== PREMIUM TOAST NOTIFICATION CONTAINER ===== */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm pointer-events-none">
+        <AnimatePresence>
+          {toasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: 20, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              className={`flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-xl backdrop-blur-md pointer-events-auto ${
+                toast.type === "success"
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
+                  : toast.type === "error"
+                  ? "bg-rose-500/10 border-rose-500/20 text-rose-500"
+                  : "bg-primary/10 border-primary/20 text-primary"
+              }`}
+            >
+              {toast.type === "success" && <Check className="w-4 h-4 shrink-0 text-emerald-400" />}
+              {toast.type === "error" && <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />}
+              {toast.type === "info" && <Info className="w-4 h-4 shrink-0 text-primary" />}
+              <span className="font-sans font-bold text-xs">{toast.message}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
     </div>
   );

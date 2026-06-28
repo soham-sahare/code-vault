@@ -18,7 +18,7 @@ export default function Features() {
     {
       icon: <BookOpen className="w-6 h-6 text-primary" />,
       title: "Custom Sheets (Playlists)",
-      description: "Organize problems into targeted sheets like 'Blind 75' or 'Neetcode 150'. Track progress bars and toggle public view-only sharing links."
+      description: "Organize problems into targeted sheets like 'Blind 75' or 'Neetcode 150'. Track progress bars and toggle public view-only `/sheet/[slug]` sharing links."
     },
     {
       icon: <FileText className="w-6 h-6 text-accent" />,
