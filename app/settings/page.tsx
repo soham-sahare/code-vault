@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getUserProfile, updateUserProfile, deleteUserAccount, exportUserData, importUserData } from "@/lib/actions";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { getInitials } from "@/lib/utils/formatters";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { signOut } from "next-auth/react";
 
 import { useTheme } from "next-themes";
@@ -134,10 +135,54 @@ export default function SettingsPage() {
     return (
       <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
         <Sidebar />
-        <main className="flex-1 flex items-center justify-center p-6">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-            <span className="font-sans font-semibold text-xs text-muted">Retrieving user profile...</span>
+        <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto max-w-4xl mx-auto w-full">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between mb-8 gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5">
+                <Skeleton className="w-8 h-8 rounded-xl" />
+                <Skeleton className="h-8 w-40 rounded-xl" />
+              </div>
+              <Skeleton className="h-3.5 w-60 rounded-lg" />
+            </div>
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-10 h-10 rounded-xl" />
+              <Skeleton className="w-10 h-10 rounded-xl" />
+              <Skeleton className="w-10 h-10 rounded-full" />
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {/* Profile & General Settings Skeleton Card */}
+            <div className="p-6 rounded-2xl bg-surface border border-border space-y-6">
+              <div className="flex items-center gap-4">
+                <Skeleton className="w-16 h-16 rounded-full" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-5 w-36 rounded-lg" />
+                  <Skeleton className="h-3.5 w-48 rounded-md" />
+                </div>
+              </div>
+              <div className="space-y-4 pt-4 border-t border-border/80">
+                <div className="space-y-2">
+                  <Skeleton className="h-3.5 w-20 rounded-md" />
+                  <Skeleton className="h-10 w-full rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-3.5 w-24 rounded-md" />
+                  <Skeleton className="h-10 w-full rounded-xl" />
+                </div>
+              </div>
+            </div>
+
+            {/* Data Portability Skeleton Card */}
+            <div className="p-6 rounded-2xl bg-surface border border-border space-y-4">
+              <Skeleton className="h-5 w-36 rounded-lg" />
+              <Skeleton className="h-3.5 w-72 rounded-md" />
+              <div className="flex items-center gap-3 pt-2">
+                <Skeleton className="h-10 w-36 rounded-xl" />
+                <Skeleton className="h-10 w-36 rounded-xl" />
+              </div>
+            </div>
           </div>
         </main>
       </div>
