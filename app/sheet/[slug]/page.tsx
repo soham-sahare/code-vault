@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatISTDate } from "@/lib/timestamps/ist";
 import { getPublicSheetBySlug, getHighlightedHtml } from "@/lib/actions";
 import { useTheme } from "next-themes";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function SharedSheetPage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = use(params);
@@ -57,11 +58,47 @@ export default function SharedSheetPage({ params }: { params: Promise<{ slug: st
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300 items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-          <span className="font-sans font-semibold text-xs text-muted">Retrieving public sheet...</span>
-        </div>
+      <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+        {/* Navigation Skeleton */}
+        <header className="h-16 border-b border-border/80 bg-surface/50 backdrop-blur-md px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton className="w-8 h-8 rounded-xl" />
+            <Skeleton className="h-5 w-28 rounded-lg" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-8 w-24 rounded-lg" />
+            <Skeleton className="w-8 h-8 rounded-lg" />
+          </div>
+        </header>
+
+        {/* Sheet Content Skeleton */}
+        <main className="flex-1 max-w-5xl w-full mx-auto p-6 sm:p-10 space-y-6">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Skeleton className="w-6 h-6 rounded-md" />
+              <Skeleton className="h-7 w-64 rounded-xl" />
+            </div>
+            <Skeleton className="h-4 w-96 rounded-md" />
+          </div>
+
+          <div className="p-6 rounded-2xl bg-surface border border-border space-y-4">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-32 rounded-md" />
+              <Skeleton className="h-4 w-20 rounded-md" />
+            </div>
+            <div className="space-y-3 pt-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center justify-between p-3.5 rounded-xl bg-surface-2/40 border border-border/50">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-4 w-12 rounded" />
+                    <Skeleton className="h-4 w-48 rounded" />
+                  </div>
+                  <Skeleton className="h-4 w-16 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
