@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Sidebar from "@/components/shell/Sidebar";
 import Link from "next/link";
-import { Clock, AlertTriangle, CheckSquare, Calendar, ChevronRight, Sun, Moon, Bell } from "lucide-react";
+import { Clock, AlertTriangle, CheckSquare, Calendar, ChevronRight, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import { getUserProblemSummaries, markRevisited, getUserProfile } from "@/lib/actions";
@@ -34,7 +34,6 @@ export default function RemindersPage() {
   const [themeMounted, setThemeMounted] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isBellDropdownOpen, setIsBellDropdownOpen] = useState(false);
 
   useEffect(() => {
     setThemeMounted(true);
