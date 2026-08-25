@@ -9,44 +9,9 @@ import { formatISTDate } from "@/lib/timestamps/ist";
 import { Search, Bell, Star, AlertCircle, AlertTriangle, Clock, CheckCircle2, ChevronRight, Filter, X, ExternalLink, Share2, Plus, Code, PlusCircle, Check, Copy, Sun, Moon, Pencil, Trash2, FileText, Globe, Lock, Sparkles, MoreVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
-import Prism from "prismjs";
-import "prismjs/components/prism-python";
-import "prismjs/components/prism-clike";
-import "prismjs/components/prism-c";
-import "prismjs/components/prism-cpp";
-import "prismjs/components/prism-java";
-import "prismjs/components/prism-javascript";
-import "prismjs/components/prism-typescript";
-import "prismjs/components/prism-go";
-import "prismjs/components/prism-rust";
-import "prismjs/themes/prism-tomorrow.css";
 import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, updateSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile, addSolutionNote, deleteSolutionNote, updateSolutionNote, saveOnboarding, getHighlightedHtml, getProblemDetails, getPaginatedProblems } from "@/lib/actions";
 import { getInitials } from "@/lib/utils/formatters";
-
-function highlightCode(code: string, lang: string) {
-  if (!code) return "";
-
-  const normalizedLang = lang.toLowerCase();
-  let prismLang = Prism.languages.python;
-
-  if (normalizedLang === "python") {
-    prismLang = Prism.languages.python;
-  } else if (normalizedLang === "c++" || normalizedLang === "cpp") {
-    prismLang = Prism.languages.cpp;
-  } else if (normalizedLang === "java") {
-    prismLang = Prism.languages.java;
-  } else if (normalizedLang === "javascript" || normalizedLang === "js") {
-    prismLang = Prism.languages.javascript;
-  } else if (normalizedLang === "typescript" || normalizedLang === "ts") {
-    prismLang = Prism.languages.typescript;
-  } else if (normalizedLang === "go") {
-    prismLang = Prism.languages.go;
-  } else if (normalizedLang === "rust") {
-    prismLang = Prism.languages.rust;
-  }
-
-  return Prism.highlight(code, prismLang, lang);
-}
+import { highlightClientCode } from "@/lib/utils/clientHighlight";
 
 function getCodePlaceholder(lang: string): string {
   const l = lang.toLowerCase();
@@ -231,7 +196,7 @@ export default function DashboardPage() {
       const sol = activeProblem.solutions[selSolIdx];
       setIsCodeLoading(true);
       try {
-        const highlighted = highlightCode(sol.code, sol.lang);
+        const highlighted = highlightClientCode(sol.code, sol.lang);
         const wrapped = `<pre class="p-5 overflow-x-auto w-full language-${sol.lang.toLowerCase()}"><code>${highlighted}</code></pre>`;
         setHighlightedSolCode(wrapped);
       } catch (err) {
