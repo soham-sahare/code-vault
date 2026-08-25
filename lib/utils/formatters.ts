@@ -6,7 +6,7 @@ export function getInitials(
   user?: { name?: string | null; username?: string | null; email?: string | null } | string | null
 ): string {
   if (!user) return "U";
-  const name = typeof user === "string" ? user : user.name || user.username || user.email || "User";
+  const name = typeof user === "string" ? user : user.username || user.name || user.email || "User";
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
