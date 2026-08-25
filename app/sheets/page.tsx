@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/shell/Sidebar";
-import { Search, Bell, Library, Plus, Trash2, Edit, ExternalLink, Share2, Globe, Lock, ArrowLeft, Sun, Moon, Check, AlertCircle } from "lucide-react";
+import { Search, Library, Plus, Trash2, Edit, ExternalLink, Share2, Globe, Lock, ArrowLeft, Sun, Moon, Check, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import Link from "next/link";
@@ -38,7 +38,6 @@ export default function SheetsPage() {
   const [themeMounted, setThemeMounted] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isBellDropdownOpen, setIsBellDropdownOpen] = useState(false);
 
   useEffect(() => {
     setThemeMounted(true);
