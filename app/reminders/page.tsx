@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Sidebar from "@/components/shell/Sidebar";
 import Link from "next/link";
 import { Clock, AlertTriangle, CheckSquare, Calendar, ChevronRight, Sun, Moon, Bell } from "lucide-react";
@@ -12,13 +12,20 @@ import { getInitials } from "@/lib/utils/formatters";
 
 
 export default function RemindersPage() {
-  const formatTopics = (topicStr: string) => {
+  const formatTopics = (topicStr?: string) => {
     if (!topicStr) return "";
     const parts = topicStr.split(",").map((s) => s.trim()).filter(Boolean);
     if (parts.length > 3) {
       return parts.slice(0, 3).join(", ") + "...";
     }
     return parts.join(", ");
+  };
+
+  const getDiffColor = (diff?: string) => {
+    const d = (diff || "MEDIUM").toUpperCase();
+    if (d === "EASY") return "text-emerald-500";
+    if (d === "MED" || d === "MEDIUM") return "text-amber-500";
+    return "text-rose-500";
   };
 
   const [loading, setLoading] = useState(true);
@@ -49,7 +56,7 @@ export default function RemindersPage() {
     async function load() {
       try {
         const data = await getUserProblemSummaries();
-        setProblems(data);
+        setProblems(data || []);
       } catch (err) {
         console.error("Failed to load reminders:", err);
       } finally {
@@ -63,16 +70,28 @@ export default function RemindersPage() {
     try {
       await markRevisited(num);
       const data = await getUserProblemSummaries();
-      setProblems(data);
+      setProblems(data || []);
     } catch (err) {
       console.error("Revisit error:", err);
     }
   };
 
-  const overdueReminders = problems.filter((p) => p.status === "Overdue");
-  const dueTodayReminders = problems.filter((p) => p.status === "Due Today");
-  const upcomingReminders = problems.filter(
-    (p) => p.status === "Solved" || p.interval.startsWith("Due in")
+  const overdueReminders = useMemo(
+    () => problems.filter((p) => p.status === "Overdue"),
+    [problems]
+  );
+  const dueTodayReminders = useMemo(
+    () => problems.filter((p) => p.status === "Due Today"),
+    [problems]
+  );
+  const upcomingReminders = useMemo(
+    () =>
+      problems.filter(
+        (p) =>
+          p.status === "Solved" ||
+          (p.interval && typeof p.interval === "string" && p.interval.startsWith("Due in"))
+      ),
+    [problems]
   );
 
   if (loading) {
@@ -209,8 +228,8 @@ export default function RemindersPage() {
                           <div className="flex items-center gap-2 text-[10px] text-muted font-semibold">
                             <span className="text-rose-500 uppercase">Overdue</span>
                             <span>•</span>
-                            <span className={rem.difficulty === "EASY" ? "text-emerald-500" : rem.difficulty === "MED" ? "text-amber-500" : "text-rose-500"}>
-                              {rem.difficulty}
+                            <span className={getDiffColor(rem.difficulty)}>
+                              {rem.difficulty || "Medium"}
                             </span>
                             <span>•</span>
                             <span>{formatTopics(rem.topic)}</span>
@@ -255,8 +274,8 @@ export default function RemindersPage() {
                           <div className="flex items-center gap-2 text-[10px] text-muted font-semibold">
                             <span className="text-amber-500 uppercase">Due Today</span>
                             <span>•</span>
-                            <span className={rem.difficulty === "EASY" ? "text-emerald-500" : rem.difficulty === "MED" ? "text-amber-500" : "text-rose-500"}>
-                              {rem.difficulty}
+                            <span className={getDiffColor(rem.difficulty)}>
+                              {rem.difficulty || "Medium"}
                             </span>
                             <span>•</span>
                             <span>{formatTopics(rem.topic)}</span>
@@ -299,10 +318,10 @@ export default function RemindersPage() {
                             #{rem.num} {rem.name}
                           </h3>
                           <div className="flex items-center gap-2 text-[10px] text-muted font-semibold">
-                            <span className="text-emerald-500 uppercase">{rem.interval}</span>
+                            <span className="text-emerald-500 uppercase">{rem.interval || "Scheduled"}</span>
                             <span>•</span>
-                            <span className={rem.difficulty === "EASY" ? "text-emerald-500" : rem.difficulty === "MED" ? "text-amber-500" : "text-rose-500"}>
-                              {rem.difficulty}
+                            <span className={getDiffColor(rem.difficulty)}>
+                              {rem.difficulty || "Medium"}
                             </span>
                             <span>•</span>
                             <span>{formatTopics(rem.topic)}</span>
