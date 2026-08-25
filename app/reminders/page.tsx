@@ -65,9 +65,9 @@ export default function RemindersPage() {
     load();
   }, []);
 
-  const handleComplete = async (num: number) => {
+  const handleComplete = async (id: string) => {
     try {
-      await markRevisited(num);
+      await markRevisited(id);
       const data = await getUserProblemSummaries();
       setProblems(data || []);
     } catch (err) {
