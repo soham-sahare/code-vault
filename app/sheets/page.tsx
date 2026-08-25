@@ -6,8 +6,9 @@ import { Search, Bell, Library, Plus, Trash2, Edit, ExternalLink, Share2, Globe,
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import Link from "next/link";
-import { getSheets, createSheet, updateSheet, deleteSheet, removeProblemFromSheet, getProblems, addProblemToSheet, getUserProfile } from "@/lib/actions";
+import { getSheets, createSheet, updateSheet, deleteSheet, removeProblemFromSheet, getUserProblemSummaries, addProblemToSheet, getUserProfile } from "@/lib/actions";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import { getInitials } from "@/lib/utils/formatters";
 
 
 export default function SheetsPage() {
@@ -55,18 +56,6 @@ export default function SheetsPage() {
     fetchUser();
   }, []);
 
-  const getInitials = () => {
-    const name = userProfile?.name || userProfile?.username || userProfile?.email || "User";
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    if (name.length >= 2) {
-      return name.substring(0, 2).toUpperCase();
-    }
-    return name[0].toUpperCase();
-  };
-
   const [isAddProblemModalOpen, setIsAddProblemModalOpen] = useState(false);
   const [selectedProblemIds, setSelectedProblemIds] = useState<string[]>([]);
   const [allProblems, setAllProblems] = useState<any[]>([]);
@@ -74,7 +63,7 @@ export default function SheetsPage() {
 
   const loadAllProblems = async () => {
     try {
-      const data = await getProblems();
+      const data = await getUserProblemSummaries();
       setAllProblems(data);
     } catch (err) {
       console.error("Failed to load problems:", err);
@@ -255,7 +244,7 @@ export default function SheetsPage() {
                   onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                   className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-display font-extrabold text-xs text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-sm select-none"
                 >
-                  {getInitials()}
+                  {getInitials(userProfile)}
                 </button>
 
                 <AnimatePresence>
@@ -463,7 +452,7 @@ export default function SheetsPage() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="w-8 h-8 rounded-lg bg-amber-500/5 border border-amber-500/20 flex items-center justify-center text-amber-500 hover:bg-amber-500/10 transition-all cursor-pointer"
-                                  title="View on LeetCode"
+                                  title="View Problem Source"
                                 >
                                   <ExternalLink className="w-3.5 h-3.5" />
                                 </a>
@@ -725,7 +714,8 @@ export default function SheetsPage() {
 
                   if (filtered.length === 0) return null;
 
-                  const isAllSelected = filtered.length > 0 && filtered.every((p: any) => selectedProblemIds.includes(p.id));
+                  const selectedSet = new Set(selectedProblemIds);
+                  const isAllSelected = filtered.length > 0 && filtered.every((p: any) => selectedSet.has(p.id));
 
                   return (
                     <div className="flex items-center justify-between font-sans text-[11px] font-bold text-muted px-1.5 select-none">
@@ -735,7 +725,8 @@ export default function SheetsPage() {
                           checked={isAllSelected}
                           onChange={() => {
                             if (isAllSelected) {
-                              setSelectedProblemIds(prev => prev.filter(id => !filtered.some((p: any) => p.id === id)));
+                              const filteredSet = new Set(filtered.map((p: any) => p.id));
+                              setSelectedProblemIds(prev => prev.filter(id => !filteredSet.has(id)));
                             } else {
                               setSelectedProblemIds(prev => {
                                 const union = new Set([...prev, ...filtered.map((p: any) => p.id)]);
