@@ -6,8 +6,9 @@ import Link from "next/link";
 import { Clock, AlertTriangle, CheckSquare, Calendar, ChevronRight, Sun, Moon, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
-import { getProblems, markRevisited, getUserProfile } from "@/lib/actions";
+import { getUserProblemSummaries, markRevisited, getUserProfile } from "@/lib/actions";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import { getInitials } from "@/lib/utils/formatters";
 
 
 export default function RemindersPage() {
@@ -44,22 +45,10 @@ export default function RemindersPage() {
     fetchUser();
   }, []);
 
-  const getInitials = () => {
-    const name = userProfile?.name || userProfile?.username || userProfile?.email || "User";
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    if (name.length >= 2) {
-      return name.substring(0, 2).toUpperCase();
-    }
-    return name[0].toUpperCase();
-  };
-
   useEffect(() => {
     async function load() {
       try {
-        const data = await getProblems();
+        const data = await getUserProblemSummaries();
         setProblems(data);
       } catch (err) {
         console.error("Failed to load reminders:", err);
@@ -73,7 +62,7 @@ export default function RemindersPage() {
   const handleComplete = async (num: number) => {
     try {
       await markRevisited(num);
-      const data = await getProblems();
+      const data = await getUserProblemSummaries();
       setProblems(data);
     } catch (err) {
       console.error("Revisit error:", err);
@@ -140,7 +129,7 @@ export default function RemindersPage() {
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                 className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-display font-extrabold text-xs text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-sm select-none"
               >
-                {getInitials()}
+                {getInitials(userProfile)}
               </button>
 
               <AnimatePresence>
