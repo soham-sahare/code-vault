@@ -331,6 +331,14 @@ export async function getUserProblemSummaries() {
       solvedAt: true,
       createdAt: true,
       isPublic: true,
+      solutions: {
+        select: {
+          id: true,
+          lang: true,
+          time: true,
+          space: true,
+        },
+      },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
