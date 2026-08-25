@@ -375,11 +375,34 @@ export default function DashboardPage() {
       await markRevisited(num, customDays);
       await loadProblems();
       setActiveProblem(null);
-      setShowRevisitDaysPopup(false);
-      showToast("Problem marked as revisited!", "success");
     } catch (err) {
       console.error(err);
       showToast("Error marking revisit", "error");
+    }
+  };
+
+  const handleToggleFavorite = async (probNum: number) => {
+    const targetProblem = activeProblem?.num === probNum ? activeProblem : problemsList.find(p => p.num === probNum);
+    if (!targetProblem) return;
+    const nextFav = !targetProblem.isFavorite;
+
+    // Optimistic UI updates
+    setProblemsList(prev => prev.map(p => p.num === probNum ? { ...p, isFavorite: nextFav } : p));
+    if (activeProblem && activeProblem.num === probNum) {
+      setActiveProblem((prev: any) => prev ? { ...prev, isFavorite: nextFav } : null);
+    }
+    showToast(nextFav ? "Added to favorites!" : "Removed from favorites!", "success");
+
+    try {
+      await toggleFavorite(probNum);
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
+      // Revert on error
+      setProblemsList(prev => prev.map(p => p.num === probNum ? { ...p, isFavorite: !nextFav } : p));
+      if (activeProblem && activeProblem.num === probNum) {
+        setActiveProblem((prev: any) => prev ? { ...prev, isFavorite: !nextFav } : null);
+      }
+      showToast("Failed to update favorite", "error");
     }
   };
 
@@ -1096,15 +1119,7 @@ export default function DashboardPage() {
 
                     {/* Favorite Toggle */}
                     <button
-                      onClick={async () => {
-                        try {
-                          await toggleFavorite(activeProblem.num);
-                          await loadProblems();
-                          showToast(!activeProblem.isFavorite ? "Added to favorites!" : "Removed from favorites!", "success");
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }}
+                      onClick={() => handleToggleFavorite(activeProblem.num)}
                       className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-foreground active:scale-95 transition-all cursor-pointer"
                     >
                       <Star className={`w-5 h-5 ${activeProblem.isFavorite ? "text-accent fill-accent" : "text-muted"}`} />
@@ -1192,15 +1207,9 @@ export default function DashboardPage() {
 
                           {/* Toggle Favorite */}
                           <button
-                            onClick={async () => {
+                            onClick={() => {
                               setIsMoreMenuOpen(false);
-                              try {
-                                await toggleFavorite(activeProblem.num);
-                                await loadProblems();
-                                showToast(!activeProblem.isFavorite ? "Added to favorites!" : "Removed from favorites!", "success");
-                              } catch (err) {
-                                console.error(err);
-                              }
+                              handleToggleFavorite(activeProblem.num);
                             }}
                             className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
                           >
@@ -1445,36 +1454,46 @@ export default function DashboardPage() {
                                             className="flex-1 px-3 py-1.5 rounded-lg bg-surface border border-primary/50 focus:outline-none font-sans text-xs text-foreground"
                                             onKeyDown={async (e) => {
                                               if (e.key === "Enter" && editingSolNoteText.trim()) {
-                                                try {
-                                                  const noteId = n.id;
-                                                  await updateSolutionNote(noteId, editingSolNoteText.trim());
-                                                  await loadProblems();
-                                                  setEditingSolNoteIdx(null);
-                                                  setEditingSolNoteSolIdx(null);
-                                                  setEditingSolNoteText("");
-                                                  showToast("Solution note updated", "success");
-                                                } catch (err) {
-                                                  console.error(err);
-                                                  showToast("Failed to update note", "error");
+                                                const text = editingSolNoteText.trim();
+                                                if (n.id) {
+                                                  updateSolutionNote(n.id, text).catch(console.error);
                                                 }
+                                                const updatedSols = activeProblem.solutions.map((s: any, idx: number) => {
+                                                  if (idx !== selSolIdx) return s;
+                                                  const newNotes = [...(s.notes || [])];
+                                                  newNotes[ni] = { ...newNotes[ni], text };
+                                                  return { ...s, notes: newNotes };
+                                                });
+                                                const up = { ...activeProblem, solutions: updatedSols };
+                                                setProblemsList(prev => prev.map(p => p.num === activeProblem.num ? up : p));
+                                                setActiveProblem(up);
+                                                setEditingSolNoteIdx(null);
+                                                setEditingSolNoteSolIdx(null);
+                                                setEditingSolNoteText("");
+                                                showToast("Solution note updated", "success");
                                               }
                                             }}
                                           />
                                           <button
                                             onClick={async () => {
                                               if (!editingSolNoteText.trim()) return;
-                                              try {
-                                                const noteId = n.id;
-                                                await updateSolutionNote(noteId, editingSolNoteText.trim());
-                                                await loadProblems();
-                                                setEditingSolNoteIdx(null);
-                                                setEditingSolNoteSolIdx(null);
-                                                setEditingSolNoteText("");
-                                                showToast("Solution note updated", "success");
-                                              } catch (err) {
-                                                console.error(err);
-                                                showToast("Failed to update note", "error");
+                                              const text = editingSolNoteText.trim();
+                                              if (n.id) {
+                                                updateSolutionNote(n.id, text).catch(console.error);
                                               }
+                                              const updatedSols = activeProblem.solutions.map((s: any, idx: number) => {
+                                                if (idx !== selSolIdx) return s;
+                                                const newNotes = [...(s.notes || [])];
+                                                newNotes[ni] = { ...newNotes[ni], text };
+                                                return { ...s, notes: newNotes };
+                                              });
+                                              const up = { ...activeProblem, solutions: updatedSols };
+                                              setProblemsList(prev => prev.map(p => p.num === activeProblem.num ? up : p));
+                                              setActiveProblem(up);
+                                              setEditingSolNoteIdx(null);
+                                              setEditingSolNoteSolIdx(null);
+                                              setEditingSolNoteText("");
+                                              showToast("Solution note updated", "success");
                                             }}
                                             className="p-1 text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
                                             title="Save Note"
@@ -1517,16 +1536,17 @@ export default function DashboardPage() {
                                               <Pencil className="w-3.5 h-3.5" />
                                             </button>
                                             <button
-                                              onClick={async () => {
-                                                try {
-                                                  const noteId = n.id;
-                                                  await deleteSolutionNote(noteId);
-                                                  await loadProblems();
-                                                  showToast("Solution note deleted", "success");
-                                                } catch (err) {
-                                                  console.error(err);
-                                                  showToast("Failed to delete note", "error");
+                                              onClick={() => {
+                                                if (n.id) {
+                                                  deleteSolutionNote(n.id).catch(console.error);
                                                 }
+                                                const updatedSols = activeProblem.solutions.map((s: any, idx: number) =>
+                                                  idx !== selSolIdx ? s : { ...s, notes: (s.notes || []).filter((_: any, fi: number) => fi !== ni) }
+                                                );
+                                                const up = { ...activeProblem, solutions: updatedSols };
+                                                setProblemsList(prev => prev.map(p => p.num === activeProblem.num ? up : p));
+                                                setActiveProblem(up);
+                                                showToast("Solution note deleted", "success");
                                               }}
                                               className="p-1 text-rose-400 hover:text-rose-300 transition-all cursor-pointer shrink-0"
                                               title="Delete note"
@@ -1581,14 +1601,23 @@ export default function DashboardPage() {
                                   onChange={e => setNewSolNoteText(e.target.value)}
                                   onKeyDown={async (e) => {
                                     if (e.key === "Enter" && newSolNoteText.trim()) {
+                                      const text = newSolNoteText.trim();
+                                      const sol = activeProblem.solutions[selSolIdx];
+                                      if (!sol?.id) return;
+                                      setNewSolNoteText("");
                                       try {
-                                        const sol = activeProblem.solutions[selSolIdx];
-                                        await addSolutionNote(sol.id, newSolNoteType, newSolNoteText.trim());
-                                        await loadProblems();
-                                        setNewSolNoteText("");
+                                        const created = await addSolutionNote(sol.id, newSolNoteType, text);
+                                        const updatedSols = activeProblem.solutions.map((s: any, idx: number) => {
+                                          if (idx !== selSolIdx) return s;
+                                          return { ...s, notes: [...(s.notes || []), created] };
+                                        });
+                                        const up = { ...activeProblem, solutions: updatedSols };
+                                        setProblemsList(prev => prev.map(p => p.num === activeProblem.num ? up : p));
+                                        setActiveProblem(up);
                                         showToast("Solution note added!", "success");
                                       } catch (err) {
                                         console.error(err);
+                                        showToast("Failed to add solution note", "error");
                                       }
                                     }
                                   }}
@@ -1597,14 +1626,23 @@ export default function DashboardPage() {
                                 <button
                                   onClick={async () => {
                                     if (!newSolNoteText.trim()) return;
+                                    const text = newSolNoteText.trim();
+                                    const sol = activeProblem.solutions[selSolIdx];
+                                    if (!sol?.id) return;
+                                    setNewSolNoteText("");
                                     try {
-                                      const sol = activeProblem.solutions[selSolIdx];
-                                      await addSolutionNote(sol.id, newSolNoteType, newSolNoteText.trim());
-                                      await loadProblems();
-                                      setNewSolNoteText("");
+                                      const created = await addSolutionNote(sol.id, newSolNoteType, text);
+                                      const updatedSols = activeProblem.solutions.map((s: any, idx: number) => {
+                                        if (idx !== selSolIdx) return s;
+                                        return { ...s, notes: [...(s.notes || []), created] };
+                                      });
+                                      const up = { ...activeProblem, solutions: updatedSols };
+                                      setProblemsList(prev => prev.map(p => p.num === activeProblem.num ? up : p));
+                                      setActiveProblem(up);
                                       showToast("Solution note added!", "success");
                                     } catch (err) {
                                       console.error(err);
+                                      showToast("Failed to add solution note", "error");
                                     }
                                   }}
                                   className="px-3 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white font-sans font-bold text-xs transition-all cursor-pointer shrink-0"
@@ -1637,14 +1675,17 @@ export default function DashboardPage() {
                       />
                       <button
                         onClick={async () => {
-                          if (!newNoteText) return;
+                          if (!newNoteText.trim()) return;
+                          const text = newNoteText.trim();
+                          setNewNoteText("");
                           try {
-                            await addNote(activeProblem.id, newNoteText);
-                            await loadProblems();
-                            setNewNoteText("");
+                            const created = await addNote(activeProblem.id, text);
+                            const updatedNotes = [...(activeProblem.notes || []), created];
+                            setActiveProblem((prev: any) => prev ? { ...prev, notes: updatedNotes } : null);
                             showToast("Note added successfully!", "success");
                           } catch (err) {
                             console.error(err);
+                            showToast("Failed to add note", "error");
                           }
                         }}
                         className="inline-flex items-center gap-1 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-sans font-bold text-xs shadow-md shadow-primary/10 cursor-pointer"
@@ -1669,15 +1710,18 @@ export default function DashboardPage() {
                                 />
                                 <button
                                   onClick={async () => {
-                                    if (!editingNoteText) return;
+                                    if (!editingNoteText.trim()) return;
+                                    const text = editingNoteText.trim();
                                     try {
-                                      await updateNote(note.id, editingNoteText);
-                                      await loadProblems();
+                                      await updateNote(note.id, text);
+                                      const updatedNotes = (activeProblem.notes || []).map((n: any) => n.id === note.id ? { ...n, text } : n);
+                                      setActiveProblem((prev: any) => prev ? { ...prev, notes: updatedNotes } : null);
                                       setEditingNoteIdx(null);
                                       setEditingNoteText("");
                                       showToast("Note updated successfully!", "success");
                                     } catch (err) {
                                       console.error(err);
+                                      showToast("Failed to update note", "error");
                                     }
                                   }}
                                   className="p-1 text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
@@ -1714,10 +1758,12 @@ export default function DashboardPage() {
                                     onClick={async () => {
                                       try {
                                         await deleteNote(note.id);
-                                        await loadProblems();
+                                        const updatedNotes = (activeProblem.notes || []).filter((n: any) => n.id !== note.id);
+                                        setActiveProblem((prev: any) => prev ? { ...prev, notes: updatedNotes } : null);
                                         showToast("Note deleted successfully!", "success");
                                       } catch (err) {
                                         console.error(err);
+                                        showToast("Failed to delete note", "error");
                                       }
                                     }}
                                     className="p-1 text-rose-500 hover:text-rose-400 transition-colors cursor-pointer"
