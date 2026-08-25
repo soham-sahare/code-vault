@@ -38,12 +38,13 @@ export async function POST(req: Request) {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create the user
-    const username = email.split("@")[0] + "_" + Math.floor(Math.random() * 1000);
+    // Create the user with collision-free sanitized username
+    const baseUsername = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "") || "user";
+    const username = `${baseUsername}_${Date.now().toString(36)}${Math.floor(Math.random() * 1000).toString(36)}`;
     const user = await db.user.create({
       data: {
         name,
-        email,
+        email: email.toLowerCase().trim(),
         username,
         passwordHash: hashedPassword,
       },
