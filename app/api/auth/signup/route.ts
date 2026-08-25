@@ -7,7 +7,6 @@ const signupSchema = z.object({
   username: z.string().min(2, "Username must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  name: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -22,7 +21,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { username: rawUsername, email, password, name } = result.data;
+    const { username: rawUsername, email, password } = result.data;
     const cleanEmail = email.toLowerCase().trim();
 
     // Sanitize username
@@ -69,9 +68,9 @@ export async function POST(req: Request) {
     // Create the user with exact username
     const user = await db.user.create({
       data: {
-        name: name?.trim() || cleanUsername,
-        email: cleanEmail,
+        name: cleanUsername,
         username: cleanUsername,
+        email: cleanEmail,
         passwordHash: hashedPassword,
       },
     });
