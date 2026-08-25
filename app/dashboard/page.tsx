@@ -21,6 +21,7 @@ import "prismjs/components/prism-go";
 import "prismjs/components/prism-rust";
 import "prismjs/themes/prism-tomorrow.css";
 import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, updateSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile, addSolutionNote, deleteSolutionNote, updateSolutionNote, saveOnboarding, getHighlightedHtml, getProblemDetails, getPaginatedProblems } from "@/lib/actions";
+import { getInitials } from "@/lib/utils/formatters";
 
 function highlightCode(code: string, lang: string) {
   if (!code) return "";
@@ -98,18 +99,6 @@ export default function DashboardPage() {
     }
     fetchUser();
   }, []);
-
-  const getInitials = () => {
-    const name = userProfile?.name || userProfile?.username || userProfile?.email || "User";
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    if (name.length >= 2) {
-      return name.substring(0, 2).toUpperCase();
-    }
-    return name[0].toUpperCase();
-  };
 
   // Modal State Hooks
   const [activeProblem, setActiveProblem] = useState<null | any>(null);
@@ -222,6 +211,8 @@ export default function DashboardPage() {
   const [isDefaultLangDropdownOpen, setIsDefaultLangDropdownOpen] = useState(false);
   const [editingProblemNum, setEditingProblemNum] = useState<number | null>(null);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isSavingSol, setIsSavingSol] = useState(false);
+  const [isSavingProblem, setIsSavingProblem] = useState(false);
 
   // Confirm delete modals
   const [confirmDeleteProblemNum, setConfirmDeleteProblemNum] = useState<number | null>(null);
@@ -349,14 +340,14 @@ export default function DashboardPage() {
     }
   };
 
-
-
   const handleSaveSolution = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSolName || !newSolCode) return;
 
     try {
-      if (editingSolIdx !== null) {
+      setIsSavingSol(true);
+      const isEditing = editingSolIdx !== null;
+      if (isEditing) {
         const sol = activeProblem.solutions[editingSolIdx];
         await updateSolution(sol.id, {
           name: newSolName,
@@ -382,11 +373,7 @@ export default function DashboardPage() {
         });
       }
 
-      await loadProblems();
-
-      showToast(editingSolIdx !== null ? "Solution updated successfully!" : "Solution added successfully!", "success");
-
-      // Reset inputs
+      // Reset inputs & close modal immediately
       setIsAddingSol(false);
       setEditingSolIdx(null);
       setNewSolName("");
@@ -396,9 +383,19 @@ export default function DashboardPage() {
       setNewSolCode("");
       setNewSolTime("O(N)");
       setNewSolSpace("O(1)");
+
+      showToast(isEditing ? "Solution updated successfully!" : "Solution added successfully!", "success");
+
+      // Parallel background refresh of problem list & active problem details
+      await Promise.all([
+        loadProblems(),
+        activeProblem ? getProblemDetails(activeProblem.id).then(setActiveProblem).catch(console.error) : Promise.resolve(),
+      ]);
     } catch (err) {
       console.error(err);
       showToast("Error saving solution", "error");
+    } finally {
+      setIsSavingSol(false);
     }
   };
 
@@ -421,7 +418,7 @@ export default function DashboardPage() {
     }
   };
 
-  // Handler for adding/editing problem simulated
+  // Handler for adding/editing problem
   const handleAddProblem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addName) return;
@@ -429,7 +426,9 @@ export default function DashboardPage() {
     const finalTopic = selectedTopics.length > 0 ? selectedTopics.join(", ") : "General DSA";
 
     try {
-      if (editingProblemNum !== null) {
+      setIsSavingProblem(true);
+      const isEditing = editingProblemNum !== null;
+      if (isEditing) {
         await updateProblem(editingProblemNum, {
           name: addName,
           difficulty: addDiff,
@@ -449,20 +448,22 @@ export default function DashboardPage() {
         showToast("Problem created successfully!", "success");
       }
 
-      await loadProblems();
+      // Close modal & reset inputs immediately
       setEditingProblemNum(null);
       setIsAddProblemOpen(false);
-
-      // Reset inputs
       setAddName("");
       setAddNum("");
       setAddUrl("");
       setSelectedTopics([]);
       setAddDiff("EASY");
       setAddIsPublic(false);
+
+      await loadProblems();
     } catch (err) {
       console.error(err);
       showToast("Error saving problem", "error");
+    } finally {
+      setIsSavingProblem(false);
     }
   };
   const handleCopyCode = (text: string) => {
@@ -541,7 +542,7 @@ export default function DashboardPage() {
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                 className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-display font-extrabold text-xs text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-sm select-none"
               >
-                {getInitials()}
+                {getInitials(userProfile)}
               </button>
 
               <AnimatePresence>
@@ -1071,7 +1072,7 @@ export default function DashboardPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-7 h-7 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-foreground transition-colors shrink-0"
-                      title="Open LeetCode URL"
+                      title="Open Problem URL"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
@@ -2174,11 +2175,11 @@ export default function DashboardPage() {
 
                 <div>
                   <label className="block font-semibold text-muted mb-2 uppercase tracking-wide">
-                    LeetCode URL
+                    Problem URL
                   </label>
                   <input
                     type="url"
-                    placeholder="https://leetcode.com/problems/..."
+                    placeholder="https://leetcode.com/problems/... (or Codeforces, GFG, etc.)"
                     value={addUrl}
                     onChange={(e) => setAddUrl(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-foreground"
@@ -2355,9 +2356,17 @@ export default function DashboardPage() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold font-sans cursor-pointer transition-all shadow-md shadow-primary/10"
+                    disabled={isSavingProblem}
+                    className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold font-sans cursor-pointer transition-all shadow-md shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    {editingProblemNum !== null ? "Update Problem" : "Add Problem"}
+                    {isSavingProblem ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>{editingProblemNum !== null ? "Updating..." : "Adding..."}</span>
+                      </>
+                    ) : (
+                      <span>{editingProblemNum !== null ? "Update Problem" : "Add Problem"}</span>
+                    )}
                   </button>
                 </div>
 
@@ -2814,9 +2823,17 @@ export default function DashboardPage() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold cursor-pointer transition-colors shadow-md shadow-primary/10"
+                    disabled={isSavingSol}
+                    className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold cursor-pointer transition-colors shadow-md shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Save Solution
+                    {isSavingSol ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <span>Save Solution</span>
+                    )}
                   </button>
                 </div>
               </form>
