@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Sidebar from "@/components/shell/Sidebar";
-import { BarChart3, Star, Award, Zap, CheckCircle2, ChevronRight, Sun, Moon, Bell } from "lucide-react";
+import { BarChart3, Star, Award, Zap, CheckCircle2, ChevronRight, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getUserProblemSummaries, getUserProfile } from "@/lib/actions";
 import { useTheme } from "next-themes";
@@ -18,7 +18,7 @@ export default function AnalyticsPage() {
   const [themeMounted, setThemeMounted] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isBellDropdownOpen, setIsBellDropdownOpen] = useState(false);
+  const [complexityTab, setComplexityTab] = useState<"time" | "space">("time");
 
   useEffect(() => {
     setThemeMounted(true);
@@ -590,8 +590,8 @@ export default function AnalyticsPage() {
               </div>
             )}
           </motion.div>
-          {/* Row 2: Difficulty, Language, Time, and Space Complexity Distribution (Bigger, Below Topic Breakdown) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8.5 mb-8">
+          {/* Row 2: Difficulty, Language, and Combined Complexity (Time & Space) Distribution */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
             
             {/* Difficulty Distribution Card */}
             <motion.div
@@ -757,7 +757,7 @@ export default function AnalyticsPage() {
               </div>
             </motion.div>
 
-            {/* Time Complexity Card */}
+            {/* Combined Complexity Distribution Card (Time & Space) */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -765,11 +765,37 @@ export default function AnalyticsPage() {
               className="p-6 rounded-3xl bg-surface border border-border shadow-sm flex flex-col justify-between"
             >
               <div>
-                <h2 className="font-display font-bold text-base text-foreground mb-1">
-                  Time Complexity Distribution
-                </h2>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <h2 className="font-display font-bold text-base text-foreground">
+                    Complexity Distribution
+                  </h2>
+                  <div className="flex items-center bg-surface-2 p-0.5 rounded-xl border border-border">
+                    <button
+                      onClick={() => setComplexityTab("time")}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold font-sans transition-all cursor-pointer ${
+                        complexityTab === "time"
+                          ? "bg-primary text-white shadow-sm"
+                          : "text-muted hover:text-foreground"
+                      }`}
+                    >
+                      Time (O)
+                    </button>
+                    <button
+                      onClick={() => setComplexityTab("space")}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold font-sans transition-all cursor-pointer ${
+                        complexityTab === "space"
+                          ? "bg-primary text-white shadow-sm"
+                          : "text-muted hover:text-foreground"
+                      }`}
+                    >
+                      Space (O)
+                    </button>
+                  </div>
+                </div>
                 <p className="font-sans text-[11px] text-muted leading-relaxed mb-6">
-                  Asymptotic time complexity metrics mapped from logged solutions.
+                  {complexityTab === "time"
+                    ? "Asymptotic time complexity metrics mapped from logged solutions."
+                    : "Asymptotic space complexity metrics mapped from logged solutions."}
                 </p>
               </div>
 
@@ -779,8 +805,10 @@ export default function AnalyticsPage() {
                     const r = 62;
                     const circ = 2 * Math.PI * r;
                     const chartColors = ["#B7A8F5", "#EE8E5A", "#60A5FA", "#34D399", "#F87171", "#FBBF24", "#A78BFA"];
-                    
-                    if (totalTimeSolves === 0) {
+                    const activeData = complexityTab === "time" ? timeComplexityData : spaceComplexityData;
+                    const activeTotal = complexityTab === "time" ? totalTimeSolves : totalSpaceSolves;
+
+                    if (activeTotal === 0) {
                       return (
                         <svg className="w-full h-full -rotate-90">
                           <circle cx="80" cy="80" r="62" className="stroke-muted/15 fill-none" strokeWidth="13" />
@@ -792,8 +820,8 @@ export default function AnalyticsPage() {
                     return (
                       <svg className="w-full h-full -rotate-90">
                         <circle cx="80" cy="80" r="62" className="stroke-muted/15 fill-none" strokeWidth="13" />
-                        {timeComplexityData.map((item, idx) => {
-                          const pct = (item.count / totalTimeSolves) * circ;
+                        {activeData.map((item, idx) => {
+                          const pct = (item.count / activeTotal) * circ;
                           const offset = -accumulatedPercent;
                           accumulatedPercent += pct;
                           const strokeColor = chartColors[idx % chartColors.length];
@@ -811,7 +839,7 @@ export default function AnalyticsPage() {
                               strokeDashoffset={offset}
                               className="cursor-pointer transition-all duration-300"
                             >
-                              <title>{item.label}: {item.count} Solved ({Math.round((item.count / totalTimeSolves) * 100)}%)</title>
+                              <title>{item.label}: {item.count} Solved ({Math.round((item.count / activeTotal) * 100)}%)</title>
                             </circle>
                           );
                         })}
@@ -820,101 +848,17 @@ export default function AnalyticsPage() {
                   })()}
                   <div className="absolute flex flex-col items-center select-none pointer-events-none">
                     <span className="font-display font-extrabold text-xl text-foreground">
-                      {totalTimeSolves}
+                      {complexityTab === "time" ? totalTimeSolves : totalSpaceSolves}
                     </span>
                     <span className="text-[9px] font-sans font-bold text-muted uppercase">Solves</span>
                   </div>
                 </div>
-                
+
                 <div className="w-full text-[10px] font-mono space-y-2 font-semibold max-h-24 overflow-y-auto pr-1">
-                  {timeComplexityData.length === 0 ? (
+                  {(complexityTab === "time" ? timeComplexityData : spaceComplexityData).length === 0 ? (
                     <div className="text-center text-[8px] text-muted italic">No solves recorded</div>
                   ) : (
-                    timeComplexityData.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center cursor-help border-b border-border/20 pb-1.5" title={`${item.count} Solves`}>
-                        <span className="text-primary font-bold">{item.label}</span>
-                        <span className="text-muted">{item.count}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Space Complexity Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="p-6 rounded-3xl bg-surface border border-border shadow-sm flex flex-col justify-between"
-            >
-              <div>
-                <h2 className="font-display font-bold text-base text-foreground mb-1">
-                  Space Complexity Distribution
-                </h2>
-                <p className="font-sans text-[11px] text-muted leading-relaxed mb-6">
-                  Asymptotic space complexity metrics mapped from logged solutions.
-                </p>
-              </div>
-
-              <div className="flex flex-col items-center justify-between mt-4 gap-6">
-                <div className="relative w-40 h-40 flex items-center justify-center flex-shrink-0">
-                  {(() => {
-                    const r = 62;
-                    const circ = 2 * Math.PI * r;
-                    const chartColors = ["#B7A8F5", "#EE8E5A", "#60A5FA", "#34D399", "#F87171", "#FBBF24", "#A78BFA"];
-                    
-                    if (totalSpaceSolves === 0) {
-                      return (
-                        <svg className="w-full h-full -rotate-90">
-                          <circle cx="80" cy="80" r="62" className="stroke-muted/15 fill-none" strokeWidth="13" />
-                        </svg>
-                      );
-                    }
-
-                    let accumulatedPercent = 0;
-                    return (
-                      <svg className="w-full h-full -rotate-90">
-                        <circle cx="80" cy="80" r="62" className="stroke-muted/15 fill-none" strokeWidth="13" />
-                        {spaceComplexityData.map((item, idx) => {
-                          const pct = (item.count / totalSpaceSolves) * circ;
-                          const offset = -accumulatedPercent;
-                          accumulatedPercent += pct;
-                          const strokeColor = chartColors[idx % chartColors.length];
-
-                          return (
-                            <circle
-                              key={item.label}
-                              cx="80"
-                              cy="80"
-                              r="62"
-                              fill="none"
-                              stroke={strokeColor}
-                              strokeWidth="13"
-                              strokeDasharray={`${pct} ${circ}`}
-                              strokeDashoffset={offset}
-                              className="cursor-pointer transition-all duration-300"
-                            >
-                              <title>{item.label}: {item.count} Solved ({Math.round((item.count / totalSpaceSolves) * 100)}%)</title>
-                            </circle>
-                          );
-                        })}
-                      </svg>
-                    );
-                  })()}
-                  <div className="absolute flex flex-col items-center select-none pointer-events-none">
-                    <span className="font-display font-extrabold text-xl text-foreground">
-                      {totalSpaceSolves}
-                    </span>
-                    <span className="text-[9px] font-sans font-bold text-muted uppercase">Solves</span>
-                  </div>
-                </div>
-                
-                <div className="w-full text-[10px] font-mono space-y-2 font-semibold max-h-24 overflow-y-auto pr-1">
-                  {spaceComplexityData.length === 0 ? (
-                    <div className="text-center text-[8px] text-muted italic">No solves recorded</div>
-                  ) : (
-                    spaceComplexityData.map((item, idx) => (
+                    (complexityTab === "time" ? timeComplexityData : spaceComplexityData).map((item, idx) => (
                       <div key={idx} className="flex justify-between items-center cursor-help border-b border-border/20 pb-1.5" title={`${item.count} Solves`}>
                         <span className="text-primary font-bold">{item.label}</span>
                         <span className="text-muted">{item.count}</span>
