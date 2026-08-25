@@ -172,13 +172,13 @@ export default function DashboardPage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [defaultLanguage, setDefaultLanguage] = useState("Python");
   const [isDefaultLangDropdownOpen, setIsDefaultLangDropdownOpen] = useState(false);
-  const [editingProblemNum, setEditingProblemNum] = useState<number | null>(null);
+  const [editingProblemId, setEditingProblemId] = useState<string | null>(null);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isSavingSol, setIsSavingSol] = useState(false);
   const [isSavingProblem, setIsSavingProblem] = useState(false);
 
   // Confirm delete modals
-  const [confirmDeleteProblemNum, setConfirmDeleteProblemNum] = useState<number | null>(null);
+  const [confirmDeleteProblemId, setConfirmDeleteProblemId] = useState<string | null>(null);
   const [confirmDeleteSolIdx, setConfirmDeleteSolIdx] = useState<number | null>(null);
 
   // Theme
@@ -363,14 +363,14 @@ export default function DashboardPage() {
   };
 
   // Handler for simulated revisited
-  const handleMarkRevisited = async (num: number, customDays?: number) => {
+  const handleMarkRevisited = async (probId: string, customDays?: number) => {
     if (activeProblem?.interval?.includes("30d") && customDays === undefined && !showRevisitDaysPopup) {
       setShowRevisitDaysPopup(true);
       return;
     }
 
     try {
-      await markRevisited(num, customDays);
+      await markRevisited(probId, customDays);
       await loadProblems();
       setActiveProblem(null);
     } catch (err) {
@@ -379,25 +379,25 @@ export default function DashboardPage() {
     }
   };
 
-  const handleToggleFavorite = async (probNum: number) => {
-    const targetProblem = activeProblem?.num === probNum ? activeProblem : problemsList.find(p => p.num === probNum);
+  const handleToggleFavorite = async (probId: string) => {
+    const targetProblem = activeProblem?.id === probId ? activeProblem : problemsList.find(p => p.id === probId);
     if (!targetProblem) return;
     const nextFav = !targetProblem.isFavorite;
 
     // Optimistic UI updates
-    setProblemsList(prev => prev.map(p => p.num === probNum ? { ...p, isFavorite: nextFav } : p));
-    if (activeProblem && activeProblem.num === probNum) {
+    setProblemsList(prev => prev.map(p => p.id === probId ? { ...p, isFavorite: nextFav } : p));
+    if (activeProblem && activeProblem.id === probId) {
       setActiveProblem((prev: any) => prev ? { ...prev, isFavorite: nextFav } : null);
     }
     showToast(nextFav ? "Added to favorites!" : "Removed from favorites!", "success");
 
     try {
-      await toggleFavorite(probNum);
+      await toggleFavorite(probId);
     } catch (err) {
       console.error("Failed to toggle favorite:", err);
       // Revert on error
-      setProblemsList(prev => prev.map(p => p.num === probNum ? { ...p, isFavorite: !nextFav } : p));
-      if (activeProblem && activeProblem.num === probNum) {
+      setProblemsList(prev => prev.map(p => p.id === probId ? { ...p, isFavorite: !nextFav } : p));
+      if (activeProblem && activeProblem.id === probId) {
         setActiveProblem((prev: any) => prev ? { ...prev, isFavorite: !nextFav } : null);
       }
       showToast("Failed to update favorite", "error");
@@ -413,9 +413,9 @@ export default function DashboardPage() {
 
     try {
       setIsSavingProblem(true);
-      const isEditing = editingProblemNum !== null;
+      const isEditing = editingProblemId !== null;
       if (isEditing) {
-        await updateProblem(editingProblemNum, {
+        await updateProblem(editingProblemId, {
           name: addName,
           difficulty: addDiff,
           topic: finalTopic,
@@ -435,7 +435,7 @@ export default function DashboardPage() {
       }
 
       // Close modal & reset inputs immediately
-      setEditingProblemNum(null);
+      setEditingProblemId(null);
       setIsAddProblemOpen(false);
       setAddName("");
       setAddNum("");
@@ -893,7 +893,7 @@ export default function DashboardPage() {
                           {/* Edit Problem */}
                           <button
                             onClick={() => {
-                              setEditingProblemNum(prob.num);
+                              setEditingProblemId(prob.id);
                               setAddName(prob.name);
                               setAddUrl(prob.url === "#" ? "" : prob.url);
                               setAddDiff(prob.difficulty);
@@ -909,7 +909,7 @@ export default function DashboardPage() {
 
                           {/* Delete Problem — triggers confirm modal */}
                           <button
-                            onClick={() => setConfirmDeleteProblemNum(prob.num)}
+                            onClick={() => setConfirmDeleteProblemId(prob.id)}
                             className="w-8 h-8 rounded-lg bg-rose-500/5 border border-rose-500/20 flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition-all cursor-pointer"
                             title="Delete Problem"
                           >
@@ -1117,7 +1117,7 @@ export default function DashboardPage() {
 
                     {/* Favorite Toggle */}
                     <button
-                      onClick={() => handleToggleFavorite(activeProblem.num)}
+                      onClick={() => handleToggleFavorite(activeProblem.id)}
                       className="w-10 h-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-foreground active:scale-95 transition-all cursor-pointer"
                     >
                       <Star className={`w-5 h-5 ${activeProblem.isFavorite ? "text-accent fill-accent" : "text-muted"}`} />
@@ -1175,7 +1175,7 @@ export default function DashboardPage() {
                             onClick={async () => {
                               setIsMoreMenuOpen(false);
                               try {
-                                const updated = await updateProblem(activeProblem.num, {
+                                const updated = await updateProblem(activeProblem.id, {
                                   name: activeProblem.name,
                                   difficulty: activeProblem.difficulty,
                                   topic: activeProblem.topic,
@@ -1207,7 +1207,7 @@ export default function DashboardPage() {
                           <button
                             onClick={() => {
                               setIsMoreMenuOpen(false);
-                              handleToggleFavorite(activeProblem.num);
+                              handleToggleFavorite(activeProblem.id);
                             }}
                             className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
                           >
@@ -2049,7 +2049,7 @@ export default function DashboardPage() {
                 {(activeProblem.status === "Due Today" || activeProblem.status === "Overdue") && (
                   <motion.button
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => handleMarkRevisited(activeProblem.num)}
+                    onClick={() => handleMarkRevisited(activeProblem.id)}
                     className="px-4.5 py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-sans font-bold text-xs shadow-md shadow-primary/20 cursor-pointer"
                   >
                     Mark Revisited
@@ -2130,7 +2130,7 @@ export default function DashboardPage() {
                   onClick={() => {
                     const days = parseInt(customRevisitDays, 10);
                     if (isNaN(days) || days <= 0) return;
-                    handleMarkRevisited(activeProblem.num, days);
+                    handleMarkRevisited(activeProblem.id, days);
                   }}
                   className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold text-xs cursor-pointer transition-all shadow-md shadow-primary/10"
                 >
@@ -2156,7 +2156,7 @@ export default function DashboardPage() {
             >
               <div className="p-6 border-b border-border/80 flex items-center justify-between">
                 <h2 className="font-display font-extrabold text-lg text-foreground">
-                  {editingProblemNum !== null ? "Update Coding Problem" : "Add Coding Problem"}
+                  {editingProblemId !== null ? "Update Coding Problem" : "Add Coding Problem"}
                 </h2>
                 <button
                   onClick={() => setIsAddProblemOpen(false)}
@@ -2371,10 +2371,10 @@ export default function DashboardPage() {
                     {isSavingProblem ? (
                       <>
                         <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>{editingProblemNum !== null ? "Updating..." : "Adding..."}</span>
+                        <span>{editingProblemId !== null ? "Updating..." : "Adding..."}</span>
                       </>
                     ) : (
-                      <span>{editingProblemNum !== null ? "Update Problem" : "Add Problem"}</span>
+                      <span>{editingProblemId !== null ? "Update Problem" : "Add Problem"}</span>
                     )}
                   </button>
                 </div>
@@ -2468,8 +2468,8 @@ export default function DashboardPage() {
 
       {/* ===== CONFIRM DELETE PROBLEM MODAL ===== */}
       <AnimatePresence>
-        {confirmDeleteProblemNum !== null && (() => {
-          const prob = problemsList.find((p) => p.num === confirmDeleteProblemNum);
+        {confirmDeleteProblemId !== null && (() => {
+          const prob = problemsList.find((p) => p.id === confirmDeleteProblemId);
           return (
             <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-background/70 backdrop-blur-sm">
               <motion.div
@@ -2489,18 +2489,21 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center justify-end gap-3 pt-2 border-t border-border/60">
                   <button
-                    onClick={() => setConfirmDeleteProblemNum(null)}
+                    onClick={() => setConfirmDeleteProblemId(null)}
                     className="px-4 py-2 rounded-xl border border-border hover:bg-surface-2 text-foreground font-bold font-sans text-xs cursor-pointer transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={async () => {
-                      if (confirmDeleteProblemNum !== null) {
+                      if (confirmDeleteProblemId !== null) {
                         try {
-                          await deleteProblem(confirmDeleteProblemNum);
-                          setProblemsList((prev) => prev.filter((p) => p.num !== confirmDeleteProblemNum));
-                          setConfirmDeleteProblemNum(null);
+                          await deleteProblem(confirmDeleteProblemId);
+                          setProblemsList((prev) => prev.filter((p) => p.id !== confirmDeleteProblemId));
+                          if (activeProblem?.id === confirmDeleteProblemId) {
+                            setActiveProblem(null);
+                          }
+                          setConfirmDeleteProblemId(null);
                           showToast("Problem deleted successfully!", "success");
                         } catch (err) {
                           showToast("Failed to delete problem", "error");
