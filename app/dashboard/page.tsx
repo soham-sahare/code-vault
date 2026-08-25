@@ -5,11 +5,10 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import Sidebar from "@/components/shell/Sidebar";
 import NotificationBell from "@/components/notifications/NotificationBell";
-import { formatISTDate } from "@/lib/timestamps/ist";
-import { Search, Bell, Star, AlertCircle, AlertTriangle, Clock, CheckCircle2, ChevronRight, Filter, X, ExternalLink, Share2, Plus, Code, PlusCircle, Check, Copy, Sun, Moon, Pencil, Trash2, FileText, Globe, Lock, Sparkles, MoreVertical } from "lucide-react";
+import { Search, Star, AlertCircle, AlertTriangle, Clock, CheckCircle2, ChevronRight, Filter, X, ExternalLink, Share2, Plus, Code, PlusCircle, Check, Copy, Sun, Moon, Pencil, Trash2, FileText, Globe, Lock, Sparkles, MoreVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
-import { getProblems, createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, updateSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile, addSolutionNote, deleteSolutionNote, updateSolutionNote, saveOnboarding, getHighlightedHtml, getProblemDetails, getPaginatedProblems } from "@/lib/actions";
+import { createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, updateSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile, addSolutionNote, deleteSolutionNote, updateSolutionNote, saveOnboarding, getProblemDetails, getPaginatedProblems } from "@/lib/actions";
 import { getInitials } from "@/lib/utils/formatters";
 import { highlightClientCode } from "@/lib/utils/clientHighlight";
 
@@ -49,7 +48,6 @@ export default function DashboardPage() {
   const [problemsList, setProblemsList] = useState<Problem[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isBellDropdownOpen, setIsBellDropdownOpen] = useState(false);
   const [showRevisitDaysPopup, setShowRevisitDaysPopup] = useState(false);
   const [customRevisitDays, setCustomRevisitDays] = useState("3");
 
