@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-helper";
-import { updateProblem, deleteProblem, getProblems } from "@/lib/actions";
+import { updateProblem, deleteProblem, getProblemDetails } from "@/lib/actions";
 import { z } from "zod";
 
 const updateProblemSchema = z.object({
@@ -15,7 +15,7 @@ const updateProblemSchema = z.object({
 
 /**
  * GET /api/problems/:id
- * Fetch a single problem by ID.
+ * Fetch a single problem by ID (O(1) indexed scan).
  */
 export async function GET(
   req: Request,
@@ -24,8 +24,7 @@ export async function GET(
   try {
     await requireAuth();
     const { id } = await params;
-    const all = await getProblems();
-    const problem = all.find((p: any) => p.id === id);
+    const problem = await getProblemDetails(id).catch(() => null);
     if (!problem) {
       return NextResponse.json({ data: null, error: "Problem not found" }, { status: 404 });
     }
@@ -40,7 +39,7 @@ export async function GET(
 
 /**
  * PATCH /api/problems/:id
- * Updates an existing problem.
+ * Updates an existing problem (O(1) direct lookup).
  */
 export async function PATCH(
   req: Request,
@@ -55,8 +54,7 @@ export async function PATCH(
       return NextResponse.json({ data: null, error: parsed.error.message }, { status: 400 });
     }
 
-    const all = await getProblems();
-    const problem = all.find((p: any) => p.id === id);
+    const problem = await getProblemDetails(id).catch(() => null);
     if (!problem) {
       return NextResponse.json({ data: null, error: "Problem not found" }, { status: 404 });
     }
@@ -79,7 +77,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/problems/:id
- * Deletes a problem.
+ * Deletes a problem (O(1) direct lookup).
  */
 export async function DELETE(
   req: Request,
@@ -88,8 +86,7 @@ export async function DELETE(
   try {
     await requireAuth();
     const { id } = await params;
-    const all = await getProblems();
-    const problem = all.find((p: any) => p.id === id);
+    const problem = await getProblemDetails(id).catch(() => null);
     if (!problem) {
       return NextResponse.json({ data: null, error: "Problem not found" }, { status: 404 });
     }
