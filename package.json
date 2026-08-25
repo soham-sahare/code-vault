@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "NODE_OPTIONS='--no-deprecation' next dev",
     "build": "prisma generate && NODE_OPTIONS='--no-deprecation' next build",
+    "db:rls": "npx tsx scripts/apply_rls.ts",
     "start": "NODE_OPTIONS='--no-deprecation' next start",
     "lint": "eslint"
   },
