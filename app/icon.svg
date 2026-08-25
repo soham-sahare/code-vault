@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect width="32" height="32" rx="8" fill="#7C3AED" />
+  <g transform="translate(4, 4)" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Outer Brackets -->
+    <path d="M6 17L2 12l4-5M18 7l4 5-4 5" />
+    <!-- Vault Circular Lock Body -->
+    <circle cx="12" cy="12" r="4.5" stroke="#FFFFFF" stroke-width="2" fill="#FFFFFF" fill-opacity="0.15" />
+    <!-- Dial Notch Indicator -->
+    <line x1="12" y1="9.5" x2="12" y2="12" stroke="#FFFFFF" stroke-width="2" />
+    <circle cx="12" cy="12" r="1" fill="#FFFFFF" stroke="none" />
+  </g>
+</svg>

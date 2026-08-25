@@ -18,6 +18,17 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "CodeVault — Solve it once. Remember it forever.",
   description: "A modern, minimal platform to store, organize, and revisit coding problems & solutions with built-in spaced-repetition reminders, sheets, notes, and analytics.",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+      { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
 };
 
 export default function RootLayout({
