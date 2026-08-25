@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-helper";
-import { addSolution, getProblems } from "@/lib/actions";
+import { addSolution } from "@/lib/actions";
+import { db } from "@/lib/db";
 import { z } from "zod";
 
 const createSolutionSchema = z.object({
@@ -16,21 +17,32 @@ const createSolutionSchema = z.object({
 
 /**
  * GET /api/problems/:id/solutions
- * Lists solutions for a problem.
+ * Lists solutions for a problem via indexed problemId query.
  */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    const userId = await requireAuth();
     const { id } = await params;
-    const all = await getProblems();
-    const problem = all.find((p: any) => p.id === id);
+    
+    // Verify problem ownership / existence
+    const problem = await db.problem.findFirst({
+      where: { id, userId },
+      select: { id: true }
+    });
     if (!problem) {
       return NextResponse.json({ data: null, error: "Problem not found" }, { status: 404 });
     }
-    return NextResponse.json({ data: problem.solutions || [], error: null });
+
+    const solutions = await db.solution.findMany({
+      where: { problemId: id },
+      include: { notes: true },
+      orderBy: { createdAt: "asc" }
+    });
+
+    return NextResponse.json({ data: solutions, error: null });
   } catch (err: any) {
     if (err.message === "Unauthorized") {
       return NextResponse.json({ data: null, error: "Unauthorized" }, { status: 401 });
