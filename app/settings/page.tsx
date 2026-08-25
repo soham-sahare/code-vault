@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/shell/Sidebar";
-import { Settings, User, Globe, ShieldCheck, Check, Sun, Moon, Bell, Trash2, AlertTriangle, Loader2, Download, Upload, Database } from "lucide-react";
+import { Settings, User, Globe, ShieldCheck, Check, Sun, Moon, Trash2, AlertTriangle, Loader2, Download, Upload, Database } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getUserProfile, updateUserProfile, deleteUserAccount, exportUserData, importUserData } from "@/lib/actions";
 import NotificationBell from "@/components/notifications/NotificationBell";
@@ -37,7 +37,6 @@ export default function SettingsPage() {
   const [themeMounted, setThemeMounted] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isBellDropdownOpen, setIsBellDropdownOpen] = useState(false);
 
   useEffect(() => {
     setThemeMounted(true);
