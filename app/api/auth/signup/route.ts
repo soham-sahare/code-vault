@@ -4,10 +4,10 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 const signupSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  username: z.string().min(2, "Username must be at least 2 characters").optional(),
+  username: z.string().min(2, "Username must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  name: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -22,12 +22,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const { name, username: rawUsername, email, password } = result.data;
+    const { username: rawUsername, email, password, name } = result.data;
     const cleanEmail = email.toLowerCase().trim();
 
-    // Determine target username: user-provided username or derived from name / email
-    const rawTarget = rawUsername || name || cleanEmail.split("@")[0];
-    const cleanUsername = rawTarget.toLowerCase().trim().replace(/[^a-z0-9_]/g, "");
+    // Sanitize username
+    const cleanUsername = rawUsername.toLowerCase().trim().replace(/[^a-z0-9_]/g, "");
     if (!cleanUsername || cleanUsername.length < 2) {
       return NextResponse.json(
         { error: "Username must be at least 2 alphanumeric characters" },
@@ -70,7 +69,7 @@ export async function POST(req: Request) {
     // Create the user with exact username
     const user = await db.user.create({
       data: {
-        name: name.trim(),
+        name: name?.trim() || cleanUsername,
         email: cleanEmail,
         username: cleanUsername,
         passwordHash: hashedPassword,
