@@ -29,10 +29,7 @@ export default function SignupPage() {
   useEffect(() => {
     checkAuthSession().then((res) => {
       if (res && res.signedIn) {
-        showToast("Already signed in!", "info");
-        setTimeout(() => {
-          router.push("/dashboard");
-        }, 1200);
+        router.replace("/dashboard");
       }
     }).catch(console.error);
   }, [router]);
