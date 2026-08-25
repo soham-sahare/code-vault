@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Sidebar from "@/components/shell/Sidebar";
 import { BarChart3, Star, Award, Zap, CheckCircle2, ChevronRight, Sun, Moon, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,7 +52,7 @@ export default function AnalyticsPage() {
     load();
   }, []);
 
-  const getFilteredProblems = () => {
+  const filteredData = useMemo(() => {
     if (timeRange === "ALL") return problems;
     const now = new Date();
     let limitDays = 7;
@@ -64,36 +64,38 @@ export default function AnalyticsPage() {
       const pDate = p.solvedAt ? new Date(p.solvedAt) : new Date(p.createdAt);
       return pDate >= cutoffDate;
     });
-  };
+  }, [problems, timeRange]);
 
-  const filteredData = getFilteredProblems();
-
-  const totalSolved = filteredData.filter((p) => p.status === "Solved").length;
-  const retentionRate = totalSolved > 0 ? Math.round((filteredData.filter((p) => p.interval !== "Recall Stage 1").length / filteredData.length) * 100) : 0;
+  const totalSolved = useMemo(() => filteredData.filter((p) => p.status === "Solved").length, [filteredData]);
+  const retentionRate = useMemo(
+    () => (totalSolved > 0 ? Math.round((filteredData.filter((p) => p.interval !== "Recall Stage 1").length / filteredData.length) * 100) : 0),
+    [filteredData, totalSolved]
+  );
   
   // Topic aggregation - split comma-separated strings to get individual topic statistics
-  const topicMap: Record<string, { solved: number; total: number }> = {};
-  filteredData.forEach((p) => {
-    const rawTopic = p.topic || "Unknown";
-    // Split by comma and trim each topic
-    const individualTopics = rawTopic.split(",").map((t: string) => t.trim()).filter(Boolean);
-    
-    individualTopics.forEach((t: string) => {
-      if (!topicMap[t]) {
-        topicMap[t] = { solved: 0, total: 0 };
-      }
-      topicMap[t].total += 1;
-      if (p.status === "Solved") {
-        topicMap[t].solved += 1;
-      }
+  const topics = useMemo(() => {
+    const topicMap: Record<string, { solved: number; total: number }> = {};
+    filteredData.forEach((p) => {
+      const rawTopic = p.topic || "Unknown";
+      const individualTopics = rawTopic.split(",").map((t: string) => t.trim()).filter(Boolean);
+      
+      individualTopics.forEach((t: string) => {
+        if (!topicMap[t]) {
+          topicMap[t] = { solved: 0, total: 0 };
+        }
+        topicMap[t].total += 1;
+        if (p.status === "Solved") {
+          topicMap[t].solved += 1;
+        }
+      });
     });
-  });
-  const topics = Object.entries(topicMap).map(([name, stat]) => ({
-    name,
-    solved: stat.solved,
-    total: stat.total,
-    percent: stat.total > 0 ? `${Math.round((stat.solved / stat.total) * 100)}%` : "0%"
-  })); // Show all topics
+    return Object.entries(topicMap).map(([name, stat]) => ({
+      name,
+      solved: stat.solved,
+      total: stat.total,
+      percent: stat.total > 0 ? `${Math.round((stat.solved / stat.total) * 100)}%` : "0%"
+    }));
+  }, [filteredData]);
 
   const getStreakData = (allProblems: any[]) => {
     const solvedProblems = allProblems.filter((p) => p.status === "Solved" && p.solvedAt);
@@ -162,7 +164,8 @@ export default function AnalyticsPage() {
     return { currentStreak, longestStreak };
   };
 
-  const { currentStreak } = getStreakData(problems);
+  const streakData = useMemo(() => getStreakData(problems), [problems]);
+  const { currentStreak, longestStreak } = streakData;
 
   const normalizeComplexity = (val: string): string => {
     const clean = val.toLowerCase().replace(/\s+/g, "").trim();
@@ -179,7 +182,7 @@ export default function AnalyticsPage() {
     return val.trim();
   };
 
-  const getTimeComplexityData = () => {
+  const timeComplexityData = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredData.forEach((p) => {
       p.solutions?.forEach((sol: any) => {
@@ -195,9 +198,9 @@ export default function AnalyticsPage() {
       .map(([label, count]) => ({ label, count }))
       .filter((item) => item.count > 0)
       .sort((a, b) => b.count - a.count);
-  };
+  }, [filteredData]);
 
-  const getSpaceComplexityData = () => {
+  const spaceComplexityData = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredData.forEach((p) => {
       p.solutions?.forEach((sol: any) => {
@@ -213,12 +216,9 @@ export default function AnalyticsPage() {
       .map(([label, count]) => ({ label, count }))
       .filter((item) => item.count > 0)
       .sort((a, b) => b.count - a.count);
-  };
+  }, [filteredData]);
 
-  const timeComplexityData = getTimeComplexityData();
-  const spaceComplexityData = getSpaceComplexityData();
-
-  const getDifficultyData = () => {
+  const difficultyData = useMemo(() => {
     const counts = { EASY: 0, MED: 0, HARD: 0 };
     filteredData.forEach((p) => {
       const diff = (p.difficulty || "EASY").toUpperCase();
@@ -231,9 +231,9 @@ export default function AnalyticsPage() {
       { label: "Medium", count: counts.MED, color: "#FBBF24" },
       { label: "Hard", count: counts.HARD, color: "#F87171" }
     ].filter(item => item.count > 0);
-  };
+  }, [filteredData]);
 
-  const getLanguageData = () => {
+  const languageData = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredData.forEach((p) => {
       p.solutions?.forEach((sol: any) => {
@@ -265,13 +265,17 @@ export default function AnalyticsPage() {
       })
       .filter((item) => item.count > 0)
       .sort((a, b) => b.count - a.count);
-  };
+  }, [filteredData]);
 
-  const difficultyData = getDifficultyData();
-  const totalDifficultySolves = difficultyData.reduce((acc, item) => acc + item.count, 0);
+  const totalDifficultySolves = useMemo(
+    () => difficultyData.reduce((acc, item) => acc + item.count, 0),
+    [difficultyData]
+  );
 
-  const languageData = getLanguageData();
-  const totalLanguageSolves = languageData.reduce((acc, item) => acc + item.count, 0);
+  const totalLanguageSolves = useMemo(
+    () => languageData.reduce((acc, item) => acc + item.count, 0),
+    [languageData]
+  );
 
   const getRecallVolumeData = () => {
     const now = new Date();
