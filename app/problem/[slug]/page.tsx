@@ -196,7 +196,7 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center w-8 h-8 rounded-xl border border-border bg-surface-2 hover:bg-border/20 text-muted hover:text-foreground cursor-pointer transition-colors"
-                title="View on LeetCode"
+                title="View Problem Source"
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
