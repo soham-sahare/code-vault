@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "NODE_OPTIONS='--no-deprecation' next dev",
-    "build": "prisma generate && npx tsx scripts/apply_rls.ts && NODE_OPTIONS='--no-deprecation' next build",
-    "db:rls": "npx tsx scripts/apply_rls.ts",
+    "build": "prisma generate && tsx scripts/apply_rls.ts && NODE_OPTIONS='--no-deprecation' next build",
+    "db:rls": "tsx scripts/apply_rls.ts",
     "start": "NODE_OPTIONS='--no-deprecation' next start",
     "lint": "eslint"
   },
@@ -38,6 +38,7 @@
     "eslint-config-next": "16.2.7",
     "prisma": "^6.3.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   },
   "allowScripts": {
