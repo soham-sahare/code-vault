@@ -1761,3 +1761,198 @@ export async function deleteUserAccount() {
   return { success: true };
 }
 
+/**
+ * Exports all user problems, solutions, notes, and sheets as a portable JSON backup.
+ */
+export async function exportUserData() {
+  const userId = await requireAuth();
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      username: true,
+      email: true,
+      defaultLanguage: true,
+      createdAt: true,
+    },
+  });
+
+  const problems = await db.problem.findMany({
+    where: { userId },
+    orderBy: { num: "asc" },
+    include: {
+      solutions: {
+        include: {
+          notes: true,
+        },
+      },
+      notes: true,
+    },
+  });
+
+  const sheets = await db.sheet.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+    include: {
+      problems: {
+        include: {
+          problem: {
+            select: { num: true, name: true },
+          },
+        },
+      },
+    },
+  });
+
+  return {
+    version: "1.0",
+    exportedAt: new Date().toISOString(),
+    user,
+    problems: problems.map((p) => ({
+      num: p.num,
+      name: p.name,
+      url: p.url,
+      topic: p.topic,
+      difficulty: p.difficulty,
+      status: p.status,
+      isFavorite: p.isFavorite,
+      solutions: p.solutions.map((s) => ({
+        name: s.name,
+        lang: s.lang,
+        intuition: s.intuition,
+        approach: s.approach,
+        code: s.code,
+        time: s.time,
+        space: s.space,
+        notes: s.notes.map((n) => ({ type: n.type, text: n.text })),
+      })),
+      notes: p.notes.map((n) => ({ type: n.type, text: n.text })),
+    })),
+    sheets: sheets.map((s) => ({
+      name: s.name,
+      description: s.description,
+      problems: s.problems.map((sp) => sp.problem.num),
+    })),
+  };
+}
+
+/**
+ * Imports problems, solutions, and notes in batch from a JSON backup.
+ */
+export async function importUserData(data: {
+  problems?: Array<{
+    name: string;
+    url?: string;
+    topic?: string;
+    difficulty?: string;
+    status?: string;
+    isFavorite?: boolean;
+    solutions?: Array<{
+      name?: string;
+      lang?: string;
+      intuition?: string;
+      approach?: string;
+      code?: string;
+      time?: string;
+      space?: string;
+      notes?: Array<{ type?: string; text?: string }>;
+    }>;
+    notes?: Array<{ type?: string; text?: string }>;
+  }>;
+}) {
+  const userId = await requireAuth();
+
+  if (!data || !Array.isArray(data.problems) || data.problems.length === 0) {
+    throw new Error("Invalid import data. No problems found to import.");
+  }
+
+  // Get current max problem number for this user
+  const highestProblem = await db.problem.findFirst({
+    where: { userId },
+    orderBy: { num: "desc" },
+    select: { num: true },
+  });
+
+  let nextNum = (highestProblem?.num ?? 0) + 1;
+  let importedCount = 0;
+
+  // Process problems inside a single transaction
+  await db.$transaction(async (tx) => {
+    for (const item of data.problems!) {
+      if (!item.name || !item.name.trim()) continue;
+
+      const difficulty = item.difficulty || "Medium";
+      const diffColor =
+        difficulty === "Easy"
+          ? "#10b981"
+          : difficulty === "Hard"
+          ? "#f43f5e"
+          : "#f59e0b";
+
+      const createdProblem = await tx.problem.create({
+        data: {
+          userId,
+          num: nextNum++,
+          name: item.name.trim(),
+          url: item.url || "#",
+          topic: item.topic || "Algorithms",
+          difficulty,
+          diffColor,
+          status: item.status || "Due Today",
+          statusColor: "#6366f1",
+          isFavorite: !!item.isFavorite,
+        },
+      });
+
+      // Import solutions if present
+      if (Array.isArray(item.solutions) && item.solutions.length > 0) {
+        for (const sol of item.solutions) {
+          const createdSol = await tx.solution.create({
+            data: {
+              problemId: createdProblem.id,
+              userId,
+              name: sol.name || "Default Approach",
+              lang: sol.lang || "Python",
+              intuition: sol.intuition || "",
+              approach: sol.approach || "",
+              code: sol.code || "",
+              time: sol.time || "O(N)",
+              space: sol.space || "O(1)",
+              tags: [],
+            },
+          });
+
+          if (Array.isArray(sol.notes) && sol.notes.length > 0) {
+            await tx.solutionNote.createMany({
+              data: sol.notes.map((n) => ({
+                solutionId: createdSol.id,
+                type: n.type || "note",
+                text: n.text || "",
+              })),
+            });
+          }
+        }
+      }
+
+      // Import problem notes if present
+      if (Array.isArray(item.notes) && item.notes.length > 0) {
+        await tx.note.createMany({
+          data: item.notes.map((n) => ({
+            problemId: createdProblem.id,
+            userId,
+            type: n.type || "note",
+            text: n.text || "",
+          })),
+        });
+      }
+
+      importedCount++;
+    }
+  });
+
+  // Invalidate user caches
+  await invalidateUserCaches(userId);
+
+  return { success: true, count: importedCount };
+}
+
