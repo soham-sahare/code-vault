@@ -42,19 +42,28 @@ const PUBLIC_API_ROUTES = [
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ── Check if route needs protection ──────────────────────────────────────
+  const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password";
   const isProtectedPage = PROTECTED_ROUTES.some((r) => pathname.startsWith(r));
   const isApiRoute = pathname.startsWith(PROTECTED_API_PREFIX);
   const isPublicApiRoute = PUBLIC_API_ROUTES.some((r) => pathname.startsWith(r));
 
-  if (!isProtectedPage && !(isApiRoute && !isPublicApiRoute)) {
+  // If not visiting an auth page, protected page, or protected API, pass through
+  if (!isAuthPage && !isProtectedPage && !(isApiRoute && !isPublicApiRoute)) {
     return NextResponse.next();
   }
 
   // ── Auth Check ────────────────────────────────────────────────────────────
   const session = await auth();
 
+  // If already logged in and visiting auth pages, immediately redirect to /dashboard
+  if (session?.user && isAuthPage) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   if (!session?.user?.id) {
+    if (isAuthPage) {
+      return NextResponse.next();
+    }
     if (isApiRoute) {
       return NextResponse.json(
         { error: "Unauthorized", message: "You must be logged in to access this resource." },
