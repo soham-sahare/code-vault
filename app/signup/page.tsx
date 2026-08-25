@@ -9,7 +9,6 @@ import { signIn } from "next-auth/react";
 import { checkAuthSession } from "@/lib/actions";
 
 export default function SignupPage() {
-  const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,8 +47,7 @@ export default function SignupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: name.trim(),
-          username: cleanUsername || undefined,
+          username: cleanUsername,
           email: email.trim(),
           password
         }),
@@ -124,25 +122,6 @@ export default function SignupPage() {
 
         {/* Form Inputs */}
         <form className="mt-8 space-y-4" onSubmit={handleSignup}>
-          <div>
-            <label className="block font-sans font-semibold text-xs text-muted mb-2 uppercase tracking-wide">
-              Full Name
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="Hunter Davis"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (!username) {
-                  setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""));
-                }
-              }}
-              className="w-full px-4 py-3 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none font-sans text-sm text-foreground transition-all placeholder:text-muted/60"
-            />
-          </div>
-
           <div>
             <label className="block font-sans font-semibold text-xs text-muted mb-2 uppercase tracking-wide">
               Username
