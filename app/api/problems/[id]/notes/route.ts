@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-helper";
-import { addNote, getProblems } from "@/lib/actions";
+import { addNote } from "@/lib/actions";
+import { db } from "@/lib/db";
 import { z } from "zod";
 
 const createNoteSchema = z.object({
@@ -11,21 +12,20 @@ const createNoteSchema = z.object({
 
 /**
  * GET /api/problems/:id/notes
- * Lists all problem-level notes for the problem.
+ * Lists all problem-level notes for the problem via indexed problemId query.
  */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    const userId = await requireAuth();
     const { id } = await params;
-    const all = await getProblems();
-    const problem = all.find((p: any) => p.id === id);
-    if (!problem) {
-      return NextResponse.json({ data: null, error: "Problem not found" }, { status: 404 });
-    }
-    return NextResponse.json({ data: problem.notes || [], error: null });
+    const notes = await db.note.findMany({
+      where: { problemId: id, userId },
+      orderBy: { createdAt: "asc" }
+    });
+    return NextResponse.json({ data: notes, error: null });
   } catch (err: any) {
     if (err.message === "Unauthorized") {
       return NextResponse.json({ data: null, error: "Unauthorized" }, { status: 401 });
