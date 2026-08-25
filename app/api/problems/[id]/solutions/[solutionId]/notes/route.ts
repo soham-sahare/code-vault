@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-helper";
-import { addSolutionNote, getProblems } from "@/lib/actions";
+import { addSolutionNote } from "@/lib/actions";
+import { db } from "@/lib/db";
 import { z } from "zod";
 
 const createSolNoteSchema = z.object({
@@ -11,7 +12,7 @@ const createSolNoteSchema = z.object({
 
 /**
  * GET /api/problems/:id/solutions/:solutionId/notes
- * Lists notes for a solution.
+ * Lists notes for a solution via indexed solutionId query.
  */
 export async function GET(
   req: Request,
@@ -19,17 +20,12 @@ export async function GET(
 ) {
   try {
     await requireAuth();
-    const { id, solutionId } = await params;
-    const all = await getProblems();
-    const problem = all.find((p: any) => p.id === id);
-    if (!problem) {
-      return NextResponse.json({ data: null, error: "Problem not found" }, { status: 404 });
-    }
-    const solution = problem.solutions?.find((s: any) => s.id === solutionId);
-    if (!solution) {
-      return NextResponse.json({ data: null, error: "Solution not found" }, { status: 404 });
-    }
-    return NextResponse.json({ data: solution.notes || [], error: null });
+    const { solutionId } = await params;
+    const notes = await db.solutionNote.findMany({
+      where: { solutionId },
+      orderBy: { createdAt: "asc" }
+    });
+    return NextResponse.json({ data: notes, error: null });
   } catch (err: any) {
     if (err.message === "Unauthorized") {
       return NextResponse.json({ data: null, error: "Unauthorized" }, { status: 401 });
