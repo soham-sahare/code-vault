@@ -5,45 +5,8 @@ import Link from "next/link";
 import { Star, Globe, ArrowLeft, ExternalLink, Calendar, Copy, Check, AlertCircle, AlertTriangle, CheckCircle2, FileText, Lock, Library } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatISTDate } from "@/lib/timestamps/ist";
-import Prism from "prismjs";
-import "prismjs/components/prism-python";
-import "prismjs/components/prism-clike";
-import "prismjs/components/prism-c";
-import "prismjs/components/prism-cpp";
-import "prismjs/components/prism-java";
-import "prismjs/components/prism-javascript";
-import "prismjs/components/prism-typescript";
-import "prismjs/components/prism-go";
-import "prismjs/components/prism-rust";
-import "prismjs/themes/prism-tomorrow.css";
 import { getPublicProblemBySlug, getHighlightedHtml } from "@/lib/actions";
 import { useTheme } from "next-themes";
-
-
-function highlightCode(code: string, lang: string) {
-  if (!code) return "";
-  
-  const normalizedLang = lang.toLowerCase();
-  let prismLang = Prism.languages.python;
-  
-  if (normalizedLang === "python") {
-    prismLang = Prism.languages.python;
-  } else if (normalizedLang === "c++" || normalizedLang === "cpp") {
-    prismLang = Prism.languages.cpp;
-  } else if (normalizedLang === "java") {
-    prismLang = Prism.languages.java;
-  } else if (normalizedLang === "javascript" || normalizedLang === "js") {
-    prismLang = Prism.languages.javascript;
-  } else if (normalizedLang === "typescript" || normalizedLang === "ts") {
-    prismLang = Prism.languages.typescript;
-  } else if (normalizedLang === "go") {
-    prismLang = Prism.languages.go;
-  } else if (normalizedLang === "rust") {
-    prismLang = Prism.languages.rust;
-  }
-  
-  return Prism.highlight(code, prismLang, lang);
-}
 
 export default function SharedProblemPage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = use(params);
