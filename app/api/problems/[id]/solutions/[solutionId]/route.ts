@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-helper";
-import { updateSolution, deleteSolution, getProblems } from "@/lib/actions";
+import { updateSolution, deleteSolution } from "@/lib/actions";
+import { db } from "@/lib/db";
 import { z } from "zod";
 
 const updateSolutionSchema = z.object({
@@ -16,14 +17,14 @@ const updateSolutionSchema = z.object({
 
 /**
  * PATCH /api/problems/:id/solutions/:solutionId
- * Updates an existing solution.
+ * Updates an existing solution (O(1) direct lookup).
  */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string; solutionId: string }> }
 ) {
   try {
-    await requireAuth();
+    const userId = await requireAuth();
     const { solutionId } = await params;
     const body = await req.json();
     const parsed = updateSolutionSchema.safeParse(body);
@@ -31,15 +32,9 @@ export async function PATCH(
       return NextResponse.json({ data: null, error: parsed.error.message }, { status: 400 });
     }
 
-    const all = await getProblems();
-    let existingSol: any = null;
-    for (const p of all) {
-      const found = p.solutions?.find((s: any) => s.id === solutionId);
-      if (found) {
-        existingSol = found;
-        break;
-      }
-    }
+    const existingSol = await db.solution.findFirst({
+      where: { id: solutionId, problem: { userId } }
+    });
     if (!existingSol) {
       return NextResponse.json({ data: null, error: "Solution not found" }, { status: 404 });
     }
