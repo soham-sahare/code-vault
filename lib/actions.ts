@@ -1625,9 +1625,16 @@ export async function getUserTopics() {
     select: { topic: true },
   });
 
-  const topicsSet = new Set(
-    problems.map((p) => p.topic).filter(Boolean)
-  );
+  const topicsSet = new Set<string>();
+  for (const p of problems) {
+    if (p.topic) {
+      const split = p.topic.split(",");
+      for (let i = 0; i < split.length; i++) {
+        const clean = split[i].trim();
+        if (clean) topicsSet.add(clean);
+      }
+    }
+  }
   const tags = Array.from(topicsSet).sort();
 
   // 3. Back-fill Redis cache
