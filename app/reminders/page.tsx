@@ -13,8 +13,6 @@ import {
   Moon,
   CalendarDays,
   Check,
-  CheckCircle2,
-  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
@@ -39,6 +37,7 @@ export default function RemindersPage() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "DUE" | "OVERDUE" | "UPCOMING">("ALL");
 
   useEffect(() => {
     setThemeMounted(true);
@@ -88,8 +87,8 @@ export default function RemindersPage() {
   const formatTopics = (topicStr?: string) => {
     if (!topicStr) return "";
     const parts = topicStr.split(",").map((s) => s.trim()).filter(Boolean);
-    if (parts.length > 3) {
-      return parts.slice(0, 3).join(", ") + "...";
+    if (parts.length > 2) {
+      return parts.slice(0, 2).join(", ") + "...";
     }
     return parts.join(", ");
   };
@@ -108,12 +107,17 @@ export default function RemindersPage() {
     }
     // Fallback: estimate from solvedAt or createdAt + interval
     const base = p.solvedAt ? new Date(p.solvedAt) : new Date(p.createdAt || Date.now());
-    const inv = (p.interval || "").toLowerCase();
+    const inv = (p.interval || "").toLowerCase().trim();
     let days = 3;
-    if (inv.includes("30d") || inv.includes("stage 4") || inv.includes("mastered")) days = 30;
-    else if (inv.includes("15d") || inv.includes("stage 3")) days = 15;
-    else if (inv.includes("7d") || inv.includes("stage 2")) days = 7;
-    else if (inv.includes("3d") || inv.includes("stage 1")) days = 3;
+    if (inv.includes("30d") || inv.includes("stage 4") || inv.includes("mastered")) {
+      days = 30;
+    } else if (inv.includes("15d") || (inv.includes("stage 3") && !inv.includes("3d"))) {
+      days = 15;
+    } else if (inv.includes("7d") || inv.includes("stage 2")) {
+      days = 7;
+    } else {
+      days = 3;
+    }
 
     const due = new Date(base);
     due.setDate(due.getDate() + days);
@@ -214,7 +218,7 @@ export default function RemindersPage() {
         <Sidebar />
         <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto max-w-7xl mx-auto w-full">
           {/* Header Skeleton */}
-          <div className="flex items-center justify-between mb-10 gap-4">
+          <div className="flex items-center justify-between mb-8 gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-2.5">
                 <Skeleton className="w-8 h-8 rounded-xl" />
@@ -230,7 +234,7 @@ export default function RemindersPage() {
           </div>
 
           {/* Cards Skeleton Grid */}
-          <div className="space-y-10">
+          <div className="space-y-8">
             {[1, 2].map((section) => (
               <div key={section} className="space-y-4">
                 <div className="flex items-center gap-2 pb-2 border-b border-border/80">
@@ -238,21 +242,18 @@ export default function RemindersPage() {
                   <Skeleton className="h-5 w-44 rounded-lg" />
                   <Skeleton className="h-4 w-14 rounded-full" />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {[1, 2, 3].map((card) => (
                     <div
                       key={card}
-                      className="p-5 rounded-2xl bg-surface border border-border shadow-sm flex items-center justify-between"
+                      className="p-5 rounded-2xl bg-surface border border-border space-y-3"
                     >
-                      <div className="space-y-2 flex-1 mr-4">
-                        <Skeleton className="h-4 w-3/4 rounded-lg" />
-                        <div className="flex items-center gap-2">
-                          <Skeleton className="h-3 w-12 rounded-md" />
-                          <Skeleton className="h-3 w-12 rounded-md" />
-                          <Skeleton className="h-3 w-20 rounded-md" />
-                        </div>
+                      <Skeleton className="h-4 w-3/4 rounded-lg" />
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-3 w-12 rounded-md" />
+                        <Skeleton className="h-3 w-12 rounded-md" />
                       </div>
-                      <Skeleton className="w-4 h-4 rounded-md shrink-0" />
+                      <Skeleton className="h-3 w-28 rounded-md pt-2" />
                     </div>
                   ))}
                 </div>
@@ -270,14 +271,14 @@ export default function RemindersPage() {
 
       <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto max-w-7xl mx-auto w-full">
         {/* Top Header Bar */}
-        <div className="flex items-center justify-between mb-10 gap-4">
+        <div className="flex items-center justify-between mb-8 gap-4">
           <div>
             <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-foreground flex items-center gap-2.5">
               <Clock className="w-8 h-8 text-primary" />
-              Reminders & Spaced Agenda
+              Reminders
             </h1>
             <p className="font-sans text-xs text-muted mt-1">
-              Automated 4-stage recall schedule and chronological practice deadlines
+              Your memory-spaced practice agenda
             </p>
           </div>
 
@@ -341,6 +342,37 @@ export default function RemindersPage() {
           </div>
         </div>
 
+        {/* Quick Filter Bar */}
+        <div className="flex items-center gap-2 mb-8 overflow-x-auto pb-1">
+          {[
+            { id: "ALL", label: "All", count: problems.length },
+            { id: "DUE", label: "Due Today", count: dueTodayReminders.length, color: "text-amber-500" },
+            { id: "OVERDUE", label: "Overdue", count: overdueReminders.length, color: "text-rose-500" },
+            { id: "UPCOMING", label: "Upcoming", count: upcomingReminders.length, color: "text-primary" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id as any)}
+              className={`px-3.5 py-1.5 rounded-xl font-sans font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                statusFilter === tab.id
+                  ? "bg-primary text-white shadow-sm"
+                  : "bg-surface border border-border text-muted hover:text-foreground hover:bg-surface-2"
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                  statusFilter === tab.id
+                    ? "bg-white/20 text-white"
+                    : "bg-surface-2 text-muted"
+                }`}
+              >
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
         {problems.length === 0 ? (
           <div className="p-10 rounded-3xl bg-surface border border-border text-center max-w-lg mx-auto mt-12 space-y-3 font-sans">
             <Clock className="w-10 h-10 text-primary mx-auto opacity-70" />
@@ -350,41 +382,41 @@ export default function RemindersPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-12">
-            {/* GROUP 1: OVERDUE (Rose visual alerts) */}
-            {overdueReminders.length > 0 && (
+          <div className="space-y-10">
+            {/* GROUP 1: OVERDUE */}
+            {(statusFilter === "ALL" || statusFilter === "OVERDUE") && overdueReminders.length > 0 && (
               <div>
-                <div className="flex items-center gap-2.5 mb-5 border-b border-border/80 pb-3">
-                  <AlertTriangle className="w-5 h-5 text-rose-500" />
-                  <h2 className="font-display font-extrabold text-base text-rose-500">
+                <div className="flex items-center gap-2 mb-4 border-b border-border/80 pb-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-500" />
+                  <h2 className="font-display font-bold text-sm text-rose-500">
                     Overdue Recall Items
                   </h2>
-                  <span className="text-[11px] font-sans font-bold bg-rose-500/10 text-rose-500 px-2.5 py-0.5 rounded-full border border-rose-500/20">
-                    {overdueReminders.length} {overdueReminders.length === 1 ? "item" : "items"}
+                  <span className="text-[10px] font-sans font-bold bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full">
+                    {overdueReminders.length}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {overdueReminders.map((rem, idx) => {
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {overdueReminders.map((rem) => {
                     const dueDate = getProblemDueDate(rem);
                     const { dateStr, relativeStr } = formatCardDueDate(dueDate);
 
                     return (
-                      <Link key={idx} href={`/dashboard?p=${rem.id}`} className="block group">
+                      <Link key={rem.id} href={`/dashboard?p=${rem.id}`} className="block group">
                         <motion.div
-                          whileHover={{ y: -3, borderColor: "rgba(239, 68, 68, 0.4)" }}
-                          className="p-5 rounded-2xl bg-surface border border-rose-500/20 hover:border-rose-500/50 transition-all shadow-sm cursor-pointer flex flex-col justify-between gap-4"
+                          whileHover={{ y: -2 }}
+                          className="p-5 rounded-2xl bg-surface border border-rose-500/20 hover:border-rose-500/50 transition-all shadow-sm flex flex-col justify-between gap-3.5"
                         >
                           <div className="space-y-2">
                             <div className="flex items-start justify-between gap-2">
-                              <h3 className="font-display font-extrabold text-sm text-foreground truncate group-hover:text-rose-500 transition-colors">
+                              <h3 className="font-display font-bold text-sm text-foreground truncate group-hover:text-rose-500 transition-colors">
                                 #{rem.num} {rem.name}
                               </h3>
                               <ChevronRight className="w-4 h-4 text-muted/40 group-hover:text-rose-500 transition-colors shrink-0 mt-0.5" />
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted font-semibold">
-                              <span className="text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded uppercase font-bold border border-rose-500/20">
+                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold">
+                              <span className="text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded uppercase font-bold">
                                 Overdue
                               </span>
                               <span className={`px-2 py-0.5 rounded font-bold ${getDiffColor(rem.difficulty)} bg-surface-2`}>
@@ -398,19 +430,15 @@ export default function RemindersPage() {
                             </div>
                           </div>
 
-                          {/* Due Date & Action Bar */}
-                          <div className="flex items-center justify-between pt-3 border-t border-border/60 text-[11px] font-sans">
-                            <div className="flex items-center gap-1.5 text-rose-500 font-bold">
-                              <Calendar className="w-3.5 h-3.5 shrink-0" />
-                              <span>{dateStr}</span>
-                              <span className="text-[10px] opacity-80">({relativeStr})</span>
-                            </div>
-
+                          <div className="flex items-center justify-between pt-2.5 border-t border-border/40 text-[11px] font-sans">
+                            <span className="text-rose-500 font-bold flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {dateStr} ({relativeStr})
+                            </span>
                             <button
                               onClick={(e) => handleComplete(rem.id, e)}
                               disabled={completingId === rem.id}
-                              className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1"
-                              title="Mark Revisited Now"
+                              className="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1"
                             >
                               <Check className="w-3 h-3" />
                               <span>{completingId === rem.id ? "Saving..." : "Practice"}</span>
@@ -424,40 +452,40 @@ export default function RemindersPage() {
               </div>
             )}
 
-            {/* GROUP 2: DUE TODAY (Amber practice checklist) */}
-            {dueTodayReminders.length > 0 && (
+            {/* GROUP 2: DUE TODAY */}
+            {(statusFilter === "ALL" || statusFilter === "DUE") && dueTodayReminders.length > 0 && (
               <div>
-                <div className="flex items-center gap-2.5 mb-5 border-b border-border/80 pb-3">
-                  <CheckSquare className="w-5 h-5 text-amber-500" />
-                  <h2 className="font-display font-extrabold text-base text-amber-500">
+                <div className="flex items-center gap-2 mb-4 border-b border-border/80 pb-2">
+                  <CheckSquare className="w-4 h-4 text-amber-500" />
+                  <h2 className="font-display font-bold text-sm text-amber-500">
                     Due For Recall Today
                   </h2>
-                  <span className="text-[11px] font-sans font-bold bg-amber-500/10 text-amber-500 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                    {dueTodayReminders.length} {dueTodayReminders.length === 1 ? "item" : "items"}
+                  <span className="text-[10px] font-sans font-bold bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full">
+                    {dueTodayReminders.length}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {dueTodayReminders.map((rem, idx) => {
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {dueTodayReminders.map((rem) => {
                     const dueDate = getProblemDueDate(rem);
                     const { dateStr } = formatCardDueDate(dueDate);
 
                     return (
-                      <Link key={idx} href={`/dashboard?p=${rem.id}`} className="block group">
+                      <Link key={rem.id} href={`/dashboard?p=${rem.id}`} className="block group">
                         <motion.div
-                          whileHover={{ y: -3, borderColor: "rgba(245, 158, 11, 0.4)" }}
-                          className="p-5 rounded-2xl bg-surface border border-amber-500/20 hover:border-amber-500/50 transition-all shadow-sm cursor-pointer flex flex-col justify-between gap-4"
+                          whileHover={{ y: -2 }}
+                          className="p-5 rounded-2xl bg-surface border border-amber-500/20 hover:border-amber-500/50 transition-all shadow-sm flex flex-col justify-between gap-3.5"
                         >
                           <div className="space-y-2">
                             <div className="flex items-start justify-between gap-2">
-                              <h3 className="font-display font-extrabold text-sm text-foreground truncate group-hover:text-amber-500 transition-colors">
+                              <h3 className="font-display font-bold text-sm text-foreground truncate group-hover:text-amber-500 transition-colors">
                                 #{rem.num} {rem.name}
                               </h3>
                               <ChevronRight className="w-4 h-4 text-muted/40 group-hover:text-amber-500 transition-colors shrink-0 mt-0.5" />
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted font-semibold">
-                              <span className="text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded uppercase font-bold border border-amber-500/20">
+                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold">
+                              <span className="text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded uppercase font-bold">
                                 Due Today
                               </span>
                               <span className={`px-2 py-0.5 rounded font-bold ${getDiffColor(rem.difficulty)} bg-surface-2`}>
@@ -471,19 +499,15 @@ export default function RemindersPage() {
                             </div>
                           </div>
 
-                          {/* Due Date & Action Bar */}
-                          <div className="flex items-center justify-between pt-3 border-t border-border/60 text-[11px] font-sans">
-                            <div className="flex items-center gap-1.5 text-amber-500 font-bold">
-                              <Clock className="w-3.5 h-3.5 shrink-0" />
-                              <span>{dateStr}</span>
-                              <span className="text-[10px] opacity-80">(Today)</span>
-                            </div>
-
+                          <div className="flex items-center justify-between pt-2.5 border-t border-border/40 text-[11px] font-sans">
+                            <span className="text-amber-500 font-bold flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {dateStr}
+                            </span>
                             <button
                               onClick={(e) => handleComplete(rem.id, e)}
                               disabled={completingId === rem.id}
-                              className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-500 font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1"
-                              title="Mark Revisited Now"
+                              className="px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-500 font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1"
                             >
                               <Check className="w-3 h-3" />
                               <span>{completingId === rem.id ? "Saving..." : "Mark Done"}</span>
@@ -497,67 +521,66 @@ export default function RemindersPage() {
               </div>
             )}
 
-            {/* GROUP 3: UPCOMING (Subcategorized by Scheduled Date) */}
-            {upcomingByDateGroups.length > 0 && (
+            {/* GROUP 3: UPCOMING SCHEDULE (Subcategorized cleanly by Date) */}
+            {(statusFilter === "ALL" || statusFilter === "UPCOMING") && upcomingByDateGroups.length > 0 && (
               <div className="space-y-8">
-                <div className="flex items-center justify-between border-b border-border/80 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <CalendarDays className="w-5 h-5 text-emerald-500" />
-                    <h2 className="font-display font-extrabold text-base text-emerald-500">
+                <div className="flex items-center justify-between border-b border-border/80 pb-2">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="w-4 h-4 text-primary" />
+                    <h2 className="font-display font-bold text-sm text-foreground">
                       Upcoming Spacing Schedule
                     </h2>
-                    <span className="text-[11px] font-sans font-bold bg-emerald-500/10 text-emerald-500 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                      {upcomingReminders.length} {upcomingReminders.length === 1 ? "item" : "items"}
+                    <span className="text-[10px] font-sans font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                      {upcomingReminders.length}
                     </span>
                   </div>
                   <span className="text-[11px] font-sans text-muted">
-                    {upcomingByDateGroups.length} Date Milestone{upcomingByDateGroups.length === 1 ? "" : "s"}
+                    {upcomingByDateGroups.length} Milestone{upcomingByDateGroups.length === 1 ? "" : "s"}
                   </span>
                 </div>
 
                 {/* Subcategorized Date Groups */}
-                <div className="space-y-8">
+                <div className="space-y-7">
                   {upcomingByDateGroups.map((group) => (
-                    <div key={group.dateKey} className="space-y-4">
-                      {/* Date Subcategory Header */}
-                      <div className="flex items-center justify-between bg-surface-2/60 px-4 py-2.5 rounded-2xl border border-border/80 font-sans">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                          <span className="font-display font-extrabold text-xs text-foreground">
+                    <div key={group.dateKey} className="space-y-3.5">
+                      {/* Clean Date Milestone Subheader */}
+                      <div className="flex items-center justify-between text-xs font-semibold text-muted pt-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          <span className="font-display font-bold text-foreground">
                             {group.dayOfWeek}, {group.formattedDate}
                           </span>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          <span className="text-[10px] font-sans text-primary font-bold bg-primary/10 px-2 py-0.5 rounded-md">
                             {group.relativeLabel}
                           </span>
                         </div>
-
-                        <span className="text-[10px] font-mono font-bold text-muted">
+                        <span className="text-[10px] text-muted">
                           {group.items.length} {group.items.length === 1 ? "problem" : "problems"}
                         </span>
                       </div>
 
-                      {/* Reminder Cards in this Date Subcategory */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {group.items.map((rem, idx) => {
-                          const { dateStr, relativeStr } = formatCardDueDate(rem.computedDueDate);
+                      {/* Clean Reminder Cards */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {group.items.map((rem) => {
+                          const { dateStr } = formatCardDueDate(rem.computedDueDate);
 
                           return (
-                            <Link key={idx} href={`/dashboard?p=${rem.id}`} className="block group">
+                            <Link key={rem.id} href={`/dashboard?p=${rem.id}`} className="block group">
                               <motion.div
-                                whileHover={{ y: -3, borderColor: "rgba(16, 185, 129, 0.4)" }}
-                                className="p-5 rounded-2xl bg-surface border border-border/80 hover:border-emerald-500/50 transition-all shadow-sm cursor-pointer flex flex-col justify-between gap-4"
+                                whileHover={{ y: -2 }}
+                                className="p-5 rounded-2xl bg-surface border border-border hover:border-primary/50 transition-all shadow-sm flex flex-col justify-between gap-3.5 cursor-pointer"
                               >
                                 <div className="space-y-2">
                                   <div className="flex items-start justify-between gap-2">
-                                    <h3 className="font-display font-extrabold text-sm text-foreground truncate group-hover:text-emerald-500 transition-colors">
+                                    <h3 className="font-display font-bold text-sm text-foreground truncate group-hover:text-primary transition-colors">
                                       #{rem.num} {rem.name}
                                     </h3>
-                                    <ChevronRight className="w-4 h-4 text-muted/40 group-hover:text-emerald-500 transition-colors shrink-0 mt-0.5" />
+                                    <ChevronRight className="w-4 h-4 text-muted/40 group-hover:text-primary transition-colors shrink-0 mt-0.5" />
                                   </div>
 
-                                  <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted font-semibold">
-                                    <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded uppercase font-bold border border-emerald-500/20">
-                                      {rem.interval || "Scheduled"}
+                                  <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold">
+                                    <span className="text-primary bg-primary/10 px-2 py-0.5 rounded uppercase font-bold">
+                                      {rem.interval || "Stage 1 (3d)"}
                                     </span>
                                     <span className={`px-2 py-0.5 rounded font-bold ${getDiffColor(rem.difficulty)} bg-surface-2`}>
                                       {rem.difficulty || "Medium"}
@@ -570,17 +593,13 @@ export default function RemindersPage() {
                                   </div>
                                 </div>
 
-                                {/* Scheduled Due Date Badge */}
-                                <div className="flex items-center justify-between pt-3 border-t border-border/60 text-[11px] font-sans">
-                                  <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
-                                    <Calendar className="w-3.5 h-3.5 shrink-0" />
-                                    <span>{dateStr}</span>
-                                    <span className="text-[10px] text-muted">({relativeStr})</span>
-                                  </div>
-
-                                  <span className="text-[10px] font-bold text-muted group-hover:text-emerald-500 transition-colors flex items-center gap-1">
-                                    <span>Details</span>
-                                    <ChevronRight className="w-3 h-3" />
+                                <div className="flex items-center justify-between pt-2.5 border-t border-border/40 text-[11px] font-sans text-muted">
+                                  <span className="flex items-center gap-1 font-medium">
+                                    <Calendar className="w-3 h-3 text-primary" />
+                                    {dateStr}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-muted group-hover:text-primary transition-colors">
+                                    Details →
                                   </span>
                                 </div>
                               </motion.div>
