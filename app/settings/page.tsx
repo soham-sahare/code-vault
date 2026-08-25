@@ -136,14 +136,16 @@ export default function SettingsPage() {
       <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
         <Sidebar />
         <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto max-w-4xl mx-auto w-full">
-          {/* Header Skeleton */}
+          {/* Header with Real Title & Subtitle */}
           <div className="flex items-center justify-between mb-8 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2.5">
-                <Skeleton className="w-8 h-8 rounded-xl" />
-                <Skeleton className="h-8 w-40 rounded-xl" />
-              </div>
-              <Skeleton className="h-3.5 w-60 rounded-lg" />
+            <div>
+              <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-foreground flex items-center gap-2.5">
+                <Settings className="w-8 h-8 text-primary" />
+                Settings
+              </h1>
+              <p className="font-sans text-xs text-muted mt-1">
+                Manage your account preferences, themes, and data portability
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <Skeleton className="w-10 h-10 rounded-xl" />
