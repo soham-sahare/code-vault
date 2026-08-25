@@ -227,7 +227,7 @@ export default function SharedSheetPage({ params }: { params: Promise<{ slug: st
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-border/40 hover:bg-surface-2 text-primary cursor-pointer transition-colors"
-                            title="View on LeetCode"
+                            title="View Problem Source"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </a>
@@ -295,7 +295,7 @@ export default function SharedSheetPage({ params }: { params: Promise<{ slug: st
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center w-8 h-8 rounded-xl border border-border bg-surface-2 hover:bg-border/20 text-muted hover:text-foreground cursor-pointer transition-colors"
-                    title="View on LeetCode"
+                    title="View Problem Source"
                   >
                     <ExternalLink className="w-4 h-4" />
                   </a>
