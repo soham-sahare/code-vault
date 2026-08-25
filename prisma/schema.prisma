@@ -59,18 +59,21 @@ model Problem {
   patterns           ProblemPattern[]
   revisitCycles      SrsRevisitCycle[]
 
-  // PLAN.md §12.1 Performance Indices
+  // Performance & Query Indices
+  @@unique([userId, num])                            // Instant lookup by problem number per user
   @@index([userId, createdAt(sort: Desc)])          // Primary list fetch sorted by creation
   @@index([userId, status])                          // Filter by status
   @@index([userId, difficulty])                      // Filter by difficulty
+  @@index([userId, topic])                           // Filter by topic/tag
   @@index([userId, isFavorite, createdAt(sort: Desc)]) // Favorites view
   @@index([userId, isPublic, createdAt(sort: Desc)]) // Public problems
+  @@index([isPublic, name])                          // Public problem slug & name lookup
 }
 
 model Solution {
   id         String         @id @default(uuid())
   problemId  String
-  userId     String         @default("") // Denormalized for direct queries (PLAN.md §5.5)
+  userId     String         @default("") // Denormalized for direct queries
   name       String
   lang       String
   intuition  String
@@ -85,9 +88,10 @@ model Solution {
   problem    Problem        @relation(fields: [problemId], references: [id], onDelete: Cascade)
   notes      SolutionNote[]
 
-  // PLAN.md §12.1 Performance Indices
+  // Performance Indices
   @@index([problemId, createdAt])   // Fast solution list per problem
   @@index([userId, lang])           // Language distribution analytics
+  @@index([userId])                 // User solution lookup
 }
 
 model SolutionNote {
@@ -135,9 +139,11 @@ model Reminder {
   problem     Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // PLAN.md §12.1: SRS hot path — polled every 5 minutes
-  @@index([userId, dueDate])        // Fetch pending due items by user
-  @@index([problemId, stage])       // Problem-level schedule lookup
+  // SRS Hot Path Indices
+  @@index([userId, status, dueDate])               // Fetch pending due items by user
+  @@index([userId, dueDate])                       // Filter due items
+  @@index([problemId, userId, cycle, status])      // Next pending reminder lookup per cycle
+  @@index([problemId, stage])                      // Problem-level schedule lookup
 }
 
 model SrsRevisitCycle {
@@ -156,6 +162,7 @@ model SrsRevisitCycle {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([problemId, userId, status]) // only one active/paused revisit cycle at a time
+  @@index([userId, status])
 }
 
 model CompanyTag {
@@ -257,4 +264,5 @@ model SheetProblem {
 
   @@id([sheetId, problemId])
   @@index([problemId])
+  @@index([sheetId, order])
 }
