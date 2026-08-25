@@ -10,8 +10,8 @@ const prisma = new PrismaClient();
 
 async function main() {
   if (!process.env.POSTGRES_PRISMA_URL && !process.env.DATABASE_URL) {
-    console.error("❌ Error: POSTGRES_PRISMA_URL or DATABASE_URL not found in environment.");
-    process.exit(1);
+    console.log("⚠️ POSTGRES_PRISMA_URL not found in environment. Skipping RLS policy application.");
+    return;
   }
 
   console.log("🔒 Applying Row-Level Security (RLS) policies to all database tables...");
