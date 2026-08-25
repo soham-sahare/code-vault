@@ -40,39 +40,61 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: "No pending reminders due today", count: 0 });
     }
 
-    let notificationsCreated = 0;
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const userIds = Array.from(new Set(dueReminders.map(r => r.problem?.userId).filter(Boolean))) as string[];
+    const problemIds = Array.from(new Set(dueReminders.map(r => r.problem?.id).filter(Boolean))) as string[];
+
+    // 1 single batch query to check existing notifications for today
+    const existingNotifications = await db.notification.findMany({
+      where: {
+        userId: { in: userIds },
+        relatedId: { in: problemIds },
+        createdAt: { gte: startOfDay },
+      },
+      select: {
+        userId: true,
+        relatedId: true,
+      },
+    });
+
+    const existingNotifSet = new Set(
+      existingNotifications.map(n => `${n.userId}:${n.relatedId}`)
+    );
+
+    const notificationsToCreate: Array<{
+      userId: string;
+      type: string;
+      message: string;
+      relatedId: string;
+    }> = [];
+
+    const seenInBatch = new Set<string>();
 
     for (const rem of dueReminders) {
       if (!rem.problem || !rem.problem.userId) continue;
+      const key = `${rem.problem.userId}:${rem.problem.id}`;
 
-      // Check if an unread notification for this problem was already created today to avoid spam
-      const existingNotification = await db.notification.findFirst({
-        where: {
+      if (!existingNotifSet.has(key) && !seenInBatch.has(key)) {
+        seenInBatch.add(key);
+        notificationsToCreate.push({
           userId: rem.problem.userId,
+          type: "srs_revisit",
+          message: `Problem #${rem.problem.num} "${rem.problem.name}" is scheduled for revisit today (${rem.stage})`,
           relatedId: rem.problem.id,
-          createdAt: {
-            gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
-          },
-        },
-      });
-
-      if (!existingNotification) {
-        await db.notification.create({
-          data: {
-            userId: rem.problem.userId,
-            type: "srs_revisit",
-            message: `Problem #${rem.problem.num} "${rem.problem.name}" is scheduled for revisit today (${rem.stage})`,
-            relatedId: rem.problem.id,
-          },
         });
-        notificationsCreated++;
       }
+    }
+
+    if (notificationsToCreate.length > 0) {
+      await db.notification.createMany({
+        data: notificationsToCreate,
+      });
     }
 
     return NextResponse.json({
       success: true,
       processedReminders: dueReminders.length,
-      notificationsDispatched: notificationsCreated,
+      notificationsDispatched: notificationsToCreate.length,
     });
   } catch (error) {
     console.error("Cron SRS reminder error:", error);
