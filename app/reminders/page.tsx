@@ -9,6 +9,7 @@ import { useTheme } from "next-themes";
 import { getUserProblemSummaries, markRevisited, getUserProfile } from "@/lib/actions";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { getInitials } from "@/lib/utils/formatters";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 
 export default function RemindersPage() {
@@ -97,10 +98,49 @@ export default function RemindersPage() {
     return (
       <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
         <Sidebar />
-        <main className="flex-1 flex items-center justify-center p-6">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-            <span className="font-sans font-semibold text-xs text-muted">Retrieving spaced agenda...</span>
+        <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto max-w-7xl mx-auto w-full">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between mb-10 gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5">
+                <Skeleton className="w-8 h-8 rounded-xl" />
+                <Skeleton className="h-8 w-40 rounded-xl" />
+              </div>
+              <Skeleton className="h-3.5 w-56 rounded-lg" />
+            </div>
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-10 h-10 rounded-xl" />
+              <Skeleton className="w-10 h-10 rounded-xl" />
+              <Skeleton className="w-10 h-10 rounded-full" />
+            </div>
+          </div>
+
+          {/* Cards Skeleton Grid */}
+          <div className="space-y-10">
+            {[1, 2].map((section) => (
+              <div key={section} className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-border/80">
+                  <Skeleton className="w-5 h-5 rounded-md" />
+                  <Skeleton className="h-5 w-44 rounded-lg" />
+                  <Skeleton className="h-4 w-14 rounded-full" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[1, 2, 3].map((card) => (
+                    <div key={card} className="p-5 rounded-2xl bg-surface border border-border shadow-sm flex items-center justify-between">
+                      <div className="space-y-2 flex-1 mr-4">
+                        <Skeleton className="h-4 w-3/4 rounded-lg" />
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-3 w-12 rounded-md" />
+                          <Skeleton className="h-3 w-12 rounded-md" />
+                          <Skeleton className="h-3 w-20 rounded-md" />
+                        </div>
+                      </div>
+                      <Skeleton className="w-4 h-4 rounded-md shrink-0" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </main>
       </div>
