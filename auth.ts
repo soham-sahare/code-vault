@@ -21,12 +21,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!parsedCredentials.success) return null;
 
-        const { email: identifier, password } = parsedCredentials.data;
+        const { email: rawIdentifier, password } = parsedCredentials.data;
+        const identifier = rawIdentifier.trim();
         const isEmail = identifier.includes("@");
         
         const user = isEmail
-          ? await db.user.findUnique({ where: { email: identifier } })
-          : await db.user.findUnique({ where: { username: identifier } });
+          ? await db.user.findFirst({
+              where: {
+                email: {
+                  equals: identifier,
+                  mode: "insensitive",
+                }
+              }
+            })
+          : await db.user.findFirst({
+              where: {
+                username: {
+                  equals: identifier,
+                  mode: "insensitive",
+                }
+              }
+            });
 
         if (!user || !user.passwordHash) return null;
 
