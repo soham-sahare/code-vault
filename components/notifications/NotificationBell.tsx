@@ -28,10 +28,11 @@ export default function NotificationBell({ onSelectProblem }: NotificationBellPr
 
   const loadNotifications = async () => {
     try {
-      const data = await getNotifications();
-      // Ensure all fields map correctly
+      const [data, count] = await Promise.all([
+        getNotifications(),
+        getUnreadNotificationCount()
+      ]);
       setNotifications(data as any);
-      const count = await getUnreadNotificationCount();
       setUnreadCount(count);
     } catch (err) {
       console.error("Failed to load notifications:", err);
