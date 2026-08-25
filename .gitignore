@@ -42,4 +42,5 @@ next-env.d.ts
 
 # scratch/temp files
 /scratch/
+.vscode/
 
