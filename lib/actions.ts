@@ -399,7 +399,7 @@ export async function createProblem(data: {
   return problem;
 }
 
-export async function updateProblem(num: number, data: {
+export async function updateProblem(id: string, data: {
   name: string;
   difficulty: string;
   topic: string;
@@ -418,11 +418,9 @@ export async function updateProblem(num: number, data: {
         : "text-rose-500 bg-rose-500/10";
 
   const existing = await db.problem.findFirst({
-    where: { num, userId }
+    where: { id, userId }
   });
   if (!existing) throw new Error("Problem not found");
-
-  const id = existing.id;
 
   // Fast local platform detection (0ms)
   let sourcePlatform = existing.sourcePlatform;
@@ -480,22 +478,22 @@ export async function updateProblem(num: number, data: {
   return problem;
 }
 
-export async function deleteProblem(num: number) {
+export async function deleteProblem(id: string) {
   const userId = await requireAuth();
   
   const existing = await db.problem.findFirst({
-    where: { num, userId }
+    where: { id, userId }
   });
   if (!existing) throw new Error("Problem not found");
 
   // Fetch pending reminders to clean from Redis
   const pendingReminders = await db.reminder.findMany({
-    where: { problemId: existing.id, userId, status: "PENDING" },
+    where: { problemId: id, userId, status: "PENDING" },
     select: { id: true },
   });
 
   await db.problem.delete({
-    where: { id: existing.id }
+    where: { id }
   });
 
   // Parallel Redis & DB cache cleanup
@@ -504,25 +502,24 @@ export async function deleteProblem(num: number) {
     db.analyticsCache.deleteMany({ where: { userId } }),
     invalidateAnalyticsCache(userId),
     invalidateTagsCache(userId),
-    existing.isPublic ? invalidatePublicProblemCache(existing.id) : Promise.resolve(),
+    existing.isPublic ? invalidatePublicProblemCache(id) : Promise.resolve(),
   ]);
 
   revalidatePath("/dashboard");
   return { success: true };
 }
 
-export async function toggleFavorite(idOrNum: string | number) {
+export async function toggleFavorite(id: string) {
   const userId = await requireAuth();
 
-  const isUuid = typeof idOrNum === "string" && idOrNum.length > 10;
   const existing = await db.problem.findFirst({
-    where: isUuid ? { id: idOrNum, userId } : { num: Number(idOrNum), userId },
+    where: { id, userId },
     select: { id: true, isFavorite: true },
   });
   if (!existing) throw new Error("Problem not found");
 
   const problem = await db.problem.update({
-    where: { id: existing.id },
+    where: { id },
     data: { isFavorite: !existing.isFavorite },
   });
 
@@ -828,16 +825,15 @@ export async function addSolutionNote(solutionId: string, type: string, text: st
 }
 
 // 4. REVISIT CYCLE MUTATIONS
-export async function markRevisited(idOrNum: string | number, customDays?: number) {
+export async function markRevisited(id: string, customDays?: number) {
   const userId = await requireAuth();
-  const isUuid = typeof idOrNum === "string" && idOrNum.length > 10;
   const existing = await db.problem.findFirst({
-    where: isUuid ? { id: idOrNum, userId } : { num: Number(idOrNum), userId }
+    where: { id, userId }
   });
   if (!existing) throw new Error("Problem not found");
 
   const reminder = await db.reminder.findFirst({
-    where: { problemId: existing.id, userId, status: "PENDING" },
+    where: { problemId: id, userId, status: "PENDING" },
     orderBy: { dueDate: "asc" }
   });
 
@@ -859,7 +855,7 @@ export async function markRevisited(idOrNum: string | number, customDays?: numbe
     }
 
     await db.problem.update({
-      where: { id: existing.id },
+      where: { id },
       data: {
         status: "Solved",
         statusColor: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
