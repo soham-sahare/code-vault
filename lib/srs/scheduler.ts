@@ -12,8 +12,12 @@ export async function initSchedule(
   userId: string,
   solvedAt: Date = new Date()
 ): Promise<void> {
-  const problem = await db.problem.findUnique({ where: { id: problemId } });
-  if (!problem) throw new Error("Problem not found");
+  // Check if reminders already exist for this problem
+  const existing = await db.reminder.findFirst({
+    where: { problemId, userId, cycle: 1 },
+    select: { id: true },
+  });
+  if (existing) return;
 
   // Create reminders for 3d, 7d, 15d, 30d
   const remindersData = SRS_INTERVALS.map((days) => {
@@ -28,21 +32,24 @@ export async function initSchedule(
     };
   });
 
-  // Prisma Transaction
-  await db.$transaction(async (tx) => {
-    // Check if reminders already exist for this problem
-    const existing = await tx.reminder.findFirst({
-      where: { problemId, userId, cycle: 1 },
-    });
-    if (existing) return;
-
-    for (const data of remindersData) {
-      const created = await tx.reminder.create({ data });
-      // Enqueue to Redis
-      const score = Math.floor(data.dueDate.getTime() / 1000);
-      await enqueueSRS(userId, created.id, score);
-    }
+  // Batch insert into database
+  await db.reminder.createMany({
+    data: remindersData,
   });
+
+  // Fetch reminder IDs for Redis queue
+  const createdReminders = await db.reminder.findMany({
+    where: { problemId, userId, cycle: 1, status: "PENDING" },
+    select: { id: true, dueDate: true },
+  });
+
+  // Parallel non-blocking Redis queue pushes
+  await Promise.allSettled(
+    createdReminders.map((r) => {
+      const score = Math.floor(r.dueDate.getTime() / 1000);
+      return enqueueSRS(userId, r.id, score);
+    })
+  );
 }
 
 /**
@@ -211,12 +218,19 @@ export async function startRevisitCycle(problemId: string, userId: string): Prom
     };
   });
 
-  for (const data of remindersData) {
-    const created = await db.reminder.create({ data });
-    // Enqueue to Redis
-    const score = Math.floor(data.dueDate.getTime() / 1000);
-    await enqueueSRS(userId, created.id, score);
-  }
+  await db.reminder.createMany({ data: remindersData });
+
+  const createdReminders = await db.reminder.findMany({
+    where: { problemId, userId, cycle: nextCycle, status: "PENDING" },
+    select: { id: true, dueDate: true },
+  });
+
+  await Promise.allSettled(
+    createdReminders.map((r) => {
+      const score = Math.floor(r.dueDate.getTime() / 1000);
+      return enqueueSRS(userId, r.id, score);
+    })
+  );
 
   // Update problem interval
   await db.problem.update({
@@ -256,11 +270,10 @@ export async function pauseRevisitCycle(problemId: string, userId: string, reaso
       cycle: activeCycle.cycleNumber,
       status: "PENDING",
     },
+    select: { id: true },
   });
 
-  for (const reminder of pendingReminders) {
-    await dequeueSRS(userId, reminder.id);
-  }
+  await Promise.allSettled(pendingReminders.map((r) => dequeueSRS(userId, r.id)));
 
   return updatedCycle;
 }
@@ -293,20 +306,20 @@ export async function resumeRevisitCycle(problemId: string, userId: string): Pro
   });
 
   const now = new Date();
-  for (const reminder of pendingReminders) {
-    let dueDate = reminder.dueDate;
-    // Overdue handling: if due date passed while paused, push to tomorrow to avoid instant notification flood
-    if (dueDate.getTime() < now.getTime()) {
-      dueDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      await db.reminder.update({
-        where: { id: reminder.id },
-        data: { dueDate },
-      });
-    }
-
-    const score = Math.floor(dueDate.getTime() / 1000);
-    await enqueueSRS(userId, reminder.id, score);
-  }
+  await Promise.allSettled(
+    pendingReminders.map(async (reminder) => {
+      let dueDate = reminder.dueDate;
+      if (dueDate.getTime() < now.getTime()) {
+        dueDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        await db.reminder.update({
+          where: { id: reminder.id },
+          data: { dueDate },
+        });
+      }
+      const score = Math.floor(dueDate.getTime() / 1000);
+      return enqueueSRS(userId, reminder.id, score);
+    })
+  );
 
   return updatedCycle;
 }
@@ -340,15 +353,17 @@ export async function endRevisitCycle(problemId: string, userId: string): Promis
       cycle: activeCycle.cycleNumber,
       status: "PENDING",
     },
+    select: { id: true },
   });
 
-  for (const reminder of pendingReminders) {
-    await db.reminder.update({
-      where: { id: reminder.id },
-      data: { status: "SKIPPED" },
-    });
-    await dequeueSRS(userId, reminder.id);
-  }
+  await db.reminder.updateMany({
+    where: {
+      id: { in: pendingReminders.map((r) => r.id) },
+    },
+    data: { status: "SKIPPED" },
+  });
+
+  await Promise.allSettled(pendingReminders.map((r) => dequeueSRS(userId, r.id)));
 
   // Reset problem interval
   await db.problem.update({
