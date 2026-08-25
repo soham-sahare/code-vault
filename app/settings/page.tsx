@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Sidebar from "@/components/shell/Sidebar";
-import { Settings, User, Globe, ShieldCheck, Check, Sun, Moon, Bell, Trash2, AlertTriangle, Loader2 } from "lucide-react";
+import { Settings, User, Globe, ShieldCheck, Check, Sun, Moon, Bell, Trash2, AlertTriangle, Loader2, Download, Upload, Database } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getUserProfile, updateUserProfile, deleteUserAccount } from "@/lib/actions";
+import { getUserProfile, updateUserProfile, deleteUserAccount, exportUserData, importUserData } from "@/lib/actions";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { getInitials } from "@/lib/utils/formatters";
 import { signOut } from "next-auth/react";
@@ -21,6 +21,11 @@ export default function SettingsPage() {
   const [isPublicProfile, setIsPublicProfile] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
+
+  // Import / Export states
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   // Account deletion states
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -75,6 +80,54 @@ export default function SettingsPage() {
       console.error("Error updating settings:", err);
       setSaveStatus(err.message || "Failed to save settings.");
       setTimeout(() => setSaveStatus(null), 3000);
+    }
+  };
+
+  const handleExportData = async () => {
+    setIsExporting(true);
+    try {
+      const data = await exportUserData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `codevault-backup-${username || "user"}-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setImportStatus({ message: "Backup downloaded successfully!", type: "success" });
+      setTimeout(() => setImportStatus(null), 3000);
+    } catch (err: any) {
+      console.error("Export failed:", err);
+      setImportStatus({ message: "Failed to export vault data.", type: "error" });
+      setTimeout(() => setImportStatus(null), 4000);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsImporting(true);
+    setImportStatus(null);
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+      const res = await importUserData(json);
+      setImportStatus({ message: `Successfully imported ${res.count} problems!`, type: "success" });
+      setTimeout(() => setImportStatus(null), 4000);
+    } catch (err: any) {
+      console.error("Import failed:", err);
+      setImportStatus({
+        message: err.message || "Failed to import JSON file. Please ensure it is a valid CodeVault export.",
+        type: "error",
+      });
+      setTimeout(() => setImportStatus(null), 5000);
+    } finally {
+      setIsImporting(false);
+      e.target.value = "";
     }
   };
 
@@ -291,7 +344,80 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Card 4: Danger Zone */}
+          {/* Card 4: Data Backup & Portability (Import / Export) */}
+          <div className="p-6 rounded-3xl bg-surface border border-border shadow-sm space-y-4">
+            <h2 className="font-display font-bold text-sm text-foreground flex items-center gap-2">
+              <Database className="w-4 h-4 text-primary" />
+              Backup & Portability
+            </h2>
+            <p className="text-[11px] text-muted">
+              Export your entire problem vault, solution code, and notes as a portable JSON backup, or restore problems from a previous export.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {/* Export Button */}
+              <button
+                type="button"
+                disabled={isExporting}
+                onClick={handleExportData}
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-surface-2 hover:bg-primary/10 border border-border hover:border-primary/30 text-foreground hover:text-primary font-sans font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    Exporting Vault...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 text-primary" />
+                    Export JSON Backup
+                  </>
+                )}
+              </button>
+
+              {/* Import Button */}
+              <label className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-surface-2 hover:bg-emerald-500/10 border border-border hover:border-emerald-500/30 text-foreground hover:text-emerald-400 font-sans font-bold text-xs transition-all cursor-pointer">
+                {isImporting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                    Importing Data...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 text-emerald-400" />
+                    Import JSON Backup
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={handleFileImport}
+                  disabled={isImporting}
+                />
+              </label>
+            </div>
+
+            {/* Import Status Alert */}
+            <AnimatePresence>
+              {importStatus && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  className={`p-3 rounded-xl border text-xs font-semibold ${
+                    importStatus.type === "success"
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                      : "bg-rose-500/10 border-rose-500/20 text-rose-400"
+                  }`}
+                >
+                  {importStatus.message}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Card 5: Danger Zone */}
           <div className="p-6 rounded-3xl bg-surface border border-rose-500/20 shadow-sm space-y-4">
             <h2 className="font-display font-bold text-sm text-rose-500 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-rose-500" />
