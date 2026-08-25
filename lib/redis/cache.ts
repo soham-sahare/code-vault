@@ -98,6 +98,35 @@ export async function invalidatePublicSheetCache(shareToken: string): Promise<vo
   }
 }
 
+// ─── Public Problem Cache ───────────────────────────────────────────────────
+
+const PROBLEM_PUBLIC_TTL = 86400; // 24 hours
+
+export async function getCachedPublicProblem(slug: string): Promise<any | null> {
+  try {
+    const val = await redis.get(`problem:public:${slug}`);
+    return val ? JSON.parse(val as string) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setCachedPublicProblem(slug: string, data: any): Promise<void> {
+  try {
+    await redis.set(`problem:public:${slug}`, JSON.stringify(data), { ex: PROBLEM_PUBLIC_TTL });
+  } catch {
+    // Non-fatal
+  }
+}
+
+export async function invalidatePublicProblemCache(slug: string): Promise<void> {
+  try {
+    await redis.del(`problem:public:${slug}`);
+  } catch {
+    // Non-fatal
+  }
+}
+
 // ─── Tags Cache (for autocomplete) ───────────────────────────────────────────
 
 const TAGS_TTL = 3600; // 1 hour
@@ -125,6 +154,14 @@ export async function invalidateTagsCache(userId: string): Promise<void> {
   } catch {
     // Non-fatal
   }
+}
+
+export async function invalidateUserCaches(userId: string): Promise<void> {
+  await Promise.allSettled([
+    invalidateAnalyticsCache(userId),
+    invalidateTagsCache(userId),
+    invalidateNotifCount(userId),
+  ]);
 }
 
 // ─── Rate Limiting ────────────────────────────────────────────────────────────
