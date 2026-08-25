@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/shell/Sidebar";
 import { Settings, User, Globe, ShieldCheck, Check, Sun, Moon, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getUserProfile, updateUserProfile, getProblems } from "@/lib/actions";
+import { getUserProfile, updateUserProfile } from "@/lib/actions";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import { getInitials } from "@/lib/utils/formatters";
 
 import { useTheme } from "next-themes";
 import Link from "next/link";
@@ -25,35 +26,10 @@ export default function SettingsPage() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isBellDropdownOpen, setIsBellDropdownOpen] = useState(false);
-  const [problems, setProblems] = useState<any[]>([]);
 
   useEffect(() => {
     setThemeMounted(true);
   }, []);
-
-  useEffect(() => {
-    async function loadProblems() {
-      try {
-        const data = await getProblems();
-        setProblems(data);
-      } catch (err) {
-        console.error("Failed to load problems for settings menu:", err);
-      }
-    }
-    loadProblems();
-  }, []);
-
-  const getInitials = () => {
-    const name = userProfile?.name || userProfile?.username || userProfile?.email || "User";
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    if (name.length >= 2) {
-      return name.substring(0, 2).toUpperCase();
-    }
-    return name[0].toUpperCase();
-  };
 
   useEffect(() => {
     async function load() {
@@ -151,7 +127,7 @@ export default function SettingsPage() {
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
                 className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-display font-extrabold text-xs text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-sm select-none"
               >
-                {getInitials()}
+                {getInitials(userProfile)}
               </button>
 
               <AnimatePresence>
