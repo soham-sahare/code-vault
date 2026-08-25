@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-helper";
-import { updateSheet, deleteSheet, getSheets } from "@/lib/actions";
+import { updateSheet, deleteSheet } from "@/lib/actions";
+import { db } from "@/lib/db";
 import { z } from "zod";
 
 const updateSheetSchema = z.object({
@@ -11,17 +12,34 @@ const updateSheetSchema = z.object({
 
 /**
  * GET /api/sheets/:id
- * Fetches a single sheet by ID.
+ * Fetches a single sheet by ID (O(1) indexed query).
  */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    const userId = await requireAuth();
     const { id } = await params;
-    const all = await getSheets();
-    const sheet = all.find((s: any) => s.id === id);
+    const sheet = await db.sheet.findFirst({
+      where: {
+        id,
+        OR: [{ userId }, { isCurated: true }, { isPublic: true }]
+      },
+      include: {
+        problems: {
+          include: {
+            problem: {
+              include: {
+                solutions: true,
+                companies: { include: { company: true } },
+                patterns: { include: { pattern: true } },
+              }
+            }
+          }
+        }
+      }
+    });
     if (!sheet) {
       return NextResponse.json({ data: null, error: "Sheet not found" }, { status: 404 });
     }
@@ -36,14 +54,14 @@ export async function GET(
 
 /**
  * PATCH /api/sheets/:id
- * Updates sheet properties.
+ * Updates sheet properties (O(1) lookup).
  */
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    const userId = await requireAuth();
     const { id } = await params;
     const body = await req.json();
     const parsed = updateSheetSchema.safeParse(body);
@@ -51,10 +69,11 @@ export async function PATCH(
       return NextResponse.json({ data: null, error: parsed.error.message }, { status: 400 });
     }
 
-    const all = await getSheets();
-    const sheet = all.find((s: any) => s.id === id);
+    const sheet = await db.sheet.findFirst({
+      where: { id, userId }
+    });
     if (!sheet) {
-      return NextResponse.json({ data: null, error: "Sheet not found" }, { status: 404 });
+      return NextResponse.json({ data: null, error: "Sheet not found or unauthorized" }, { status: 404 });
     }
 
     const updated = await updateSheet(
