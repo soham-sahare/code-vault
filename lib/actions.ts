@@ -511,11 +511,13 @@ export async function deleteProblem(num: number) {
   return { success: true };
 }
 
-export async function toggleFavorite(num: number) {
+export async function toggleFavorite(idOrNum: string | number) {
   const userId = await requireAuth();
 
+  const isUuid = typeof idOrNum === "string" && idOrNum.length > 10;
   const existing = await db.problem.findFirst({
-    where: { num, userId }
+    where: isUuid ? { id: idOrNum, userId } : { num: Number(idOrNum), userId },
+    select: { id: true, isFavorite: true },
   });
   if (!existing) throw new Error("Problem not found");
 
@@ -826,10 +828,11 @@ export async function addSolutionNote(solutionId: string, type: string, text: st
 }
 
 // 4. REVISIT CYCLE MUTATIONS
-export async function markRevisited(num: number, customDays?: number) {
+export async function markRevisited(idOrNum: string | number, customDays?: number) {
   const userId = await requireAuth();
+  const isUuid = typeof idOrNum === "string" && idOrNum.length > 10;
   const existing = await db.problem.findFirst({
-    where: { num, userId }
+    where: isUuid ? { id: idOrNum, userId } : { num: Number(idOrNum), userId }
   });
   if (!existing) throw new Error("Problem not found");
 
