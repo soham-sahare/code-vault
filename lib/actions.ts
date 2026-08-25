@@ -1414,6 +1414,42 @@ export async function addProblemToSheet(sheetId: string, problemId: string) {
   return res;
 }
 
+/**
+ * Batch add problems to a sheet in 1 single SQL round-trip.
+ */
+export async function addProblemsToSheet(sheetId: string, problemIds: string[]) {
+  const userId = await requireAuth();
+  if (!problemIds.length) return { success: true };
+
+  const sheet = await db.sheet.findFirst({
+    where: { id: sheetId, userId }
+  });
+  if (!sheet) throw new Error("Sheet not found");
+
+  const lastProblem = await db.sheetProblem.findFirst({
+    where: { sheetId },
+    orderBy: { order: "desc" },
+    select: { order: true },
+  });
+  let nextOrder = lastProblem ? lastProblem.order + 1 : 0;
+
+  await db.sheetProblem.createMany({
+    data: problemIds.map((pid) => ({
+      sheetId,
+      problemId: pid,
+      order: nextOrder++,
+    })),
+    skipDuplicates: true,
+  });
+
+  if (sheet.shareSlug && sheet.isPublic) {
+    await invalidatePublicSheetCache(sheet.shareSlug);
+  }
+
+  revalidatePath("/sheets");
+  return { success: true };
+}
+
 export async function removeProblemFromSheet(sheetId: string, problemId: string) {
   const userId = await requireAuth();
   
