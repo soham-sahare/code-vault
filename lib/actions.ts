@@ -15,23 +15,21 @@ import {
   getCachedPublicSheet,
   setCachedPublicSheet,
   invalidatePublicSheetCache,
+  getCachedPublicProblem,
+  setCachedPublicProblem,
+  invalidatePublicProblemCache,
   getCachedTags,
   setCachedTags,
   invalidateTagsCache,
+  invalidateUserCaches,
 } from "@/lib/redis/cache";
-
-// Ensure user is logged in and retrieve their user ID
-async function requireAuth() {
-  const session = await auth();
-  if (!session || !session.user || !session.user.id) {
-    throw new Error("Unauthorized");
-  }
-  return session.user.id;
-}
+import { dequeueSRS } from "@/lib/redis/srs-queue";
+import { requireAuth } from "@/lib/auth-helper";
+import { detectSourcePlatform } from "@/lib/utils/formatters";
 
 // Scraper logic: detect platform from URL and fetch metadata if possible
 export async function scrapeProblemMetadata(url: string) {
-  let sourcePlatform = "other";
+  const sourcePlatform = detectSourcePlatform(url);
   let name = "";
   let difficulty = "MED";
   let topic = "";
@@ -40,7 +38,6 @@ export async function scrapeProblemMetadata(url: string) {
 
   const lowerUrl = url.toLowerCase();
   if (lowerUrl.includes("leetcode.com")) {
-    sourcePlatform = "leetcode";
     // Parse slug from URL for display name guess
     const match = url.match(/\/problems\/([^/]+)/);
     if (match && match[1]) {
@@ -50,15 +47,10 @@ export async function scrapeProblemMetadata(url: string) {
         .join(" ");
     }
   } else if (lowerUrl.includes("codeforces.com")) {
-    sourcePlatform = "codeforces";
     const match = url.match(/\/problemset\/problem\/([^/]+)\/([^/]+)/) || url.match(/\/contest\/([^/]+)\/problem\/([^/]+)/);
     if (match) {
       name = `Codeforces ${match[1]} - ${match[2]}`;
     }
-  } else if (lowerUrl.includes("hackerrank.com")) {
-    sourcePlatform = "hackerrank";
-  } else if (lowerUrl.includes("geeksforgeeks.org")) {
-    sourcePlatform = "gfg";
   }
 
   // Perform a silent server-side fetch with timeout to get the page title
@@ -319,6 +311,28 @@ export async function getProblemDetails(id: string) {
   };
 }
 
+/**
+ * Fast lightweight problem list for sheet problem pickers & modals (zero relation over-fetch).
+ */
+export async function getUserProblemSummaries() {
+  const userId = await requireAuth();
+  return db.problem.findMany({
+    where: { userId },
+    select: {
+      id: true,
+      num: true,
+      name: true,
+      topic: true,
+      difficulty: true,
+      diffColor: true,
+      status: true,
+      statusColor: true,
+      isPublic: true,
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+}
+
 export async function createProblem(data: {
   name: string;
   difficulty: string;
@@ -337,15 +351,16 @@ export async function createProblem(data: {
         ? "text-amber-500 bg-amber-500/10"
         : "text-rose-500 bg-rose-500/10";
 
-  // Sequential generation of LeetCode numbers
+  // Sequential generation of problem numbers for user
   const maxProb = await db.problem.findFirst({
     where: { userId },
-    orderBy: { num: "desc" }
+    orderBy: { num: "desc" },
+    select: { num: true },
   });
   const finalNum = maxProb ? maxProb.num + 1 : 1;
 
-  // Auto detect platform
-  const { sourcePlatform } = await scrapeProblemMetadata(data.url || "");
+  // Fast local platform detection (0ms, no network blocking)
+  const sourcePlatform = detectSourcePlatform(data.url || "");
 
   const problem = await db.problem.create({
     data: {
@@ -369,6 +384,13 @@ export async function createProblem(data: {
       }
     },
   });
+
+  // Parallel non-blocking cache invalidation
+  await Promise.allSettled([
+    db.analyticsCache.deleteMany({ where: { userId } }),
+    invalidateAnalyticsCache(userId),
+    invalidateTagsCache(userId),
+  ]);
 
   revalidatePath("/dashboard");
   return problem;
@@ -399,11 +421,10 @@ export async function updateProblem(num: number, data: {
 
   const id = existing.id;
 
-  // Auto-detect platform if URL changed
+  // Fast local platform detection (0ms)
   let sourcePlatform = existing.sourcePlatform;
   if (data.url && data.url !== existing.url) {
-    const scraped = await scrapeProblemMetadata(data.url);
-    sourcePlatform = scraped.sourcePlatform;
+    sourcePlatform = detectSourcePlatform(data.url);
   }
 
   // Update in a transaction to handle junctions
@@ -444,6 +465,14 @@ export async function updateProblem(num: number, data: {
     });
   });
 
+  // Invalidate caches in parallel
+  await Promise.allSettled([
+    db.analyticsCache.deleteMany({ where: { userId } }),
+    invalidateAnalyticsCache(userId),
+    invalidateTagsCache(userId),
+    existing.isPublic ? invalidatePublicProblemCache(existing.id) : Promise.resolve(),
+  ]);
+
   revalidatePath("/dashboard");
   return problem;
 }
@@ -456,9 +485,24 @@ export async function deleteProblem(num: number) {
   });
   if (!existing) throw new Error("Problem not found");
 
+  // Fetch pending reminders to clean from Redis
+  const pendingReminders = await db.reminder.findMany({
+    where: { problemId: existing.id, userId, status: "PENDING" },
+    select: { id: true },
+  });
+
   await db.problem.delete({
     where: { id: existing.id }
   });
+
+  // Parallel Redis & DB cache cleanup
+  await Promise.allSettled([
+    ...pendingReminders.map((r) => dequeueSRS(userId, r.id)),
+    db.analyticsCache.deleteMany({ where: { userId } }),
+    invalidateAnalyticsCache(userId),
+    invalidateTagsCache(userId),
+    existing.isPublic ? invalidatePublicProblemCache(existing.id) : Promise.resolve(),
+  ]);
 
   revalidatePath("/dashboard");
   return { success: true };
@@ -500,6 +544,7 @@ export async function addSolution(problemId: string, data: {
     const sol = await tx.solution.create({
       data: {
         problemId,
+        userId,
         name: data.name,
         lang: data.lang,
         intuition: data.intuition,
@@ -522,19 +567,18 @@ export async function addSolution(problemId: string, data: {
       }
     });
 
-    // Trigger SRS Init (Inside the same transaction we create reminders, enqueue to Redis asynchronously)
     return sol;
   });
 
-  // Init schedule reminders
+  // Init schedule reminders in background/concurrently
   await initSchedule(problemId, userId);
 
-  // Invalidate user analytics cache (DB) + Redis
-  await db.analyticsCache.deleteMany({
-    where: { userId }
-  });
-  await invalidateAnalyticsCache(userId);
-  await invalidateTagsCache(userId);
+  // Invalidate user analytics & tags cache in parallel
+  await Promise.allSettled([
+    db.analyticsCache.deleteMany({ where: { userId } }),
+    invalidateAnalyticsCache(userId),
+    invalidateTagsCache(userId),
+  ]);
 
   revalidatePath("/dashboard");
   return solution;
@@ -569,11 +613,12 @@ export async function deleteSolution(solutionId: string) {
     });
   }
 
-  // Invalidate user analytics cache (DB) + Redis
-  await db.analyticsCache.deleteMany({
-    where: { userId }
-  });
-  await invalidateAnalyticsCache(userId);
+  // Invalidate user analytics & tags cache in parallel
+  await Promise.allSettled([
+    db.analyticsCache.deleteMany({ where: { userId } }),
+    invalidateAnalyticsCache(userId),
+    invalidateTagsCache(userId),
+  ]);
 
   revalidatePath("/dashboard");
   return { success: true };
@@ -589,7 +634,7 @@ export async function updateSolution(solutionId: string, data: {
   space: string;
   tags?: string[];
 }) {
-  await requireAuth();
+  const userId = await requireAuth();
 
   const solution = await db.solution.update({
     where: { id: solutionId },
@@ -604,6 +649,9 @@ export async function updateSolution(solutionId: string, data: {
       tags: data.tags || [],
     }
   });
+
+  // Invalidate tags cache in case tags updated
+  await invalidateTagsCache(userId);
 
   revalidatePath("/dashboard");
   return solution;
@@ -815,6 +863,13 @@ export async function markRevisited(num: number, customDays?: number) {
     });
   }
 
+  // Parallel cache invalidation
+  await Promise.allSettled([
+    db.analyticsCache.deleteMany({ where: { userId } }),
+    invalidateAnalyticsCache(userId),
+    invalidateNotifCount(userId),
+  ]);
+
   revalidatePath("/dashboard");
   return { success: true };
 }
@@ -887,8 +942,10 @@ export async function getSheets() {
   });
 
   const merged = [...userSheets];
+  const seenSlugs = new Set(userSheets.map((s) => s.shareSlug).filter(Boolean));
   for (const c of curated) {
-    if (!merged.some((s) => s.shareSlug === c.shareSlug)) {
+    if (!c.shareSlug || !seenSlugs.has(c.shareSlug)) {
+      if (c.shareSlug) seenSlugs.add(c.shareSlug);
       merged.push(c);
     }
   }
@@ -997,14 +1054,14 @@ export async function forkCuratedSheet(sheetId: string) {
     }
   });
 
-  // Copy problems links
-  for (const prob of curatedSheet.problems) {
-    await db.sheetProblem.create({
-      data: {
+  // Copy problems links in a single batch query
+  if (curatedSheet.problems.length > 0) {
+    await db.sheetProblem.createMany({
+      data: curatedSheet.problems.map((prob) => ({
         sheetId: forked.id,
         problemId: prob.problemId,
         order: prob.order,
-      }
+      })),
     });
   }
 
@@ -1244,48 +1301,80 @@ export async function getPublicSheetBySlug(slug: string) {
 }
 
 export async function getPublicProblemBySlug(slug: string) {
-  const problems = await db.problem.findMany({
-    where: {
-      isPublic: true,
+  // 1. Check Redis cache first (24h TTL)
+  const cached = await getCachedPublicProblem(slug);
+  if (cached) return cached;
+
+  const problemInclude = {
+    solutions: {
+      include: {
+        notes: { where: { isShared: true } },
+      }
     },
-    include: {
-      solutions: {
-        include: {
-          notes: { where: { isShared: true } },
-        }
-      },
-      notes: { where: { isShared: true } },
-      reminders: true,
-      companies: { include: { company: true } },
-      patterns: { include: { pattern: true } },
-      user: {
-        select: {
-          id: true,
-          username: true,
-          name: true,
-          sheets: {
-            where: {
-              isPublic: true,
-            },
-            include: {
-              problems: {
-                include: {
-                  problem: true,
-                }
-              }
+    notes: { where: { isShared: true } },
+    reminders: true,
+    companies: { include: { company: true } },
+    patterns: { include: { pattern: true } },
+    user: {
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        sheets: {
+          where: { isPublic: true },
+          include: {
+            problems: {
+              include: { problem: true }
             }
           }
         }
       }
     }
+  };
+
+  // Direct ID match
+  let problem = await db.problem.findFirst({
+    where: { id: slug, isPublic: true },
+    include: problemInclude,
   });
 
-  const getSlug = (name: string) => {
-    if (!name) return "";
-    return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-  };
-  const found = problems.find((p) => getSlug(p.name) === slug);
-  return found || null;
+  // Formatted slug-to-name match
+  if (!problem) {
+    const searchName = slug.replace(/-/g, " ").trim();
+    problem = await db.problem.findFirst({
+      where: {
+        name: { equals: searchName, mode: "insensitive" },
+        isPublic: true,
+      },
+      include: problemInclude,
+    });
+  }
+
+  // Exact fallback check
+  if (!problem) {
+    const getSlug = (name: string) => {
+      if (!name) return "";
+      return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    };
+    const publicList = await db.problem.findMany({
+      where: { isPublic: true },
+      select: { id: true, name: true },
+    });
+    const match = publicList.find((p) => getSlug(p.name) === slug);
+    if (match) {
+      problem = await db.problem.findUnique({
+        where: { id: match.id },
+        include: problemInclude,
+      });
+    }
+  }
+
+  // Back-fill Redis cache
+  if (problem) {
+    await setCachedPublicProblem(slug, problem);
+  }
+
+  return problem;
 }
 
 export async function addProblemToSheet(sheetId: string, problemId: string) {
