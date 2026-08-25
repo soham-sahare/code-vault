@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatISTDate } from "@/lib/timestamps/ist";
 import { getPublicProblemBySlug, getHighlightedHtml } from "@/lib/actions";
 import { useTheme } from "next-themes";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function SharedProblemPage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = use(params);
@@ -56,11 +57,54 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center font-sans text-xs">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-4 border-t-primary border-border/40 rounded-full animate-spin" />
-          <span className="font-bold text-muted uppercase tracking-wider text-[10px]">Loading Recall Vault…</span>
-        </div>
+      <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+        {/* Navigation Skeleton */}
+        <header className="h-16 border-b border-border/80 bg-surface/50 backdrop-blur-md px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton className="w-8 h-8 rounded-xl" />
+            <Skeleton className="h-5 w-28 rounded-lg" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-8 w-24 rounded-lg" />
+            <Skeleton className="w-8 h-8 rounded-lg" />
+          </div>
+        </header>
+
+        {/* Content Skeleton */}
+        <main className="flex-1 max-w-5xl w-full mx-auto p-6 sm:p-10 space-y-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-16 rounded" />
+                <Skeleton className="h-6 w-56 rounded-lg" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-20 rounded-md" />
+                <Skeleton className="h-4 w-16 rounded-md" />
+              </div>
+            </div>
+            <Skeleton className="w-9 h-9 rounded-xl" />
+          </div>
+
+          <div className="h-10 border-b border-border flex gap-4">
+            <Skeleton className="h-6 w-24 rounded-md" />
+            <Skeleton className="h-6 w-20 rounded-md" />
+          </div>
+
+          <div className="p-6 rounded-2xl bg-surface border border-border space-y-4">
+            <div className="flex gap-2">
+              <Skeleton className="h-8 w-28 rounded-xl" />
+              <Skeleton className="h-8 w-28 rounded-xl" />
+            </div>
+            <div className="p-6 space-y-3 rounded-xl bg-surface-2/40">
+              <Skeleton className="h-4 w-1/4 rounded" />
+              <Skeleton className="h-4 w-3/5 rounded" />
+              <Skeleton className="h-4 w-2/5 rounded" />
+              <Skeleton className="h-4 w-4/5 rounded" />
+              <Skeleton className="h-4 w-1/3 rounded" />
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
