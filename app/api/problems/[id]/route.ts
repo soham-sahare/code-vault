@@ -59,7 +59,7 @@ export async function PATCH(
       return NextResponse.json({ data: null, error: "Problem not found" }, { status: 404 });
     }
 
-    const updated = await updateProblem(problem.num, {
+    const updated = await updateProblem(id, {
       name: parsed.data.name ?? problem.name,
       difficulty: parsed.data.difficulty ?? problem.difficulty,
       topic: parsed.data.topic ?? problem.topic,
@@ -91,7 +91,7 @@ export async function DELETE(
       return NextResponse.json({ data: null, error: "Problem not found" }, { status: 404 });
     }
 
-    await deleteProblem(problem.num);
+    await deleteProblem(id);
     return NextResponse.json({ data: { success: true }, error: null });
   } catch (err: any) {
     if (err.message === "Unauthorized") {
