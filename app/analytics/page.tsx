@@ -125,14 +125,15 @@ export default function AnalyticsPage() {
     let stage4 = 0; // 30d / Mastered
 
     filteredData.forEach((p) => {
-      const inv = (p.interval || "").toLowerCase();
-      if (inv.includes("30d") || inv.includes("stage 4") || inv.includes("mastered")) {
+      const rawInv = (p.interval || p.reminders?.[0]?.stage || "").toLowerCase().trim();
+      if (rawInv.includes("30d") || rawInv.includes("stage 4") || rawInv.includes("mastered")) {
         stage4++;
-      } else if (inv.includes("15d") || inv.includes("stage 3")) {
+      } else if (rawInv.includes("15d") || (rawInv.includes("stage 3") && !rawInv.includes("3d"))) {
         stage3++;
-      } else if (inv.includes("7d") || inv.includes("stage 2")) {
+      } else if (rawInv.includes("7d") || rawInv.includes("stage 2")) {
         stage2++;
       } else {
+        // Stage 1 (3d, Recall Stage 3d, Stage 1, Initial)
         stage1++;
       }
     });
