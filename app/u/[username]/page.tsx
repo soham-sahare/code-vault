@@ -5,6 +5,7 @@ import Link from "next/link";
 import { User, Globe, ArrowLeft, ExternalLink, ShieldCheck, Award, Flame, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { getPublicProfileByUsername } from "@/lib/actions";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function PublicProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const resolvedParams = use(params);
@@ -30,10 +31,49 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300 items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-          <span className="font-sans font-semibold text-xs text-muted">Retrieving public profile...</span>
+      <div className="min-h-screen bg-background text-foreground font-sans text-xs p-6 md:p-12 transition-colors duration-300">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <Skeleton className="h-4 w-36 rounded-md" />
+
+          {/* Profile Card Skeleton */}
+          <div className="p-8 rounded-3xl bg-surface border border-border space-y-6">
+            <div className="flex items-center gap-5">
+              <Skeleton className="w-20 h-20 rounded-2xl" />
+              <div className="space-y-2.5 flex-1">
+                <Skeleton className="h-6 w-44 rounded-xl" />
+                <Skeleton className="h-4 w-28 rounded-md" />
+                <Skeleton className="h-3.5 w-60 rounded-md" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-border/80">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="p-4 rounded-2xl bg-surface-2/40 border border-border/60 space-y-2">
+                  <Skeleton className="h-3 w-16 rounded" />
+                  <Skeleton className="h-6 w-12 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Problems List Skeleton */}
+          <div className="p-8 rounded-3xl bg-surface border border-border space-y-4">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-5 w-36 rounded-lg" />
+              <Skeleton className="h-9 w-52 rounded-xl" />
+            </div>
+            <div className="space-y-3 pt-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="p-4 rounded-xl bg-surface-2/40 border border-border/50 flex items-center justify-between">
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-40 rounded" />
+                    <Skeleton className="h-3 w-24 rounded" />
+                  </div>
+                  <Skeleton className="h-4 w-16 rounded" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
