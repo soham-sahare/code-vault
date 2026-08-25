@@ -11,6 +11,7 @@ import { useTheme } from "next-themes";
 import { createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, updateSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile, addSolutionNote, deleteSolutionNote, updateSolutionNote, saveOnboarding, getProblemDetails, getPaginatedProblems } from "@/lib/actions";
 import { getInitials } from "@/lib/utils/formatters";
 import { highlightClientCode } from "@/lib/utils/clientHighlight";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function getCodePlaceholder(lang: string): string {
   const l = lang.toLowerCase();
@@ -825,14 +826,34 @@ export default function DashboardPage() {
               </thead>
               <tbody className="divide-y divide-border/40 font-medium">
                 {loading ? (
-                  <tr>
-                    <td colSpan={5} className="py-20 text-center">
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        <div className="w-8 h-8 border-3 border-t-primary border-border/40 rounded-full animate-spin" />
-                        <span className="font-bold text-muted uppercase tracking-wider text-[9px] font-sans">Loading Recall Vault…</span>
-                      </div>
-                    </td>
-                  </tr>
+                  Array.from({ length: 6 }).map((_, idx) => (
+                    <tr key={idx} className="border-b border-border/30">
+                      <td className="py-4 pl-2">
+                        <Skeleton className="h-5 w-14 rounded" />
+                      </td>
+                      <td className="py-4">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-44 rounded-lg" />
+                          <Skeleton className="w-3.5 h-3.5 rounded" />
+                        </div>
+                      </td>
+                      <td className="py-4">
+                        <div className="flex items-center gap-1.5">
+                          <Skeleton className="h-4 w-16 rounded-md" />
+                          <Skeleton className="h-4 w-12 rounded-md" />
+                        </div>
+                      </td>
+                      <td className="py-4">
+                        <Skeleton className="h-5 w-20 rounded-full" />
+                      </td>
+                      <td className="py-4 text-right pr-2">
+                        <div className="flex items-center justify-end gap-2">
+                          <Skeleton className="w-8 h-8 rounded-lg" />
+                          <Skeleton className="w-8 h-8 rounded-lg" />
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 ) : paginatedProblems.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-20 text-center text-muted font-sans text-xs">
@@ -1396,9 +1417,12 @@ export default function DashboardPage() {
                           {/* Simulated Monaco code */}
                           <div className="rounded-xl overflow-hidden font-mono text-[11px] leading-relaxed [&>pre]:p-5 [&>pre]:overflow-x-auto [&>pre]:w-full min-h-[150px] flex flex-col justify-center bg-surface dark:bg-[#1A1A1F] border border-border has-line-numbers">
                             {isCodeLoading || !highlightedSolCode ? (
-                              <div className="flex flex-col items-center justify-center gap-2 py-12">
-                                <div className="w-6 h-6 border-2 border-t-primary border-border/40 rounded-full animate-spin" />
-                                <span className="font-bold text-muted uppercase tracking-wider text-[8px] font-sans">Loading Code…</span>
+                              <div className="p-6 space-y-3 w-full">
+                                <Skeleton className="h-3.5 w-1/4 rounded" />
+                                <Skeleton className="h-3.5 w-3/5 rounded" />
+                                <Skeleton className="h-3.5 w-2/5 rounded" />
+                                <Skeleton className="h-3.5 w-4/5 rounded" />
+                                <Skeleton className="h-3.5 w-1/3 rounded" />
                               </div>
                             ) : (
                               <div 
