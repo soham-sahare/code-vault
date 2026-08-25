@@ -1699,10 +1699,25 @@ export async function validateCredentials(identifier: string, password: string) 
     return { error: true, message: "Please enter both username/email and password." };
   }
 
-  const isEmail = identifier.includes("@");
+  const raw = identifier.trim();
+  const isEmail = raw.includes("@");
   const user = isEmail
-    ? await db.user.findUnique({ where: { email: identifier } })
-    : await db.user.findUnique({ where: { username: identifier } });
+    ? await db.user.findFirst({
+        where: {
+          email: {
+            equals: raw,
+            mode: "insensitive",
+          },
+        },
+      })
+    : await db.user.findFirst({
+        where: {
+          username: {
+            equals: raw,
+            mode: "insensitive",
+          },
+        },
+      });
 
   if (!user) {
     return {
