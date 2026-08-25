@@ -6,7 +6,7 @@ import { Search, Bell, Library, Plus, Trash2, Edit, ExternalLink, Share2, Globe,
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import Link from "next/link";
-import { getSheets, createSheet, updateSheet, deleteSheet, removeProblemFromSheet, getUserProblemSummaries, addProblemToSheet, getUserProfile } from "@/lib/actions";
+import { getSheets, createSheet, updateSheet, deleteSheet, removeProblemFromSheet, getUserProblemSummaries, addProblemToSheet, addProblemsToSheet, getUserProfile } from "@/lib/actions";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { getInitials } from "@/lib/utils/formatters";
 
@@ -124,37 +124,50 @@ export default function SheetsPage() {
 
   const handleSaveSheet = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sheetName) return;
+    if (!sheetName.trim()) return;
+
+    const name = sheetName.trim();
+    const desc = sheetDesc.trim();
+    const isPub = sheetPublic;
+    const editingId = editingSheetId;
+
+    // Reset modal state immediately
+    setIsAddSheetOpen(false);
+    setSheetName("");
+    setSheetDesc("");
+    setSheetPublic(false);
+    setEditingSheetId(null);
+    showToast(editingId ? "Sheet updated successfully!" : "Sheet created successfully!", "success");
 
     try {
-      if (editingSheetId) {
-        await updateSheet(editingSheetId, sheetName, sheetDesc, sheetPublic);
+      if (editingId) {
+        await updateSheet(editingId, name, desc, isPub);
       } else {
-        await createSheet(sheetName, sheetDesc, sheetPublic);
+        await createSheet(name, desc, isPub);
       }
       await loadSheets();
-
-      // Reset fields
-      setIsAddSheetOpen(false);
-      setSheetName("");
-      setSheetDesc("");
-      setSheetPublic(false);
-      setEditingSheetId(null);
     } catch (err) {
       console.error("Error saving sheet:", err);
+      showToast("Failed to save sheet", "error");
+      await loadSheets();
     }
   };
 
   const handleDeleteSheet = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    // Optimistic UI update
+    setSheetsList((prev) => prev.filter((s) => s.id !== id));
+    if (activeSheet && activeSheet.id === id) {
+      setActiveSheet(null);
+    }
+    showToast("Sheet deleted", "success");
+
     try {
       await deleteSheet(id);
-      await loadSheets();
-      if (activeSheet && activeSheet.id === id) {
-        setActiveSheet(null);
-      }
     } catch (err) {
       console.error("Error deleting sheet:", err);
+      showToast("Failed to delete sheet", "error");
+      await loadSheets();
     }
   };
 
@@ -169,11 +182,21 @@ export default function SheetsPage() {
 
   const toggleShareSlug = async (sheet: any, e: React.MouseEvent) => {
     e.stopPropagation();
+    const nextPub = !sheet.isPublic;
+    // Optimistic update
+    setSheetsList((prev) => prev.map((s) => s.id === sheet.id ? { ...s, isPublic: nextPub } : s));
+    if (activeSheet && activeSheet.id === sheet.id) {
+      setActiveSheet({ ...activeSheet, isPublic: nextPub });
+    }
+    showToast(nextPub ? "Public sharing enabled" : "Public sharing disabled", "info");
+
     try {
-      await updateSheet(sheet.id, sheet.name, sheet.description || "", !sheet.isPublic);
+      await updateSheet(sheet.id, sheet.name, sheet.description || "", nextPub);
       await loadSheets();
     } catch (err) {
       console.error("Error toggling share status:", err);
+      showToast("Failed to update sharing", "error");
+      await loadSheets();
     }
   };
 
@@ -834,14 +857,16 @@ export default function SheetsPage() {
                       type="button"
                       onClick={async () => {
                         try {
-                          await Promise.all(selectedProblemIds.map(id => addProblemToSheet(activeSheet.id, id)));
+                          await addProblemsToSheet(activeSheet.id, selectedProblemIds);
                           setSelectedProblemIds([]);
                           await loadSheets();
                           const updatedSheets = await getSheets();
                           const currentSheet = updatedSheets.find((s: any) => s.id === activeSheet.id);
                           if (currentSheet) setActiveSheet(currentSheet);
+                          showToast("Problems added to sheet!", "success");
                         } catch (err) {
                           console.error("Bulk add error:", err);
+                          showToast("Failed to add problems", "error");
                         }
                       }}
                       className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/95 text-white font-sans font-bold text-xs cursor-pointer transition-colors shadow-md shadow-primary/10"
