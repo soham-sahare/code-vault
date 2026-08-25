@@ -1744,3 +1744,20 @@ export async function validateCredentials(identifier: string, password: string) 
   return { success: true };
 }
 
+/**
+ * Permanently deletes the current user's account and cascades all data.
+ */
+export async function deleteUserAccount() {
+  const userId = await requireAuth();
+
+  // Invalidate Redis user caches
+  await invalidateUserCaches(userId);
+
+  // Cascade delete user and all problems, solutions, notes, sheets, reminders, and analytics
+  await db.user.delete({
+    where: { id: userId },
+  });
+
+  return { success: true };
+}
+
