@@ -10,6 +10,7 @@ import { checkAuthSession } from "@/lib/actions";
 
 export default function SignupPage() {
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -42,10 +43,16 @@ export default function SignupPage() {
     setError("");
     setLoading(true);
     try {
+      const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, "");
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({
+          name: name.trim(),
+          username: cleanUsername || undefined,
+          email: email.trim(),
+          password
+        }),
       });
 
       const data = await res.json();
@@ -55,9 +62,9 @@ export default function SignupPage() {
         return;
       }
 
-      // Auto login after sign up
+      // Auto login after sign up with chosen username or email
       const loginRes = await signIn("credentials", {
-        email,
+        email: cleanUsername || email.trim(),
         password,
         redirect: false,
       });
@@ -119,14 +126,33 @@ export default function SignupPage() {
         <form className="mt-8 space-y-4" onSubmit={handleSignup}>
           <div>
             <label className="block font-sans font-semibold text-xs text-muted mb-2 uppercase tracking-wide">
-              Username / Name
+              Full Name
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="Hunter Davis"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (!username) {
+                  setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""));
+                }
+              }}
+              className="w-full px-4 py-3 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none font-sans text-sm text-foreground transition-all placeholder:text-muted/60"
+            />
+          </div>
+
+          <div>
+            <label className="block font-sans font-semibold text-xs text-muted mb-2 uppercase tracking-wide">
+              Username
             </label>
             <input
               type="text"
               required
               placeholder="hunter"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
               className="w-full px-4 py-3 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none font-sans text-sm text-foreground transition-all placeholder:text-muted/60"
             />
           </div>
