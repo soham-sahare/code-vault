@@ -9,6 +9,7 @@ import Link from "next/link";
 import { getSheets, createSheet, updateSheet, deleteSheet, removeProblemFromSheet, getUserProblemSummaries, addProblemToSheet, addProblemsToSheet, getUserProfile } from "@/lib/actions";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { getInitials } from "@/lib/utils/formatters";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 
 export default function SheetsPage() {
@@ -206,10 +207,47 @@ export default function SheetsPage() {
     return (
       <div className="flex min-h-screen bg-background text-foreground transition-colors duration-300">
         <Sidebar />
-        <main className="flex-1 flex items-center justify-center p-6">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-            <span className="font-sans font-semibold text-xs text-muted">Retrieving practice sheets...</span>
+        <main className="flex-1 p-6 lg:p-10 pb-24 lg:pb-10 overflow-y-auto max-w-7xl mx-auto w-full">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between mb-8 gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5">
+                <Skeleton className="w-8 h-8 rounded-xl" />
+                <Skeleton className="h-8 w-44 rounded-xl" />
+              </div>
+              <Skeleton className="h-3.5 w-60 rounded-lg" />
+            </div>
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-32 rounded-xl" />
+              <Skeleton className="w-10 h-10 rounded-xl" />
+              <Skeleton className="w-10 h-10 rounded-xl" />
+              <Skeleton className="w-10 h-10 rounded-full" />
+            </div>
+          </div>
+
+          {/* Search Bar Skeleton */}
+          <div className="mb-8">
+            <Skeleton className="h-11 w-full max-w-md rounded-xl" />
+          </div>
+
+          {/* Sheets Card Grid Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="p-6 rounded-2xl bg-surface border border-border space-y-4">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="w-10 h-10 rounded-xl" />
+                  <Skeleton className="h-4 w-16 rounded-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-40 rounded-lg" />
+                  <Skeleton className="h-3.5 w-full rounded-md" />
+                </div>
+                <div className="pt-4 border-t border-border/80 flex items-center justify-between">
+                  <Skeleton className="h-4 w-24 rounded-md" />
+                  <Skeleton className="h-3 w-16 rounded-md" />
+                </div>
+              </div>
+            ))}
           </div>
         </main>
       </div>
