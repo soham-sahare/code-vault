@@ -4,9 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "NODE_OPTIONS='--no-deprecation' next dev",
-    "build": "prisma generate && NODE_OPTIONS='--no-deprecation' next build",
+    "build": "prisma generate && npx tsx prisma/seed.ts && NODE_OPTIONS='--no-deprecation' next build",
+    "seed": "npx tsx prisma/seed.ts",
     "start": "NODE_OPTIONS='--no-deprecation' next start",
     "lint": "eslint"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.3.0",
