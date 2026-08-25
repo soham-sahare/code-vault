@@ -339,6 +339,16 @@ export async function getUserProblemSummaries() {
           space: true,
         },
       },
+      reminders: {
+        where: { status: "PENDING" },
+        orderBy: { dueDate: "asc" },
+        take: 1,
+        select: {
+          id: true,
+          dueDate: true,
+          stage: true,
+        },
+      },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
