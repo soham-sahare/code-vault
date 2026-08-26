@@ -1249,15 +1249,21 @@ export default function DashboardPage() {
                     <span className="font-display font-extrabold text-xl text-foreground break-words min-w-0">
                       {activeProblem.name}
                     </span>
-                    <a
-                      href={activeProblem.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-7 h-7 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-foreground transition-colors shrink-0"
-                      title="Open Problem URL"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
+                    {(() => {
+                      const slug =
+                        activeProblem.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || activeProblem.id;
+                      return (
+                        <a
+                          href={`/problem/${slug}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-7 h-7 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-foreground transition-colors shrink-0"
+                          title="Open View-Only Problem Page"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      );
+                    })()}
                   </div>
 
                   {/* Meta tag row */}
