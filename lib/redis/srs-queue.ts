@@ -12,6 +12,22 @@ export async function enqueueSRS(userId: string, reminderId: string, dueTimeSec:
 }
 
 /**
+ * Batch enqueue multiple reminders into the Redis ZSET queue in a single network round-trip
+ */
+export async function enqueueManySRS(userId: string, items: { reminderId: string; dueTimeSec: number }[]): Promise<void> {
+  if (!items || items.length === 0) return;
+  try {
+    const args: (number | string)[] = [];
+    for (const item of items) {
+      args.push(item.dueTimeSec, item.reminderId);
+    }
+    await (redis as any).zadd(`srs:queue:${userId}`, ...args);
+  } catch (e: any) {
+    console.error("Failed to batch enqueue in Redis:", e.message);
+  }
+}
+
+/**
  * Dequeue a reminder from the Redis ZSET queue
  */
 export async function dequeueSRS(userId: string, reminderId: string): Promise<void> {
