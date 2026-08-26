@@ -1183,33 +1183,9 @@ export async function forkCuratedSheet(sheetId: string) {
 }
 
 // 6. ANALYTICS & CACHING SNAPS
-export async function getAnalytics() {
-  const userId = await requireAuth();
-
+export async function computeAndCacheAnalytics(userId: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
-  // 1. Check Redis cache first (1h TTL per PLAN.md §12.3)
-  const redisCache = await getCachedAnalytics(userId);
-  if (redisCache) return redisCache;
-
-  // 2. Check DB analytics_cache (< 1 hour old)
-  const cache = await db.analyticsCache.findUnique({
-    where: {
-      userId_snapshotDate: {
-        userId,
-        snapshotDate: today,
-      }
-    }
-  });
-
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-
-  // Return DB cache if fresh (< 1 hour)
-  if (cache && cache.cachedAt > oneHourAgo) {
-    await setCachedAnalytics(userId, cache); // back-fill Redis
-    return cache;
-  }
 
   // Compile distributions and streaks in parallel via Promise.all
   const [problems, solutions] = await Promise.all([
@@ -1368,10 +1344,159 @@ export async function getAnalytics() {
     }
   });
 
-  // Back-fill Redis cache (1h TTL per PLAN.md §12.3)
+  // Back-fill Redis cache (1h TTL)
   await setCachedAnalytics(userId, savedCache);
 
   return savedCache;
+}
+
+export async function getAnalytics() {
+  const userId = await requireAuth();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // 1. Check Redis cache first (1h TTL per PLAN.md §12.3)
+  const redisCache = await getCachedAnalytics(userId);
+  if (redisCache) return redisCache;
+
+  // 2. Check DB analytics_cache (< 1 hour old)
+  const cache = await db.analyticsCache.findUnique({
+    where: {
+      userId_snapshotDate: {
+        userId,
+        snapshotDate: today,
+      }
+    }
+  });
+
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+  // Return DB cache if fresh (< 1 hour)
+  if (cache && cache.cachedAt > oneHourAgo) {
+    await setCachedAnalytics(userId, cache); // back-fill Redis
+    return cache;
+  }
+
+  return computeAndCacheAnalytics(userId);
+}
+
+/**
+ * High-performance batch problem import for LeetCode/NeetCode bulk transfers
+ */
+export async function importProblemsBatch(problemsData: Array<{
+  name: string;
+  difficulty: string;
+  topic: string;
+  url?: string;
+  status?: string;
+  companyNames?: string[];
+  patternNames?: string[];
+}>) {
+  const userId = await requireAuth();
+  if (!problemsData || problemsData.length === 0) return { count: 0 };
+
+  // 1. Resolve all unique companies in parallel
+  const allCompanyNames = Array.from(
+    new Set(problemsData.flatMap(p => p.companyNames || []).map(c => c.trim()).filter(Boolean))
+  );
+  const companyMap = new Map<string, string>(); // slug -> companyId
+  if (allCompanyNames.length > 0) {
+    const compUpserts = allCompanyNames.map(async (name) => {
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const comp = await db.companyTag.upsert({
+        where: { slug },
+        update: {},
+        create: { name, slug },
+        select: { id: true, slug: true },
+      });
+      companyMap.set(slug, comp.id);
+    });
+    await Promise.all(compUpserts);
+  }
+
+  // 2. Resolve all unique patterns in parallel
+  const allPatternNames = Array.from(
+    new Set(problemsData.flatMap(p => p.patternNames || []).map(p => p.trim()).filter(Boolean))
+  );
+  const patternMap = new Map<string, string>(); // slug -> patternId
+  if (allPatternNames.length > 0) {
+    const patUpserts = allPatternNames.map(async (name) => {
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const pat = await db.pattern.upsert({
+        where: { slug },
+        update: {},
+        create: { name, slug, parentTopic: "General" },
+        select: { id: true, slug: true },
+      });
+      patternMap.set(slug, pat.id);
+    });
+    await Promise.all(patUpserts);
+  }
+
+  // 3. Get current max problem number
+  const maxProb = await db.problem.findFirst({
+    where: { userId },
+    orderBy: { num: "desc" },
+    select: { num: true },
+  });
+  let currentNum = maxProb ? maxProb.num : 0;
+
+  // 4. Create all problems in an atomic transaction
+  const created = await db.$transaction(async (tx) => {
+    const results = [];
+    for (const data of problemsData) {
+      currentNum++;
+      const diffColor =
+        data.difficulty === "EASY"
+          ? "text-emerald-500 bg-emerald-500/10"
+          : data.difficulty === "MED"
+            ? "text-amber-500 bg-amber-500/10"
+            : "text-rose-500 bg-rose-500/10";
+      const sourcePlatform = detectSourcePlatform(data.url || "");
+
+      const compIds = (data.companyNames || [])
+        .map(c => companyMap.get(c.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")))
+        .filter(Boolean) as string[];
+
+      const patIds = (data.patternNames || [])
+        .map(p => patternMap.get(p.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")))
+        .filter(Boolean) as string[];
+
+      const p = await tx.problem.create({
+        data: {
+          userId,
+          num: currentNum,
+          name: data.name,
+          difficulty: data.difficulty,
+          diffColor,
+          topic: (data.topic || "General DSA").toLowerCase().trim(),
+          url: data.url || "#",
+          sourcePlatform,
+          status: data.status || "Unsolved",
+          statusColor: data.status === "Solved" ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" : "text-rose-500 bg-rose-500/10 border-rose-500/20",
+          interval: "Recall Stage 1",
+          companies: {
+            create: compIds.map(cid => ({ companyId: cid })),
+          },
+          patterns: {
+            create: patIds.map(pid => ({ patternId: pid })),
+          },
+        },
+      });
+      results.push(p);
+    }
+    return results;
+  });
+
+  // Background warm-up and cache sync
+  void Promise.allSettled([
+    computeAndCacheAnalytics(userId),
+    invalidateTagsCache(userId),
+  ]).catch(console.error);
+
+  revalidatePath("/dashboard");
+  return { count: created.length };
 }
 
 // 7. PUBLIC PAGES QUERIES
