@@ -2,12 +2,10 @@ datasource db {
   provider  = "postgresql"
   url       = env("POSTGRES_PRISMA_URL")
   directUrl = env("POSTGRES_URL_NON_POOLING")
-  schemas   = ["codevault"]
 }
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["multiSchema"]
+  provider = "prisma-client-js"
 }
 
 model User {
@@ -37,7 +35,6 @@ model User {
   @@index([isPublicProfile, username])
   @@index([name])
   @@index([createdAt(sort: Desc)])
-  @@schema("codevault")
 }
 
 model Problem {
@@ -78,7 +75,6 @@ model Problem {
   @@index([userId, isFavorite, createdAt(sort: Desc)]) // Favorites view
   @@index([userId, isPublic, createdAt(sort: Desc)]) // Public problems
   @@index([isPublic, name])                          // Public problem slug & name lookup
-  @@schema("codevault")
 }
 
 model Solution {
@@ -103,7 +99,6 @@ model Solution {
   @@index([problemId, createdAt])   // Fast solution list per problem
   @@index([userId, lang])           // Language distribution analytics
   @@index([userId])                 // User solution lookup
-  @@schema("codevault")
 }
 
 model SolutionNote {
@@ -118,7 +113,6 @@ model SolutionNote {
   solution   Solution @relation(fields: [solutionId], references: [id], onDelete: Cascade)
 
   @@index([solutionId])
-  @@schema("codevault")
 }
 
 model Note {
@@ -136,7 +130,6 @@ model Note {
 
   @@index([problemId])
   @@index([userId])
-  @@schema("codevault")
 }
 
 model Reminder {
@@ -158,7 +151,6 @@ model Reminder {
   @@index([userId, dueDate])                       // Filter due items
   @@index([problemId, userId, cycle, status])      // Next pending reminder lookup per cycle
   @@index([problemId, stage])                      // Problem-level schedule lookup
-  @@schema("codevault")
 }
 
 model SrsRevisitCycle {
@@ -178,7 +170,6 @@ model SrsRevisitCycle {
 
   @@unique([problemId, userId, status]) // only one active/paused revisit cycle at a time
   @@index([userId, status])
-  @@schema("codevault")
 }
 
 model CompanyTag {
@@ -187,8 +178,6 @@ model CompanyTag {
   slug      String           @unique
   logoUrl   String?
   problems  ProblemCompany[]
-
-  @@schema("codevault")
 }
 
 model ProblemCompany {
@@ -199,7 +188,6 @@ model ProblemCompany {
   company   CompanyTag @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@id([problemId, companyId])
-  @@schema("codevault")
 }
 
 model Pattern {
@@ -209,8 +197,6 @@ model Pattern {
   description String?
   parentTopic String
   problems    ProblemPattern[]
-
-  @@schema("codevault")
 }
 
 model ProblemPattern {
@@ -221,7 +207,6 @@ model ProblemPattern {
   pattern   Pattern @relation(fields: [patternId], references: [id], onDelete: Cascade)
 
   @@id([problemId, patternId])
-  @@schema("codevault")
 }
 
 model Notification {
@@ -237,7 +222,6 @@ model Notification {
 
   // PLAN.md §12.1: Unread notification index (bell badge hot path)
   @@index([userId, isRead, createdAt(sort: Desc)])
-  @@schema("codevault")
 }
 
 model AnalyticsCache {
@@ -257,7 +241,6 @@ model AnalyticsCache {
   user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, snapshotDate])
-  @@schema("codevault")
 }
 
 model Sheet {
@@ -276,7 +259,6 @@ model Sheet {
 
   // PLAN.md §12.1
   @@index([userId, createdAt(sort: Desc)])
-  @@schema("codevault")
 }
 
 model SheetProblem {
@@ -290,5 +272,4 @@ model SheetProblem {
   @@id([sheetId, problemId])
   @@index([problemId])
   @@index([sheetId, order])
-  @@schema("codevault")
 }
