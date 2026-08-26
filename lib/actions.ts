@@ -220,20 +220,28 @@ export async function getPaginatedProblems(filters?: {
   if (filters?.tag && filters.tag !== "ALL") {
     where.topic = { contains: filters.tag, mode: "insensitive" };
   }
-  if (filters?.company) {
+  if (filters?.company && filters.company !== "ALL") {
+    const compSlug = filters.company.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     where.companies = {
       some: {
         company: {
-          slug: filters.company,
+          OR: [
+            { slug: compSlug },
+            { name: { contains: filters.company, mode: "insensitive" } },
+          ],
         },
       },
     };
   }
-  if (filters?.pattern) {
+  if (filters?.pattern && filters.pattern !== "ALL") {
+    const patSlug = filters.pattern.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     where.patterns = {
       some: {
         pattern: {
-          slug: filters.pattern,
+          OR: [
+            { slug: patSlug },
+            { name: { contains: filters.pattern, mode: "insensitive" } },
+          ],
         },
       },
     };
@@ -362,6 +370,8 @@ export async function createProblem(data: {
   isPublic?: boolean;
   companyIds?: string[];
   patternIds?: string[];
+  companyNames?: string[];
+  patternNames?: string[];
 }) {
   const userId = await requireAuth();
 
@@ -383,6 +393,42 @@ export async function createProblem(data: {
   // Fast local platform detection (0ms, no network blocking)
   const sourcePlatform = detectSourcePlatform(data.url || "");
 
+  // Resolve company IDs
+  const resolvedCompanyIds: string[] = [...(data.companyIds || [])];
+  if (data.companyNames && data.companyNames.length > 0) {
+    for (const cName of data.companyNames) {
+      const clean = cName.trim();
+      if (!clean) continue;
+      const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const comp = await db.companyTag.upsert({
+        where: { slug },
+        update: {},
+        create: { name: clean, slug },
+      });
+      if (!resolvedCompanyIds.includes(comp.id)) {
+        resolvedCompanyIds.push(comp.id);
+      }
+    }
+  }
+
+  // Resolve pattern IDs
+  const resolvedPatternIds: string[] = [...(data.patternIds || [])];
+  if (data.patternNames && data.patternNames.length > 0) {
+    for (const pName of data.patternNames) {
+      const clean = pName.trim();
+      if (!clean) continue;
+      const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const pat = await db.pattern.upsert({
+        where: { slug },
+        update: {},
+        create: { name: clean, slug, parentTopic: data.topic || "General" },
+      });
+      if (!resolvedPatternIds.includes(pat.id)) {
+        resolvedPatternIds.push(pat.id);
+      }
+    }
+  }
+
   const problem = await db.problem.create({
     data: {
       userId,
@@ -398,10 +444,10 @@ export async function createProblem(data: {
       interval: "Recall Stage 1",
       isPublic: !!data.isPublic,
       companies: {
-        create: data.companyIds?.map((cid) => ({ companyId: cid })) || []
+        create: resolvedCompanyIds.map((cid) => ({ companyId: cid }))
       },
       patterns: {
-        create: data.patternIds?.map((pid) => ({ patternId: pid })) || []
+        create: resolvedPatternIds.map((pid) => ({ patternId: pid }))
       }
     },
   });
@@ -425,6 +471,8 @@ export async function updateProblem(id: string, data: {
   isPublic?: boolean;
   companyIds?: string[];
   patternIds?: string[];
+  companyNames?: string[];
+  patternNames?: string[];
 }) {
   const userId = await requireAuth();
 
@@ -444,6 +492,42 @@ export async function updateProblem(id: string, data: {
   let sourcePlatform = existing.sourcePlatform;
   if (data.url && data.url !== existing.url) {
     sourcePlatform = detectSourcePlatform(data.url);
+  }
+
+  // Resolve company IDs
+  const resolvedCompanyIds: string[] = [...(data.companyIds || [])];
+  if (data.companyNames && data.companyNames.length > 0) {
+    for (const cName of data.companyNames) {
+      const clean = cName.trim();
+      if (!clean) continue;
+      const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const comp = await db.companyTag.upsert({
+        where: { slug },
+        update: {},
+        create: { name: clean, slug },
+      });
+      if (!resolvedCompanyIds.includes(comp.id)) {
+        resolvedCompanyIds.push(comp.id);
+      }
+    }
+  }
+
+  // Resolve pattern IDs
+  const resolvedPatternIds: string[] = [...(data.patternIds || [])];
+  if (data.patternNames && data.patternNames.length > 0) {
+    for (const pName of data.patternNames) {
+      const clean = pName.trim();
+      if (!clean) continue;
+      const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const pat = await db.pattern.upsert({
+        where: { slug },
+        update: {},
+        create: { name: clean, slug, parentTopic: data.topic || "General" },
+      });
+      if (!resolvedPatternIds.includes(pat.id)) {
+        resolvedPatternIds.push(pat.id);
+      }
+    }
   }
 
   // Update in a transaction to handle junctions
@@ -475,10 +559,10 @@ export async function updateProblem(id: string, data: {
         sourcePlatform,
         isPublic: !!data.isPublic,
         companies: {
-          create: data.companyIds?.map((cid) => ({ companyId: cid })) || []
+          create: resolvedCompanyIds.map((cid) => ({ companyId: cid }))
         },
         patterns: {
-          create: data.patternIds?.map((pid) => ({ patternId: pid })) || []
+          create: resolvedPatternIds.map((pid) => ({ patternId: pid }))
         }
       },
     });
