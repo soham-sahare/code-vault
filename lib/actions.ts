@@ -397,38 +397,45 @@ export async function createProblem(data: {
   const finalNum = maxProb ? maxProb.num + 1 : 1;
 
   // Fast local platform detection (0ms, no network blocking)
+  // Fast local platform detection (0ms, no network blocking)
   const sourcePlatform = detectSourcePlatform(data.url || "");
 
-  // Resolve company IDs
+  // 1. Parallel Company IDs Resolution (Batch in 1 roundtrip)
   const resolvedCompanyIds: string[] = [...(data.companyIds || [])];
   if (data.companyNames && data.companyNames.length > 0) {
-    for (const cName of data.companyNames) {
-      const clean = cName.trim();
-      if (!clean) continue;
+    const uniqueCleanCompanies = Array.from(new Set(data.companyNames.map((c) => c.trim()).filter(Boolean)));
+    const compUpserts = uniqueCleanCompanies.map((clean) => {
       const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const comp = await db.companyTag.upsert({
+      return db.companyTag.upsert({
         where: { slug },
         update: {},
         create: { name: clean, slug },
+        select: { id: true },
       });
+    });
+    const comps = await Promise.all(compUpserts);
+    for (const comp of comps) {
       if (!resolvedCompanyIds.includes(comp.id)) {
         resolvedCompanyIds.push(comp.id);
       }
     }
   }
 
-  // Resolve pattern IDs
+  // 2. Parallel Pattern IDs Resolution (Batch in 1 roundtrip)
   const resolvedPatternIds: string[] = [...(data.patternIds || [])];
   if (data.patternNames && data.patternNames.length > 0) {
-    for (const pName of data.patternNames) {
-      const clean = pName.trim();
-      if (!clean) continue;
+    const uniqueCleanPatterns = Array.from(new Set(data.patternNames.map((p) => p.trim()).filter(Boolean)));
+    const patUpserts = uniqueCleanPatterns.map((clean) => {
       const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const pat = await db.pattern.upsert({
+      return db.pattern.upsert({
         where: { slug },
         update: {},
         create: { name: clean, slug, parentTopic: data.topic || "General" },
+        select: { id: true },
       });
+    });
+    const pats = await Promise.all(patUpserts);
+    for (const pat of pats) {
       if (!resolvedPatternIds.includes(pat.id)) {
         resolvedPatternIds.push(pat.id);
       }
@@ -458,12 +465,12 @@ export async function createProblem(data: {
     },
   });
 
-  // Parallel non-blocking cache invalidation
-  await Promise.allSettled([
+  // Non-blocking background cache invalidation
+  void Promise.allSettled([
     db.analyticsCache.deleteMany({ where: { userId } }),
     invalidateAnalyticsCache(userId),
     invalidateTagsCache(userId),
-  ]);
+  ]).catch(console.error);
 
   revalidatePath("/dashboard");
   return problem;
@@ -500,36 +507,42 @@ export async function updateProblem(id: string, data: {
     sourcePlatform = detectSourcePlatform(data.url);
   }
 
-  // Resolve company IDs
+  // 1. Parallel Company IDs Resolution
   const resolvedCompanyIds: string[] = [...(data.companyIds || [])];
   if (data.companyNames && data.companyNames.length > 0) {
-    for (const cName of data.companyNames) {
-      const clean = cName.trim();
-      if (!clean) continue;
+    const uniqueCleanCompanies = Array.from(new Set(data.companyNames.map((c) => c.trim()).filter(Boolean)));
+    const compUpserts = uniqueCleanCompanies.map((clean) => {
       const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const comp = await db.companyTag.upsert({
+      return db.companyTag.upsert({
         where: { slug },
         update: {},
         create: { name: clean, slug },
+        select: { id: true },
       });
+    });
+    const comps = await Promise.all(compUpserts);
+    for (const comp of comps) {
       if (!resolvedCompanyIds.includes(comp.id)) {
         resolvedCompanyIds.push(comp.id);
       }
     }
   }
 
-  // Resolve pattern IDs
+  // 2. Parallel Pattern IDs Resolution
   const resolvedPatternIds: string[] = [...(data.patternIds || [])];
   if (data.patternNames && data.patternNames.length > 0) {
-    for (const pName of data.patternNames) {
-      const clean = pName.trim();
-      if (!clean) continue;
+    const uniqueCleanPatterns = Array.from(new Set(data.patternNames.map((p) => p.trim()).filter(Boolean)));
+    const patUpserts = uniqueCleanPatterns.map((clean) => {
       const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const pat = await db.pattern.upsert({
+      return db.pattern.upsert({
         where: { slug },
         update: {},
         create: { name: clean, slug, parentTopic: data.topic || "General" },
+        select: { id: true },
       });
+    });
+    const pats = await Promise.all(patUpserts);
+    for (const pat of pats) {
       if (!resolvedPatternIds.includes(pat.id)) {
         resolvedPatternIds.push(pat.id);
       }
@@ -574,13 +587,13 @@ export async function updateProblem(id: string, data: {
     });
   });
 
-  // Invalidate caches in parallel
-  await Promise.allSettled([
+  // Invalidate caches in parallel (non-blocking)
+  void Promise.allSettled([
     db.analyticsCache.deleteMany({ where: { userId } }),
     invalidateAnalyticsCache(userId),
     invalidateTagsCache(userId),
     existing.isPublic ? invalidatePublicProblemCache(existing.id) : Promise.resolve(),
-  ]);
+  ]).catch(console.error);
 
   revalidatePath("/dashboard");
   return problem;
@@ -605,13 +618,13 @@ export async function deleteProblem(id: string) {
   });
 
   // Parallel Redis & DB cache cleanup
-  await Promise.allSettled([
+  void Promise.allSettled([
     ...pendingReminders.map((r) => dequeueSRS(userId, r.id)),
     db.analyticsCache.deleteMany({ where: { userId } }),
     invalidateAnalyticsCache(userId),
     invalidateTagsCache(userId),
     existing.isPublic ? invalidatePublicProblemCache(id) : Promise.resolve(),
-  ]);
+  ]).catch(console.error);
 
   revalidatePath("/dashboard");
   return { success: true };
@@ -680,15 +693,13 @@ export async function addSolution(problemId: string, data: {
     return sol;
   });
 
-  // Init schedule reminders in background/concurrently
-  await initSchedule(problemId, userId);
-
-  // Invalidate user analytics & tags cache in parallel
-  await Promise.allSettled([
+  // Non-blocking background SRS schedule initiation & cache invalidation
+  void Promise.allSettled([
+    initSchedule(problemId, userId),
     db.analyticsCache.deleteMany({ where: { userId } }),
     invalidateAnalyticsCache(userId),
     invalidateTagsCache(userId),
-  ]);
+  ]).catch(console.error);
 
   revalidatePath("/dashboard");
   return solution;
@@ -1015,41 +1026,33 @@ export async function endRevisit(problemId: string) {
 // 5. SHEETS ACTIONS (FORK & CURATED VALIDATIONS)
 export async function getSheets() {
   const userId = await requireAuth();
-  const userSheets = await db.sheet.findMany({
-    where: { userId },
-    include: {
-      problems: {
-        include: {
-          problem: {
-            include: {
-              solutions: true,
-              companies: { include: { company: true } },
-              patterns: { include: { pattern: true } },
-            }
-          }
-        }
-      }
-    },
-    orderBy: { createdAt: "desc" }
-  });
 
-  // Add global curated sheets that this user hasn't copied/created yet
-  const curated = await db.sheet.findMany({
-    where: { isCurated: true },
-    include: {
-      problems: {
-        include: {
-          problem: {
-            include: {
-              solutions: true,
-              companies: { include: { company: true } },
-              patterns: { include: { pattern: true } },
-            }
+  const problemInclude = {
+    problems: {
+      include: {
+        problem: {
+          include: {
+            solutions: true,
+            companies: { include: { company: true } },
+            patterns: { include: { pattern: true } },
           }
         }
       }
     }
-  });
+  };
+
+  // Parallel fetch user sheets & global curated sheets
+  const [userSheets, curated] = await Promise.all([
+    db.sheet.findMany({
+      where: { userId },
+      include: problemInclude,
+      orderBy: { createdAt: "desc" }
+    }),
+    db.sheet.findMany({
+      where: { isCurated: true },
+      include: problemInclude,
+    }),
+  ]);
 
   const merged = [...userSheets];
   const seenSlugs = new Set(userSheets.map((s) => s.shareSlug).filter(Boolean));
