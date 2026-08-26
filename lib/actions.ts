@@ -1513,6 +1513,39 @@ export async function getUserProfile() {
   });
 }
 
+export async function checkUsernameAvailability(username: string) {
+  const sessionUserId = await requireAuth();
+  const cleanUsername = username.trim().toLowerCase();
+
+  if (!cleanUsername || cleanUsername.length < 2 || cleanUsername.length > 30) {
+    return { available: false, reason: "Username must be between 2 and 30 characters." };
+  }
+
+  if (!/^[a-z0-9_]+$/.test(cleanUsername)) {
+    return { available: false, reason: "Only lowercase letters, numbers, and underscores are allowed." };
+  }
+
+  const existing = await db.user.findFirst({
+    where: {
+      username: {
+        equals: cleanUsername,
+        mode: "insensitive",
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return { available: true, isCurrent: false };
+  }
+
+  if (existing.id === sessionUserId) {
+    return { available: true, isCurrent: true };
+  }
+
+  return { available: false, reason: "This username is already taken." };
+}
+
 export async function updateUserProfile(data: {
   name?: string;
   username?: string;
@@ -1521,6 +1554,31 @@ export async function updateUserProfile(data: {
   theme?: string;
 }) {
   const userId = await requireAuth();
+
+  if (data.username !== undefined) {
+    const cleanUsername = data.username.trim().toLowerCase();
+    if (cleanUsername.length < 2 || cleanUsername.length > 30) {
+      throw new Error("Username must be between 2 and 30 characters.");
+    }
+    if (!/^[a-z0-9_]+$/.test(cleanUsername)) {
+      throw new Error("Only lowercase letters, numbers, and underscores are allowed.");
+    }
+
+    const existing = await db.user.findFirst({
+      where: {
+        username: { equals: cleanUsername, mode: "insensitive" },
+        NOT: { id: userId },
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new Error("This username is already taken. Please choose another.");
+    }
+
+    data.username = cleanUsername;
+  }
+
   const user = await db.user.update({
     where: { id: userId },
     data
