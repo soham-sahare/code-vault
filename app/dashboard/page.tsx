@@ -1277,44 +1277,63 @@ export default function DashboardPage() {
                     })()}
                   </div>
 
-                  {/* Meta tag row */}
-                  <div className="flex flex-wrap items-center gap-2 mt-3 font-sans text-xs text-muted">
-                    <span className={`font-display font-extrabold text-[9px] px-1.5 py-0.5 rounded ${activeProblem.diffColor}`}>
-                      {activeProblem.difficulty === "MED" ? "MEDIUM" : activeProblem.difficulty}
-                    </span>
+                  {/* Meta tag rows */}
+                  <div className="space-y-2 mt-3 font-sans text-xs text-muted">
+                    {/* 1. Difficulty & Topics */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`font-display font-extrabold text-[9px] px-1.5 py-0.5 rounded ${activeProblem.diffColor}`}>
+                        {activeProblem.difficulty === "MED" ? "MEDIUM" : activeProblem.difficulty}
+                      </span>
 
-                    {activeProblem.topic.split(",").map((topic: string, i: number) => {
-                      const trimmed = topic.trim();
-                      if (!trimmed) return null;
-                      return (
-                        <span key={`dt-${i}`} className="px-2 py-0.5 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 text-primary dark:text-primary-foreground font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
-                          {trimmed}
+                      {activeProblem.topic.split(",").map((topic: string, i: number) => {
+                        const trimmed = topic.trim();
+                        if (!trimmed) return null;
+                        return (
+                          <span key={`dt-${i}`} className="px-2 py-0.5 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 text-primary dark:text-primary-foreground font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                            {trimmed}
+                          </span>
+                        );
+                      })}
+
+                      <span>•</span>
+                      <span className="italic">{activeProblem.interval}</span>
+                    </div>
+
+                    {/* 2. Companies */}
+                    {activeProblem.companies && activeProblem.companies.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        <span className="text-[10px] font-bold text-muted uppercase tracking-wider select-none shrink-0 mr-1">
+                          Companies:
                         </span>
-                      );
-                    })}
+                        {activeProblem.companies.map((c: any, i: number) => {
+                          const name = c.company?.name || c.name;
+                          if (!name) return null;
+                          return (
+                            <span key={`dc-${i}`} className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                              {name}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
 
-                    {activeProblem.companies && activeProblem.companies.map((c: any, i: number) => {
-                      const name = c.company?.name || c.name;
-                      if (!name) return null;
-                      return (
-                        <span key={`dc-${i}`} className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
-                          {name}
+                    {/* 3. Patterns */}
+                    {activeProblem.patterns && activeProblem.patterns.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        <span className="text-[10px] font-bold text-muted uppercase tracking-wider select-none shrink-0 mr-1">
+                          Patterns:
                         </span>
-                      );
-                    })}
-
-                    {activeProblem.patterns && activeProblem.patterns.map((p: any, i: number) => {
-                      const name = p.pattern?.name || p.name;
-                      if (!name) return null;
-                      return (
-                        <span key={`dp-${i}`} className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
-                          {name}
-                        </span>
-                      );
-                    })}
-
-                    <span>•</span>
-                    <span className="italic">{activeProblem.interval}</span>
+                        {activeProblem.patterns.map((p: any, i: number) => {
+                          const name = p.pattern?.name || p.name;
+                          if (!name) return null;
+                          return (
+                            <span key={`dp-${i}`} className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                              {name}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
 
