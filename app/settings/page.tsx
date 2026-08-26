@@ -39,17 +39,20 @@ import Link from "next/link";
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [defaultLanguage, setDefaultLanguage] = useState("Python");
+  const [initialLanguage, setInitialLanguage] = useState("Python");
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [name, setName] = useState("");
+  const [initialName, setInitialName] = useState("");
   const [username, setUsername] = useState("");
+  const [initialUsername, setInitialUsername] = useState("");
   const [email, setEmail] = useState("");
   const [isPublicProfile, setIsPublicProfile] = useState(false);
+  const [initialPublicProfile, setInitialPublicProfile] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [origin, setOrigin] = useState("");
 
   // Live username availability check state
-  const [initialUsername, setInitialUsername] = useState("");
   const [usernameStatus, setUsernameStatus] = useState<{
     state: "idle" | "checking" | "available" | "taken" | "current" | "invalid";
     message?: string;
@@ -81,13 +84,19 @@ export default function SettingsPage() {
         const user = await getUserProfile();
         if (user) {
           setUserProfile(user);
-          setName(user.name || "");
-          setDefaultLanguage(user.defaultLanguage || "Python");
-          const uName = user.username || "";
-          setUsername(uName);
-          setInitialUsername(uName);
+          const uName = user.name || "";
+          setName(uName);
+          setInitialName(uName);
+          const lang = user.defaultLanguage || "Python";
+          setDefaultLanguage(lang);
+          setInitialLanguage(lang);
+          const usr = user.username || "";
+          setUsername(usr);
+          setInitialUsername(usr);
           setEmail(user.email || "");
-          setIsPublicProfile(user.isPublicProfile || false);
+          const pub = user.isPublicProfile || false;
+          setIsPublicProfile(pub);
+          setInitialPublicProfile(pub);
         }
       } catch (err) {
         console.error("Failed to load settings:", err);
@@ -157,14 +166,22 @@ export default function SettingsPage() {
     return () => clearTimeout(timer);
   }, [username, initialUsername, loading]);
 
-  const isUsernameInvalid =
+  const hasChanges =
+    username.trim().toLowerCase() !== initialUsername.toLowerCase() ||
+    defaultLanguage !== initialLanguage ||
+    isPublicProfile !== initialPublicProfile ||
+    name.trim() !== initialName;
+
+  const isSaveDisabled =
+    !hasChanges ||
+    isSaving ||
     usernameStatus.state === "taken" ||
     usernameStatus.state === "invalid" ||
     usernameStatus.state === "checking";
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isUsernameInvalid) return;
+    if (isSaveDisabled) return;
 
     setIsSaving(true);
     setSaveStatus(null);
@@ -177,6 +194,9 @@ export default function SettingsPage() {
         isPublicProfile,
       });
       setInitialUsername(cleanUsername);
+      setInitialLanguage(defaultLanguage);
+      setInitialPublicProfile(isPublicProfile);
+      setInitialName(name.trim());
       setUserProfile((prev: any) => ({
         ...prev,
         name: name.trim(),
@@ -613,19 +633,23 @@ export default function SettingsPage() {
           {/* ===== UNIFIED SAVE BUTTON (Positioned directly after Public Profiles & Visibility) ===== */}
           <div className="flex items-center gap-4 pt-2">
             <motion.button
-              whileTap={{ scale: 0.98 }}
+              whileTap={!isSaveDisabled ? { scale: 0.98 } : undefined}
               type="submit"
-              disabled={isSaving || isUsernameInvalid}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary hover:bg-primary/95 text-white font-sans font-bold text-xs shadow-md shadow-primary/10 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSaveDisabled}
+              className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-sans font-bold text-xs transition-all ${
+                !isSaveDisabled
+                  ? "bg-primary hover:bg-primary/95 text-white shadow-md shadow-primary/20 hover:shadow-lg active:scale-98 cursor-pointer"
+                  : "bg-surface-2 border border-border text-muted/50 opacity-50 cursor-not-allowed select-none"
+              }`}
             >
               {isSaving ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
                   Saving Changes...
                 </>
               ) : (
                 <>
-                  <Save className="w-4 h-4 text-white" />
+                  <Save className={`w-4 h-4 ${!isSaveDisabled ? "text-white" : "text-muted/50"}`} />
                   Save Changes
                 </>
               )}
