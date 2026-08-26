@@ -328,7 +328,7 @@ export default function DashboardPage() {
       setLoading(false);
     }
     init();
-  }, [currentPage, rowsPerPage, searchQuery, filterDiff, filterStatus, filterTopic]);
+  }, [currentPage, rowsPerPage, searchQuery, filterDiff, filterStatus, filterTopic, filterCompany, filterPattern]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -671,19 +671,30 @@ export default function DashboardPage() {
 
               {/* Filter Dropdown Toggle */}
               <div className="relative">
-                <button
-                  onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border font-sans font-bold text-xs cursor-pointer transition-all shadow-sm ${isFilterDropdownOpen || filterDiff !== "ALL" || filterStatus !== "ALL" || filterTopic !== "ALL"
-                      ? "bg-primary/10 border-primary text-primary"
-                      : "bg-surface-2 border-border hover:bg-border/20 text-foreground"
-                    }`}
-                >
-                  <Filter className="w-3.5 h-3.5" />
-                  <span>Filter</span>
-                  {(filterDiff !== "ALL" || filterStatus !== "ALL" || filterTopic !== "ALL") && (
-                    <span className="w-2 h-2 rounded-full bg-primary" />
-                  )}
-                </button>
+                {(() => {
+                  const isFilterActive =
+                    filterDiff !== "ALL" ||
+                    filterStatus !== "ALL" ||
+                    filterTopic !== "ALL" ||
+                    filterCompany !== "ALL" ||
+                    filterPattern !== "ALL";
+                  return (
+                    <button
+                      onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border font-sans font-bold text-xs cursor-pointer transition-all shadow-sm ${
+                        isFilterDropdownOpen || isFilterActive
+                          ? "bg-primary/10 border-primary text-primary"
+                          : "bg-surface-2 border-border hover:bg-border/20 text-foreground"
+                      }`}
+                    >
+                      <Filter className="w-3.5 h-3.5" />
+                      <span>Filter</span>
+                      {isFilterActive && (
+                        <span className="w-2 h-2 rounded-full bg-primary" />
+                      )}
+                    </button>
+                  );
+                })()}
 
                 <AnimatePresence>
                   {isFilterDropdownOpen && (
