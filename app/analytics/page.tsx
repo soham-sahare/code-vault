@@ -42,36 +42,6 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 import { getInitials } from "@/lib/utils/formatters";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-function getCompanyIcon(companyName: string) {
-  const norm = companyName.toLowerCase();
-  if (norm.includes("google")) return <Building2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />;
-  if (norm.includes("meta") || norm.includes("facebook")) return <Globe className="w-3.5 h-3.5 text-sky-500 shrink-0" />;
-  if (norm.includes("amazon")) return <Briefcase className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
-  if (norm.includes("apple")) return <Layers className="w-3.5 h-3.5 text-zinc-400 shrink-0" />;
-  if (norm.includes("microsoft")) return <Boxes className="w-3.5 h-3.5 text-cyan-500 shrink-0" />;
-  if (norm.includes("uber")) return <Activity className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
-  if (norm.includes("netflix")) return <Building2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />;
-  if (norm.includes("bloomberg")) return <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />;
-  if (norm.includes("adobe")) return <Sparkles className="w-3.5 h-3.5 text-red-500 shrink-0" />;
-  if (norm.includes("stripe")) return <Zap className="w-3.5 h-3.5 text-indigo-500 shrink-0" />;
-  if (norm.includes("goldman")) return <Briefcase className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
-  return <Building2 className="w-3.5 h-3.5 text-amber-500/80 shrink-0" />;
-}
-
-function getPatternIcon(patternName: string) {
-  const norm = patternName.toLowerCase();
-  if (norm.includes("pointer")) return <GitMerge className="w-3.5 h-3.5 text-cyan-400 shrink-0" />;
-  if (norm.includes("window")) return <Layers className="w-3.5 h-3.5 text-teal-400 shrink-0" />;
-  if (norm.includes("interval")) return <Workflow className="w-3.5 h-3.5 text-violet-400 shrink-0" />;
-  if (norm.includes("stack") || norm.includes("queue")) return <Boxes className="w-3.5 h-3.5 text-indigo-400 shrink-0" />;
-  if (norm.includes("tree") || norm.includes("bfs") || norm.includes("dfs")) return <Network className="w-3.5 h-3.5 text-sky-400 shrink-0" />;
-  if (norm.includes("heap") || norm.includes("top k")) return <Cpu className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
-  if (norm.includes("dp") || norm.includes("knapsack")) return <Zap className="w-3.5 h-3.5 text-purple-400 shrink-0" />;
-  if (norm.includes("topological") || norm.includes("graph")) return <Compass className="w-3.5 h-3.5 text-pink-400 shrink-0" />;
-  if (norm.includes("binary search") || norm.includes("search")) return <Search className="w-3.5 h-3.5 text-rose-400 shrink-0" />;
-  if (norm.includes("trie") || norm.includes("prefix")) return <Hash className="w-3.5 h-3.5 text-orange-400 shrink-0" />;
-  return <Workflow className="w-3.5 h-3.5 text-cyan-400 shrink-0" />;
-}
 
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
@@ -1171,14 +1141,9 @@ export default function AnalyticsPage() {
                       className="p-3 rounded-2xl bg-surface-2/40 border border-border/50 space-y-2"
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-lg bg-surface flex items-center justify-center border border-border/60">
-                            {getCompanyIcon(comp.name)}
-                          </div>
-                          <span className="font-display font-bold text-xs text-foreground">
-                            {comp.name}
-                          </span>
-                        </div>
+                        <span className="font-display font-bold text-xs text-foreground">
+                          {comp.name}
+                        </span>
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs font-bold text-muted">
                             {comp.solved}/{comp.total} solved
@@ -1242,14 +1207,9 @@ export default function AnalyticsPage() {
                       className="p-3 rounded-2xl bg-surface-2/40 border border-border/50 space-y-2"
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-lg bg-surface flex items-center justify-center border border-border/60">
-                            {getPatternIcon(pat.name)}
-                          </div>
-                          <span className="font-display font-bold text-xs text-foreground">
-                            {pat.name}
-                          </span>
-                        </div>
+                        <span className="font-display font-bold text-xs text-foreground">
+                          {pat.name}
+                        </span>
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs font-bold text-muted">
                             {pat.solved}/{pat.total} solved
