@@ -42,13 +42,16 @@ export default function Header() {
           </span>
         </a>
 
-        {/* Desktop Nav Links - Only Features and About */}
+        {/* Desktop Nav Links - About, Features, How It Works */}
         <nav className="hidden md:flex items-center gap-8 font-sans font-semibold text-sm text-muted">
+          <a href="#about" className="hover:text-foreground transition-colors">
+            About
+          </a>
           <a href="#features" className="hover:text-foreground transition-colors">
             Features
           </a>
-          <a href="#about" className="hover:text-foreground transition-colors">
-            About
+          <a href="#how-it-works" className="hover:text-foreground transition-colors">
+            How It Works
           </a>
         </nav>
 
