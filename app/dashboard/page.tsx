@@ -368,60 +368,66 @@ export default function DashboardPage() {
 
   const handleSaveSolution = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSolName || !newSolCode) return;
+    if (!newSolName || !newSolCode || !activeProblem) return;
+
+    const wasEditing = editingSolIdx !== null;
+    const currentSolIdx = editingSolIdx;
+    const currentActiveProblem = activeProblem;
+    const nameToSave = newSolName;
+    const langToSave = newSolLang;
+    const intuitionToSave = newSolIntuition || "Optimal approach.";
+    const approachToSave = newSolApproach || "Standard implementation.";
+    const timeToSave = newSolTime;
+    const spaceToSave = newSolSpace;
+    const codeToSave = newSolCode;
+
+    // Reset inputs & close modal immediately for 0ms perceived lag
+    setIsAddingSol(false);
+    setEditingSolIdx(null);
+    setNewSolName("");
+    setNewSolLang(defaultLanguage);
+    setNewSolIntuition("");
+    setNewSolApproach("");
+    setNewSolCode("");
+    setNewSolTime("O(N)");
+    setNewSolSpace("O(1)");
+    showToast(wasEditing ? "Solution updated successfully!" : "Solution added successfully!", "success");
 
     try {
-      setIsSavingSol(true);
-      const isEditing = editingSolIdx !== null;
-      if (isEditing) {
-        const sol = activeProblem.solutions[editingSolIdx];
+      if (wasEditing && currentSolIdx !== null && currentActiveProblem.solutions?.[currentSolIdx]) {
+        const sol = currentActiveProblem.solutions[currentSolIdx];
         await updateSolution(sol.id, {
-          name: newSolName,
-          lang: newSolLang,
-          intuition: newSolIntuition || "Optimal approach.",
-          approach: newSolApproach || "Standard implementation.",
-          time: newSolTime,
-          space: newSolSpace,
-          code: newSolCode,
+          name: nameToSave,
+          lang: langToSave,
+          intuition: intuitionToSave,
+          approach: approachToSave,
+          time: timeToSave,
+          space: spaceToSave,
+          code: codeToSave,
           tags: []
         });
       } else {
-        await addSolution(activeProblem.id, {
-          name: newSolName,
-          lang: newSolLang,
-          intuition: newSolIntuition || "Optimal approach.",
-          approach: newSolApproach || "Standard implementation.",
-          time: newSolTime,
-          space: newSolSpace,
-          code: newSolCode,
+        await addSolution(currentActiveProblem.id, {
+          name: nameToSave,
+          lang: langToSave,
+          intuition: intuitionToSave,
+          approach: approachToSave,
+          time: timeToSave,
+          space: spaceToSave,
+          code: codeToSave,
           tags: [],
           notes: []
         });
       }
 
-      // Reset inputs & close modal immediately
-      setIsAddingSol(false);
-      setEditingSolIdx(null);
-      setNewSolName("");
-      setNewSolLang(defaultLanguage);
-      setNewSolIntuition("");
-      setNewSolApproach("");
-      setNewSolCode("");
-      setNewSolTime("O(N)");
-      setNewSolSpace("O(1)");
-
-      showToast(isEditing ? "Solution updated successfully!" : "Solution added successfully!", "success");
-
       // Parallel background refresh of problem list & active problem details
       await Promise.all([
         loadProblems(),
-        activeProblem ? getProblemDetails(activeProblem.id).then(setActiveProblem).catch(console.error) : Promise.resolve(),
+        getProblemDetails(currentActiveProblem.id).then(setActiveProblem).catch(console.error),
       ]);
     } catch (err) {
       console.error(err);
       showToast("Error saving solution", "error");
-    } finally {
-      setIsSavingSol(false);
     }
   };
 
@@ -473,52 +479,56 @@ export default function DashboardPage() {
     if (!addName) return;
 
     const finalTopic = selectedTopics.length > 0 ? selectedTopics.join(", ") : "General DSA";
+    const wasEditing = editingProblemId !== null;
+    const targetEditId = editingProblemId;
+    const nameToAdd = addName;
+    const diffToAdd = addDiff;
+    const urlToAdd = addUrl || "#";
+    const isPublicToAdd = addIsPublic;
+    const companiesToAdd = selectedCompanies;
+    const patternsToAdd = selectedPatterns;
+
+    // Close modal & reset inputs immediately for 0ms perceived lag
+    setEditingProblemId(null);
+    setIsAddProblemOpen(false);
+    setAddName("");
+    setAddNum("");
+    setAddUrl("");
+    setSelectedTopics([]);
+    setSelectedCompanies([]);
+    setSelectedPatterns([]);
+    setAddDiff("EASY");
+    setAddIsPublic(false);
+    showToast(wasEditing ? "Problem updated successfully!" : "Problem created successfully!", "success");
 
     try {
-      setIsSavingProblem(true);
-      const isEditing = editingProblemId !== null;
-      if (isEditing) {
-        await updateProblem(editingProblemId, {
-          name: addName,
-          difficulty: addDiff,
+      if (wasEditing && targetEditId) {
+        await updateProblem(targetEditId, {
+          name: nameToAdd,
+          difficulty: diffToAdd,
           topic: finalTopic,
-          url: addUrl || "#",
-          isPublic: addIsPublic,
-          companyNames: selectedCompanies,
-          patternNames: selectedPatterns,
+          url: urlToAdd,
+          isPublic: isPublicToAdd,
+          companyNames: companiesToAdd,
+          patternNames: patternsToAdd,
         });
-        showToast("Problem updated successfully!", "success");
       } else {
         await createProblem({
-          name: addName,
-          difficulty: addDiff,
+          name: nameToAdd,
+          difficulty: diffToAdd,
           topic: finalTopic,
-          url: addUrl || "#",
-          isPublic: addIsPublic,
-          companyNames: selectedCompanies,
-          patternNames: selectedPatterns,
+          url: urlToAdd,
+          isPublic: isPublicToAdd,
+          companyNames: companiesToAdd,
+          patternNames: patternsToAdd,
         });
-        showToast("Problem created successfully!", "success");
       }
-
-      // Close modal & reset inputs immediately
-      setEditingProblemId(null);
-      setIsAddProblemOpen(false);
-      setAddName("");
-      setAddNum("");
-      setAddUrl("");
-      setSelectedTopics([]);
-      setSelectedCompanies([]);
-      setSelectedPatterns([]);
-      setAddDiff("EASY");
-      setAddIsPublic(false);
 
       await loadProblems();
     } catch (err) {
       console.error(err);
       showToast("Error saving problem", "error");
-    } finally {
-      setIsSavingProblem(false);
+      await loadProblems();
     }
   };
   const handleCopyCode = (text: string) => {
