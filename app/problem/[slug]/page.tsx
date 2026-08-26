@@ -326,57 +326,72 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                 )}
               </div>
               
-              <div className="flex flex-wrap items-center gap-2 pt-2">
-                <span className={`font-display font-bold text-[9px] px-2 py-0.5 rounded whitespace-nowrap shrink-0 ${
-                  problem.difficulty === "EASY" ? "text-emerald-500 bg-emerald-500/10" : problem.difficulty === "HARD" ? "text-rose-500 bg-rose-500/10" : "text-amber-500 bg-amber-500/10"
-                }`}>
-                  {problem.difficulty === "MED" ? "MEDIUM" : problem.difficulty}
-                </span>
+              {/* Category-wise Rows */}
+              <div className="space-y-2.5 pt-2">
+                {/* 1. Difficulty & Topics */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`font-display font-bold text-[9px] px-2 py-0.5 rounded whitespace-nowrap shrink-0 ${
+                    problem.difficulty === "EASY" ? "text-emerald-500 bg-emerald-500/10" : problem.difficulty === "HARD" ? "text-rose-500 bg-rose-500/10" : "text-amber-500 bg-amber-500/10"
+                  }`}>
+                    {problem.difficulty === "MED" ? "MEDIUM" : problem.difficulty}
+                  </span>
 
-                {/* All Topics */}
-                {problem.topic &&
-                  problem.topic.split(",").map((topic: string, i: number) => {
-                    const trimmed = topic.trim();
-                    if (!trimmed) return null;
-                    return (
-                      <span
-                        key={`t-${i}`}
-                        className="px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/20 text-primary font-bold text-[9px] font-sans whitespace-nowrap shadow-sm"
-                      >
-                        {trimmed}
-                      </span>
-                    );
-                  })}
+                  {problem.topic &&
+                    problem.topic.split(",").map((topic: string, i: number) => {
+                      const trimmed = topic.trim();
+                      if (!trimmed) return null;
+                      return (
+                        <span
+                          key={`t-${i}`}
+                          className="px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/20 text-primary font-bold text-[9px] font-sans whitespace-nowrap shadow-sm"
+                        >
+                          {trimmed}
+                        </span>
+                      );
+                    })}
+                </div>
 
-                {/* All Companies */}
-                {problem.companies &&
-                  problem.companies.map((c: any, i: number) => {
-                    const name = c.company?.name || c.name;
-                    if (!name) return null;
-                    return (
-                      <span
-                        key={`c-${i}`}
-                        className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm"
-                      >
-                        {name}
-                      </span>
-                    );
-                  })}
+                {/* 2. Companies */}
+                {problem.companies && problem.companies.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                    <span className="text-[10px] font-bold text-muted uppercase tracking-wider select-none shrink-0 mr-1">
+                      Companies:
+                    </span>
+                    {problem.companies.map((c: any, i: number) => {
+                      const name = c.company?.name || c.name;
+                      if (!name) return null;
+                      return (
+                        <span
+                          key={`c-${i}`}
+                          className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm"
+                        >
+                          {name}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
 
-                {/* All Algorithmic Patterns */}
-                {problem.patterns &&
-                  problem.patterns.map((p: any, i: number) => {
-                    const name = p.pattern?.name || p.name;
-                    if (!name) return null;
-                    return (
-                      <span
-                        key={`p-${i}`}
-                        className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm"
-                      >
-                        {name}
-                      </span>
-                    );
-                  })}
+                {/* 3. Patterns */}
+                {problem.patterns && problem.patterns.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                    <span className="text-[10px] font-bold text-muted uppercase tracking-wider select-none shrink-0 mr-1">
+                      Patterns:
+                    </span>
+                    {problem.patterns.map((p: any, i: number) => {
+                      const name = p.pattern?.name || p.name;
+                      if (!name) return null;
+                      return (
+                        <span
+                          key={`p-${i}`}
+                          className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm"
+                        >
+                          {name}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
