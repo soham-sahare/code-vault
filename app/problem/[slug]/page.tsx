@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Star, Globe, ArrowLeft, ExternalLink, Calendar, Copy, Check, AlertCircle, AlertTriangle, CheckCircle2, FileText, Lock, Library } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatISTDate } from "@/lib/timestamps/ist";
-import { getPublicProblemBySlug, getHighlightedHtml } from "@/lib/actions";
+import { getPublicProblemBySlug, getHighlightedHtml, updateProblem } from "@/lib/actions";
 import { useTheme } from "next-themes";
 import { Skeleton } from "@/components/ui/Skeleton";
 
@@ -14,7 +14,11 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
   const slug = resolvedParams.slug;
 
   const [problem, setProblem] = useState<any | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [resultStatus, setResultStatus] = useState<"FOUND" | "PRIVATE" | "NOT_FOUND">("NOT_FOUND");
+  const [privateProblemName, setPrivateProblemName] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
+  const [isUpdatingPublic, setIsUpdatingPublic] = useState(false);
   const [selSolIdx, setSelSolIdx] = useState(0);
   const [copiedCode, setCopiedCode] = useState(false);
   const [activeTab, setActiveTab] = useState<"solutions" | "notes" | "history">("solutions");
@@ -36,12 +40,17 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
   useEffect(() => {
     async function load() {
       try {
-        const found = await getPublicProblemBySlug(slug);
-        if (found) {
-          setProblem(found);
+        const res = await getPublicProblemBySlug(slug);
+        setResultStatus(res.status);
+        if (res.status === "FOUND" && res.problem) {
+          setProblem(res.problem);
+          setIsOwner(res.isOwner);
+        } else if (res.status === "PRIVATE") {
+          setPrivateProblemName(res.problemName);
         }
       } catch (err) {
         console.error("Failed to load shared problem from database:", err);
+        setResultStatus("NOT_FOUND");
       } finally {
         setLoading(false);
       }
@@ -53,6 +62,34 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
     navigator.clipboard.writeText(text);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleMakePublic = async () => {
+    if (!problem) return;
+    try {
+      setIsUpdatingPublic(true);
+      const companyNames = problem.companies
+        ? problem.companies.map((c: any) => c.company?.name || c.name).filter(Boolean)
+        : undefined;
+      const patternNames = problem.patterns
+        ? problem.patterns.map((p: any) => p.pattern?.name || p.name).filter(Boolean)
+        : undefined;
+
+      await updateProblem(problem.id, {
+        name: problem.name,
+        difficulty: problem.difficulty,
+        topic: problem.topic,
+        url: problem.url,
+        isPublic: true,
+        companyNames,
+        patternNames,
+      });
+      setProblem((prev: any) => ({ ...prev, isPublic: true }));
+    } catch (err) {
+      console.error("Failed to make problem public:", err);
+    } finally {
+      setIsUpdatingPublic(false);
+    }
   };
 
   if (loading) {
@@ -109,6 +146,60 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
     );
   }
 
+  // State: Problem exists in CodeVault but owner has not enabled public link sharing
+  if (resultStatus === "PRIVATE" || (!problem && privateProblemName)) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6 dots-pattern">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-lg p-8 sm:p-10 rounded-3xl bg-surface border border-border shadow-2xl text-center space-y-6"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 mx-auto">
+            <Lock className="w-7 h-7" />
+          </div>
+          <div className="space-y-2">
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-500">
+              Private Problem
+            </span>
+            <h2 className="font-display font-extrabold text-xl text-foreground">
+              {privateProblemName ? `"${privateProblemName}" is not shared yet` : "This problem is not publicly shared"}
+            </h2>
+            <p className="font-sans text-xs text-muted leading-relaxed max-w-sm mx-auto">
+              The author has saved this challenge in their private CodeVault, but has not enabled public link sharing.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-surface-2/40 border border-border/60 text-left space-y-1.5 text-xs">
+            <p className="font-bold text-foreground">
+              Are you the author of this challenge?
+            </p>
+            <p className="text-muted text-[11px] leading-relaxed">
+              Sign in to your account to preview this problem or toggle public link sharing from your dashboard.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center gap-2 font-sans font-bold text-xs bg-primary hover:bg-primary/90 text-white px-5 py-3 rounded-xl shadow-md shadow-primary/20 transition-all flex-1"
+            >
+              Sign In to CodeVault
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center gap-1.5 font-sans font-bold text-xs bg-surface-2 hover:bg-border/30 border border-border text-foreground px-5 py-3 rounded-xl transition-all flex-1"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back Home
+            </Link>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // State: Problem not found anywhere
   if (!problem) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6 dots-pattern">
@@ -118,12 +209,12 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
           className="w-full max-w-md p-8 sm:p-10 rounded-3xl bg-surface border border-border shadow-xl text-center space-y-6"
         >
           <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 mx-auto">
-            <Lock className="w-6 h-6" />
+            <AlertCircle className="w-6 h-6" />
           </div>
           <div className="space-y-2">
-            <h2 className="font-display font-extrabold text-lg text-foreground">Access Restricted or Private</h2>
+            <h2 className="font-display font-extrabold text-lg text-foreground">Problem Not Found</h2>
             <p className="font-sans text-xs text-muted leading-relaxed">
-              This coding challenge does not exist, or the owner has disabled public link sharing.
+              We couldn't find a coding challenge matching this link. It may have been deleted or the URL might be incorrect.
             </p>
           </div>
           <div className="pt-2">
@@ -140,20 +231,55 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
     );
   }
 
-  // We already defined selectedSol above
-
   return (
     <div className="min-h-screen bg-background text-foreground font-sans text-xs p-6 md:p-12 transition-colors duration-300 dots-pattern">
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* Navigation back link */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 font-bold text-primary hover:underline"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to CodeVault Home
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 font-bold text-primary hover:underline"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to CodeVault Home
+          </Link>
+          {isOwner && (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 font-bold text-muted hover:text-foreground"
+            >
+              Open in Dashboard
+            </Link>
+          )}
+        </div>
+
+        {/* Private Owner Preview Banner */}
+        {!problem.isPublic && isOwner && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-amber-500"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+                <Lock className="w-4.5 h-4.5 text-amber-500" />
+              </div>
+              <div>
+                <p className="font-display font-bold text-xs text-foreground">Private Owner Preview</p>
+                <p className="text-[11px] text-muted">This problem is currently private in your vault. Only you can view this page until public sharing is enabled.</p>
+              </div>
+            </div>
+            <button
+              onClick={handleMakePublic}
+              disabled={isUpdatingPublic}
+              className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>{isUpdatingPublic ? "Enabling..." : "Enable Public Sharing"}</span>
+            </button>
+          </motion.div>
+        )}
 
         {/* Problem Header Card */}
         <div className="p-6 rounded-3xl bg-surface border border-border shadow-sm space-y-4">
@@ -164,10 +290,17 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                   {problem.name}
                 </h1>
                 {problem.isFavorite && <Star className="w-4 h-4 text-amber-500 fill-amber-500" />}
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-sans">
-                  <Globe className="w-2.5 h-2.5" />
-                  Public Shared Problem
-                </span>
+                {problem.isPublic ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-sans">
+                    <Globe className="w-2.5 h-2.5" />
+                    Public Shared Problem
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-500 font-sans">
+                    <Lock className="w-2.5 h-2.5" />
+                    Private Preview
+                  </span>
+                )}
               </div>
               
               <div className="flex flex-nowrap items-center gap-2 pt-1 max-w-full overflow-hidden select-none">
