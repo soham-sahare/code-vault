@@ -34,7 +34,8 @@ const PROTECTED_API_PREFIX = "/api";
 /** Public API routes (no auth needed) */
 const PUBLIC_API_ROUTES = [
   "/api/auth",
-  "/api/s/",       // Public sheet access
+  "/api/users/check-username",
+  "/api/cron",
 ];
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
