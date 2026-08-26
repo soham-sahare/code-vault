@@ -5,13 +5,44 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import Sidebar from "@/components/shell/Sidebar";
 import NotificationBell from "@/components/notifications/NotificationBell";
-import { Search, Star, AlertCircle, AlertTriangle, Clock, CheckCircle2, ChevronRight, Filter, X, ExternalLink, Share2, Plus, Code, PlusCircle, Check, Copy, Sun, Moon, Pencil, Trash2, FileText, Globe, Lock, Sparkles, MoreVertical } from "lucide-react";
+import { Search, Star, AlertCircle, AlertTriangle, Clock, CheckCircle2, ChevronRight, Filter, X, ExternalLink, Share2, Plus, Code, PlusCircle, Check, Copy, Sun, Moon, Pencil, Trash2, FileText, Globe, Lock, Sparkles, MoreVertical, Building2, Briefcase, GitMerge, Layers, Network, Workflow, Boxes, Cpu, Zap, Compass, Hash, Activity } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import { createProblem, updateProblem, deleteProblem, toggleFavorite, addSolution, deleteSolution, updateSolution, addNote, updateNote, deleteNote, markRevisited, getUserProfile, addSolutionNote, deleteSolutionNote, updateSolutionNote, saveOnboarding, getProblemDetails, getPaginatedProblems } from "@/lib/actions";
 import { getInitials } from "@/lib/utils/formatters";
 import { highlightClientCode } from "@/lib/utils/clientHighlight";
 import { Skeleton } from "@/components/ui/Skeleton";
+
+export function getCompanyIcon(companyName: string) {
+  const norm = companyName.toLowerCase();
+  if (norm.includes("google")) return <Building2 className="w-3 h-3 text-blue-500 shrink-0" />;
+  if (norm.includes("meta") || norm.includes("facebook")) return <Globe className="w-3 h-3 text-sky-500 shrink-0" />;
+  if (norm.includes("amazon")) return <Briefcase className="w-3 h-3 text-amber-500 shrink-0" />;
+  if (norm.includes("apple")) return <Layers className="w-3 h-3 text-zinc-400 shrink-0" />;
+  if (norm.includes("microsoft")) return <Boxes className="w-3 h-3 text-cyan-500 shrink-0" />;
+  if (norm.includes("uber")) return <Activity className="w-3 h-3 text-emerald-500 shrink-0" />;
+  if (norm.includes("netflix")) return <Building2 className="w-3 h-3 text-rose-500 shrink-0" />;
+  if (norm.includes("bloomberg")) return <Building2 className="w-3 h-3 text-orange-500 shrink-0" />;
+  if (norm.includes("adobe")) return <Sparkles className="w-3 h-3 text-red-500 shrink-0" />;
+  if (norm.includes("stripe")) return <Zap className="w-3 h-3 text-indigo-500 shrink-0" />;
+  if (norm.includes("goldman")) return <Briefcase className="w-3 h-3 text-amber-400 shrink-0" />;
+  return <Building2 className="w-3 h-3 text-amber-500/80 shrink-0" />;
+}
+
+export function getPatternIcon(patternName: string) {
+  const norm = patternName.toLowerCase();
+  if (norm.includes("pointer")) return <GitMerge className="w-3 h-3 text-cyan-400 shrink-0" />;
+  if (norm.includes("window")) return <Layers className="w-3 h-3 text-teal-400 shrink-0" />;
+  if (norm.includes("interval")) return <Workflow className="w-3 h-3 text-violet-400 shrink-0" />;
+  if (norm.includes("stack") || norm.includes("queue")) return <Boxes className="w-3 h-3 text-indigo-400 shrink-0" />;
+  if (norm.includes("tree") || norm.includes("bfs") || norm.includes("dfs")) return <Network className="w-3 h-3 text-sky-400 shrink-0" />;
+  if (norm.includes("heap") || norm.includes("top k")) return <Cpu className="w-3 h-3 text-amber-400 shrink-0" />;
+  if (norm.includes("dp") || norm.includes("knapsack")) return <Zap className="w-3 h-3 text-purple-400 shrink-0" />;
+  if (norm.includes("topological") || norm.includes("graph")) return <Compass className="w-3 h-3 text-pink-400 shrink-0" />;
+  if (norm.includes("binary search") || norm.includes("search")) return <Search className="w-3 h-3 text-rose-400 shrink-0" />;
+  if (norm.includes("trie") || norm.includes("prefix")) return <Hash className="w-3 h-3 text-orange-400 shrink-0" />;
+  return <Workflow className="w-3 h-3 text-cyan-400 shrink-0" />;
+}
 
 function getCodePlaceholder(lang: string): string {
   const l = lang.toLowerCase();
@@ -753,12 +784,13 @@ export default function DashboardPage() {
                                 <button
                                   key={comp}
                                   onClick={() => setFilterCompany(comp)}
-                                  className={`px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterCompany === comp
+                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterCompany === comp
                                       ? "bg-amber-500/15 border-amber-500 text-amber-500 font-extrabold"
                                       : "bg-surface-2 border-border text-muted hover:text-foreground"
                                     }`}
                                 >
-                                  {comp}
+                                  {getCompanyIcon(comp)}
+                                  <span>{comp}</span>
                                 </button>
                               ))}
                           </div>
@@ -789,12 +821,13 @@ export default function DashboardPage() {
                                 <button
                                   key={pat}
                                   onClick={() => setFilterPattern(pat)}
-                                  className={`px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterPattern === pat
+                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterPattern === pat
                                       ? "bg-cyan-500/15 border-cyan-500 text-cyan-500 font-extrabold"
                                       : "bg-surface-2 border-border text-muted hover:text-foreground"
                                     }`}
                                 >
-                                  {pat}
+                                  {getPatternIcon(pat)}
+                                  <span>{pat}</span>
                                 </button>
                               ))}
                           </div>
@@ -1017,8 +1050,9 @@ export default function DashboardPage() {
                             const name = c.company?.name || c.name;
                             if (!name) return null;
                             return (
-                              <span key={`c-${i}`} className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
-                                🏢 {name}
+                              <span key={`c-${i}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                                {getCompanyIcon(name)}
+                                <span>{name}</span>
                               </span>
                             );
                           })}
@@ -1026,8 +1060,9 @@ export default function DashboardPage() {
                             const name = p.pattern?.name || p.name;
                             if (!name) return null;
                             return (
-                              <span key={`p-${i}`} className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
-                                🧩 {name}
+                              <span key={`p-${i}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                                {getPatternIcon(name)}
+                                <span>{name}</span>
                               </span>
                             );
                           })}
@@ -1241,8 +1276,9 @@ export default function DashboardPage() {
                       const name = c.company?.name || c.name;
                       if (!name) return null;
                       return (
-                        <span key={`dc-${i}`} className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
-                          🏢 {name}
+                        <span key={`dc-${i}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                          {getCompanyIcon(name)}
+                          <span>{name}</span>
                         </span>
                       );
                     })}
@@ -1251,8 +1287,9 @@ export default function DashboardPage() {
                       const name = p.pattern?.name || p.name;
                       if (!name) return null;
                       return (
-                        <span key={`dp-${i}`} className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
-                          🧩 {name}
+                        <span key={`dp-${i}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                          {getPatternIcon(name)}
+                          <span>{name}</span>
                         </span>
                       );
                     })}
@@ -2323,382 +2360,406 @@ export default function DashboardPage() {
       </AnimatePresence>
 
       {/* ========================================================================= */}
-      {/* 5. ADD PROBLEM MODAL (Simulated form)                                     */}
+      {/* 5. ADD / EDIT PROBLEM MODAL (Wide Responsive Layout with Custom Scroll)   */}
       {/* ========================================================================= */}
       <AnimatePresence>
         {isAddProblemOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-background/70 backdrop-blur-md">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-2xl rounded-3xl bg-surface border border-border shadow-2xl overflow-visible"
+              initial={{ opacity: 0, scale: 0.96, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-4xl lg:max-w-5xl max-h-[92vh] flex flex-col rounded-3xl bg-surface border border-border shadow-2xl overflow-hidden"
             >
-              <div className="p-6 border-b border-border/80 flex items-center justify-between">
-                <h2 className="font-display font-extrabold text-lg text-foreground">
-                  {editingProblemId !== null ? "Update Coding Problem" : "Add Coding Problem"}
-                </h2>
+              {/* Fixed Modal Header */}
+              <div className="px-6 py-5 border-b border-border/80 flex items-center justify-between shrink-0 bg-surface">
+                <div>
+                  <h2 className="font-display font-extrabold text-lg sm:text-xl text-foreground flex items-center gap-2">
+                    <Code className="w-5 h-5 text-primary" />
+                    {editingProblemId !== null ? "Update Coding Problem" : "Add Coding Problem"}
+                  </h2>
+                  <p className="text-xs text-muted font-sans mt-0.5">
+                    Catalog algorithmic challenges with targeted company tags and design patterns.
+                  </p>
+                </div>
                 <button
                   onClick={() => setIsAddProblemOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-rose-500 transition-colors cursor-pointer"
+                  className="w-9 h-9 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-muted hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                  title="Close modal"
                 >
                   <X className="w-4.5 h-4.5" />
                 </button>
               </div>
 
-              <form onSubmit={handleAddProblem} className="p-6 space-y-4 font-sans text-xs">
+              {/* Scrollable Form Body */}
+              <form onSubmit={handleAddProblem} className="flex flex-col flex-1 overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6 font-sans text-xs custom-scrollbar">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                    {/* Left Column: Problem Details */}
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-2xl bg-surface-2/30 border border-border/60 space-y-4">
+                        <span className="block font-bold text-foreground uppercase tracking-wider text-[10px]">
+                          Problem Specifications
+                        </span>
 
-                <div>
-                  <label className="block font-semibold text-muted mb-2 uppercase tracking-wide">
-                    Problem Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="3Sum"
-                    value={addName}
-                    onChange={(e) => setAddName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-foreground font-semibold"
-                  />
+                        <div>
+                          <label className="block font-semibold text-muted mb-1.5 uppercase tracking-wide text-[10px]">
+                            Problem Name <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. 3Sum, LRU Cache, Word Ladder"
+                            value={addName}
+                            onChange={(e) => setAddName(e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary focus:ring-1 focus:ring-primary/30 focus:outline-none text-foreground font-semibold"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-semibold text-muted mb-1.5 uppercase tracking-wide text-[10px]">
+                            Problem URL
+                          </label>
+                          <input
+                            type="url"
+                            placeholder="https://leetcode.com/problems/... (or Codeforces, GFG)"
+                            value={addUrl}
+                            onChange={(e) => setAddUrl(e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary focus:ring-1 focus:ring-primary/30 focus:outline-none text-foreground"
+                          />
+                        </div>
+
+                        {/* Difficulty Dropdown */}
+                        <div className="relative">
+                          <label className="block font-semibold text-muted mb-1.5 uppercase tracking-wide text-[10px]">
+                            Difficulty Level
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsDiffDropdownOpen(!isDiffDropdownOpen)}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary focus:outline-none text-foreground font-semibold flex items-center justify-between cursor-pointer"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className={`w-2.5 h-2.5 rounded-full ${addDiff === "EASY" ? "bg-emerald-500" : addDiff === "MED" ? "bg-amber-500" : "bg-rose-500"}`} />
+                              {addDiff === "EASY" ? "EASY" : addDiff === "MED" ? "MEDIUM" : "HARD"}
+                            </span>
+                            <svg className={`w-4 h-4 text-muted transition-transform ${isDiffDropdownOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+
+                          <AnimatePresence>
+                            {isDiffDropdownOpen && (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={() => setIsDiffDropdownOpen(false)} />
+                                <motion.div
+                                  initial={{ opacity: 0, y: -8 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -8 }}
+                                  className="absolute z-20 w-full mt-2 bg-surface border border-border rounded-xl shadow-xl overflow-hidden font-semibold"
+                                >
+                                  {[
+                                    { value: "EASY", label: "EASY", color: "bg-emerald-500", text: "text-emerald-500" },
+                                    { value: "MED", label: "MEDIUM", color: "bg-amber-500", text: "text-amber-500" },
+                                    { value: "HARD", label: "HARD", color: "bg-rose-500", text: "text-rose-500" }
+                                  ].map((item) => (
+                                    <button
+                                      key={item.value}
+                                      type="button"
+                                      onClick={() => {
+                                        setAddDiff(item.value);
+                                        setIsDiffDropdownOpen(false);
+                                      }}
+                                      className="w-full px-4 py-3 text-left hover:bg-surface-2 flex items-center justify-between transition-colors cursor-pointer"
+                                    >
+                                      <span className="flex items-center gap-2">
+                                        <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
+                                        <span className={item.text}>{item.label}</span>
+                                      </span>
+                                      {addDiff === item.value && <Check className="w-4 h-4 text-primary" />}
+                                    </button>
+                                  ))}
+                                </motion.div>
+                              </>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* Public Sharing Toggle */}
+                        <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-surface/50">
+                          <div className="flex flex-col gap-0.5 font-sans">
+                            <span className="font-semibold text-foreground flex items-center gap-1.5 text-xs">
+                              <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                              Public Sharing
+                            </span>
+                            <span className="text-[10px] text-muted">
+                              Share problem and solutions via public profile.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAddIsPublic(!addIsPublic)}
+                            className={`w-10 h-5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none cursor-pointer ${addIsPublic ? "bg-primary" : "bg-border"}`}
+                          >
+                            <div
+                              className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${addIsPublic ? "translate-x-5" : "translate-x-0"}`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Topic Categories */}
+                      <div className="p-4 rounded-2xl bg-surface-2/30 border border-border/60 space-y-3">
+                        <label className="block font-bold text-foreground uppercase tracking-wider text-[10px]">
+                          Topic Categories (Select or Create)
+                        </label>
+
+                        {/* Select pill tag cloud */}
+                        <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 rounded-xl border border-border bg-surface/50 custom-scrollbar">
+                          {predefinedTopics.map((topic) => {
+                            const isSelected = selectedTopics.includes(topic);
+                            return (
+                              <button
+                                key={topic}
+                                type="button"
+                                onClick={() => {
+                                  if (isSelected) {
+                                    setSelectedTopics(selectedTopics.filter((t) => t !== topic));
+                                  } else {
+                                    setSelectedTopics([...selectedTopics, topic]);
+                                  }
+                                }}
+                                className={`px-2.5 py-1 rounded-lg border font-sans font-bold text-[10px] transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "bg-primary/20 border-primary text-primary shadow-sm scale-[1.02]"
+                                    : "border-border bg-surface-2/40 text-muted hover:bg-border/30 hover:text-foreground"
+                                }`}
+                              >
+                                {topic}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Inline tag custom builder */}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Add custom topic category..."
+                            value={customTopicInput}
+                            onChange={(e) => setCustomTopicInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                if (!customTopicInput.trim()) return;
+                                const newTag = customTopicInput.trim();
+                                if (!predefinedTopics.includes(newTag)) {
+                                  setCustomPredefinedTopics([...customPredefinedTopics, newTag]);
+                                }
+                                if (!selectedTopics.includes(newTag)) {
+                                  setSelectedTopics([...selectedTopics, newTag]);
+                                }
+                                setCustomTopicInput("");
+                              }
+                            }}
+                            className="flex-1 px-3 py-2 rounded-xl bg-surface-2 border border-border focus:border-primary focus:outline-none text-foreground placeholder:text-muted/60 text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!customTopicInput.trim()) return;
+                              const newTag = customTopicInput.trim();
+                              if (!predefinedTopics.includes(newTag)) {
+                                setCustomPredefinedTopics([...customPredefinedTopics, newTag]);
+                              }
+                              if (!selectedTopics.includes(newTag)) {
+                                setSelectedTopics([...selectedTopics, newTag]);
+                              }
+                              setCustomTopicInput("");
+                            }}
+                            className="px-3.5 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-bold cursor-pointer transition-colors"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Company Tags & Algorithmic Patterns */}
+                    <div className="space-y-4">
+                      {/* Target Companies (Asked By) */}
+                      <div className="p-4 rounded-2xl bg-surface-2/30 border border-border/60 space-y-3">
+                        <label className="block font-bold text-foreground uppercase tracking-wider text-[10px] flex items-center justify-between">
+                          <span>Target Companies (Asked By)</span>
+                          <span className="text-muted font-normal text-[9px]">{selectedCompanies.length} selected</span>
+                        </label>
+
+                        {/* Select pill tag cloud with SVG Icons */}
+                        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2.5 rounded-xl border border-border bg-surface/50 custom-scrollbar">
+                          {predefinedCompanies.map((comp) => {
+                            const isSelected = selectedCompanies.includes(comp);
+                            return (
+                              <button
+                                key={comp}
+                                type="button"
+                                onClick={() => {
+                                  if (isSelected) {
+                                    setSelectedCompanies(selectedCompanies.filter((c) => c !== comp));
+                                  } else {
+                                    setSelectedCompanies([...selectedCompanies, comp]);
+                                  }
+                                }}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-sans font-bold text-[10px] transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "bg-amber-500/20 border-amber-500 text-amber-500 shadow-sm scale-[1.02]"
+                                    : "border-border bg-surface-2/40 text-muted hover:bg-border/30 hover:text-foreground"
+                                }`}
+                              >
+                                {getCompanyIcon(comp)}
+                                <span>{comp}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Inline company custom builder */}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Add company (e.g. Airbnb, ByteDance, Stripe)..."
+                            value={customCompanyInput}
+                            onChange={(e) => setCustomCompanyInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                if (!customCompanyInput.trim()) return;
+                                const newComp = customCompanyInput.trim();
+                                if (!selectedCompanies.includes(newComp)) {
+                                  setSelectedCompanies([...selectedCompanies, newComp]);
+                                }
+                                setCustomCompanyInput("");
+                              }
+                            }}
+                            className="flex-1 px-3 py-2 rounded-xl bg-surface-2 border border-border focus:border-primary focus:outline-none text-foreground placeholder:text-muted/60 text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!customCompanyInput.trim()) return;
+                              const newComp = customCompanyInput.trim();
+                              if (!selectedCompanies.includes(newComp)) {
+                                setSelectedCompanies([...selectedCompanies, newComp]);
+                              }
+                              setCustomCompanyInput("");
+                            }}
+                            className="px-3.5 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 font-bold cursor-pointer transition-colors"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Algorithmic Patterns */}
+                      <div className="p-4 rounded-2xl bg-surface-2/30 border border-border/60 space-y-3">
+                        <label className="block font-bold text-foreground uppercase tracking-wider text-[10px] flex items-center justify-between">
+                          <span>Algorithmic Patterns</span>
+                          <span className="text-muted font-normal text-[9px]">{selectedPatterns.length} selected</span>
+                        </label>
+
+                        {/* Select pill tag cloud with SVG Icons */}
+                        <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2.5 rounded-xl border border-border bg-surface/50 custom-scrollbar">
+                          {predefinedPatterns.map((pattern) => {
+                            const isSelected = selectedPatterns.includes(pattern);
+                            return (
+                              <button
+                                key={pattern}
+                                type="button"
+                                onClick={() => {
+                                  if (isSelected) {
+                                    setSelectedPatterns(selectedPatterns.filter((p) => p !== pattern));
+                                  } else {
+                                    setSelectedPatterns([...selectedPatterns, pattern]);
+                                  }
+                                }}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-sans font-bold text-[10px] transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "bg-cyan-500/20 border-cyan-500 text-cyan-500 shadow-sm scale-[1.02]"
+                                    : "border-border bg-surface-2/40 text-muted hover:bg-border/30 hover:text-foreground"
+                                }`}
+                              >
+                                {getPatternIcon(pattern)}
+                                <span>{pattern}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Inline pattern custom builder */}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Add pattern (e.g. Union Find, Line Sweep)..."
+                            value={customPatternInput}
+                            onChange={(e) => setCustomPatternInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                if (!customPatternInput.trim()) return;
+                                const newPat = customPatternInput.trim();
+                                if (!selectedPatterns.includes(newPat)) {
+                                  setSelectedPatterns([...selectedPatterns, newPat]);
+                                }
+                                setCustomPatternInput("");
+                              }
+                            }}
+                            className="flex-1 px-3 py-2 rounded-xl bg-surface-2 border border-border focus:border-primary focus:outline-none text-foreground placeholder:text-muted/60 text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!customPatternInput.trim()) return;
+                              const newPat = customPatternInput.trim();
+                              if (!selectedPatterns.includes(newPat)) {
+                                setSelectedPatterns([...selectedPatterns, newPat]);
+                              }
+                              setCustomPatternInput("");
+                            }}
+                            className="px-3.5 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 border border-cyan-500/20 font-bold cursor-pointer transition-colors"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-muted mb-2 uppercase tracking-wide">
-                    Problem URL
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://leetcode.com/problems/... (or Codeforces, GFG, etc.)"
-                    value={addUrl}
-                    onChange={(e) => setAddUrl(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-foreground"
-                  />
-                </div>
-
-                {/* Custom tag select categories */}
-                <div>
-                  <label className="block font-semibold text-muted mb-2 uppercase tracking-wide">
-                    Topic Categories (Select or Create)
-                  </label>
-
-                  {/* Select pill tag cloud */}
-                  <div className="flex flex-wrap gap-2 mb-3 max-h-36 overflow-y-auto p-2 rounded-xl border border-border bg-surface-2/40">
-                    {predefinedTopics.map((topic) => {
-                      const isSelected = selectedTopics.includes(topic);
-                      return (
-                        <button
-                          key={topic}
-                          type="button"
-                          onClick={() => {
-                            if (isSelected) {
-                              setSelectedTopics(selectedTopics.filter((t) => t !== topic));
-                            } else {
-                              setSelectedTopics([...selectedTopics, topic]);
-                            }
-                          }}
-                          className={`px-3 py-1.5 rounded-xl border font-sans font-bold text-[10px] transition-all cursor-pointer ${isSelected
-                              ? "bg-primary/15 border-primary text-primary shadow-sm scale-[1.03]"
-                              : "border-border bg-surface-2/30 text-muted hover:bg-border/20 hover:text-foreground"
-                            }`}
-                        >
-                          {topic}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Inline tag custom builder */}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Add custom category tag name..."
-                      value={customTopicInput}
-                      onChange={(e) => setCustomTopicInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          if (!customTopicInput.trim()) return;
-                          const newTag = customTopicInput.trim();
-                          if (!predefinedTopics.includes(newTag)) {
-                            setCustomPredefinedTopics([...customPredefinedTopics, newTag]);
-                          }
-                          if (!selectedTopics.includes(newTag)) {
-                            setSelectedTopics([...selectedTopics, newTag]);
-                          }
-                          setCustomTopicInput("");
-                        }
-                      }}
-                      className="flex-1 px-3.5 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-foreground placeholder:text-muted/60"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!customTopicInput.trim()) return;
-                        const newTag = customTopicInput.trim();
-                        if (!predefinedTopics.includes(newTag)) {
-                          setCustomPredefinedTopics([...customPredefinedTopics, newTag]);
-                        }
-                        if (!selectedTopics.includes(newTag)) {
-                          setSelectedTopics([...selectedTopics, newTag]);
-                        }
-                        setCustomTopicInput("");
-                      }}
-                      className="px-4 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-bold cursor-pointer transition-colors"
-                    >
-                      Create
-                    </button>
-                  </div>
-                </div>
-
-                {/* Target Company Tags (Asked by) */}
-                <div>
-                  <label className="block font-semibold text-muted mb-2 uppercase tracking-wide">
-                    Target Companies (Asked By)
-                  </label>
-
-                  {/* Select pill tag cloud */}
-                  <div className="flex flex-wrap gap-2 mb-3 max-h-36 overflow-y-auto p-2 rounded-xl border border-border bg-surface-2/40">
-                    {predefinedCompanies.map((comp) => {
-                      const isSelected = selectedCompanies.includes(comp);
-                      return (
-                        <button
-                          key={comp}
-                          type="button"
-                          onClick={() => {
-                            if (isSelected) {
-                              setSelectedCompanies(selectedCompanies.filter((c) => c !== comp));
-                            } else {
-                              setSelectedCompanies([...selectedCompanies, comp]);
-                            }
-                          }}
-                          className={`px-3 py-1.5 rounded-xl border font-sans font-bold text-[10px] transition-all cursor-pointer ${
-                            isSelected
-                              ? "bg-amber-500/20 border-amber-500 text-amber-500 shadow-sm scale-[1.03]"
-                              : "border-border bg-surface-2/30 text-muted hover:bg-border/20 hover:text-foreground"
-                          }`}
-                        >
-                          🏢 {comp}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Inline company custom builder */}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Add company (e.g. Airbnb, ByteDance, Atlassian)..."
-                      value={customCompanyInput}
-                      onChange={(e) => setCustomCompanyInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          if (!customCompanyInput.trim()) return;
-                          const newComp = customCompanyInput.trim();
-                          if (!selectedCompanies.includes(newComp)) {
-                            setSelectedCompanies([...selectedCompanies, newComp]);
-                          }
-                          setCustomCompanyInput("");
-                        }
-                      }}
-                      className="flex-1 px-3.5 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-foreground placeholder:text-muted/60"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!customCompanyInput.trim()) return;
-                        const newComp = customCompanyInput.trim();
-                        if (!selectedCompanies.includes(newComp)) {
-                          setSelectedCompanies([...selectedCompanies, newComp]);
-                        }
-                        setCustomCompanyInput("");
-                      }}
-                      className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 font-bold cursor-pointer transition-colors"
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-
-                {/* Algorithmic Patterns */}
-                <div>
-                  <label className="block font-semibold text-muted mb-2 uppercase tracking-wide">
-                    Algorithmic Patterns
-                  </label>
-
-                  {/* Select pill tag cloud */}
-                  <div className="flex flex-wrap gap-2 mb-3 max-h-36 overflow-y-auto p-2 rounded-xl border border-border bg-surface-2/40">
-                    {predefinedPatterns.map((pattern) => {
-                      const isSelected = selectedPatterns.includes(pattern);
-                      return (
-                        <button
-                          key={pattern}
-                          type="button"
-                          onClick={() => {
-                            if (isSelected) {
-                              setSelectedPatterns(selectedPatterns.filter((p) => p !== pattern));
-                            } else {
-                              setSelectedPatterns([...selectedPatterns, pattern]);
-                            }
-                          }}
-                          className={`px-3 py-1.5 rounded-xl border font-sans font-bold text-[10px] transition-all cursor-pointer ${
-                            isSelected
-                              ? "bg-cyan-500/20 border-cyan-500 text-cyan-500 shadow-sm scale-[1.03]"
-                              : "border-border bg-surface-2/30 text-muted hover:bg-border/20 hover:text-foreground"
-                          }`}
-                        >
-                          🧩 {pattern}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Inline pattern custom builder */}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Add pattern (e.g. Union Find, Line Sweep)..."
-                      value={customPatternInput}
-                      onChange={(e) => setCustomPatternInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          if (!customPatternInput.trim()) return;
-                          const newPat = customPatternInput.trim();
-                          if (!selectedPatterns.includes(newPat)) {
-                            setSelectedPatterns([...selectedPatterns, newPat]);
-                          }
-                          setCustomPatternInput("");
-                        }
-                      }}
-                      className="flex-1 px-3.5 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-foreground placeholder:text-muted/60"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!customPatternInput.trim()) return;
-                        const newPat = customPatternInput.trim();
-                        if (!selectedPatterns.includes(newPat)) {
-                          setSelectedPatterns([...selectedPatterns, newPat]);
-                        }
-                        setCustomPatternInput("");
-                      }}
-                      className="px-4 py-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 border border-cyan-500/20 font-bold cursor-pointer transition-colors"
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-
-                {/* Custom dropdown matching dropdown select */}
-                <div className="relative">
-                  <label className="block font-semibold text-muted mb-2 uppercase tracking-wide">
-                    Difficulty Level
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsDiffDropdownOpen(!isDiffDropdownOpen)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-foreground font-semibold flex items-center justify-between cursor-pointer"
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full ${addDiff === "EASY" ? "bg-emerald-500" : addDiff === "MED" ? "bg-amber-500" : "bg-rose-500"
-                        }`} />
-                      {addDiff === "EASY" ? "EASY" : addDiff === "MED" ? "MEDIUM" : "HARD"}
-                    </span>
-                    <svg className={`w-4 h-4 text-muted transition-transform ${isDiffDropdownOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  <AnimatePresence>
-                    {isDiffDropdownOpen && (
-                      <>
-                        <div className="fixed inset-0 z-10" onClick={() => setIsDiffDropdownOpen(false)} />
-
-                        <motion.div
-                          initial={{ opacity: 0, y: -8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -8 }}
-                          className="absolute z-20 w-full mt-2 bg-surface border border-border rounded-xl shadow-xl overflow-hidden font-semibold"
-                        >
-                          {[
-                            { value: "EASY", label: "EASY", color: "bg-emerald-500", text: "text-emerald-500" },
-                            { value: "MED", label: "MEDIUM", color: "bg-amber-500", text: "text-amber-500" },
-                            { value: "HARD", label: "HARD", color: "bg-rose-500", text: "text-rose-500" }
-                          ].map((item) => (
-                            <button
-                              key={item.value}
-                              type="button"
-                              onClick={() => {
-                                setAddDiff(item.value);
-                                setIsDiffDropdownOpen(false);
-                              }}
-                              className="w-full px-4 py-3 text-left hover:bg-surface-2 flex items-center justify-between transition-colors cursor-pointer"
-                            >
-                              <span className="flex items-center gap-2">
-                                <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
-                                <span className={item.text}>{item.label}</span>
-                              </span>
-                              {addDiff === item.value && <Check className="w-4.5 h-4.5 text-primary" />}
-                            </button>
-                          ))}
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Public Sharing Toggle */}
-                <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-surface-2/40">
-                  <div className="flex flex-col gap-0.5 font-sans">
-                    <span className="font-semibold text-foreground flex items-center gap-1.5">
-                      <Globe className="w-4 h-4 text-emerald-400" />
-                      Public Sharing
-                    </span>
-                    <span className="text-[10px] text-muted">
-                      Anyone with the share link can view this problem and its solutions.
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setAddIsPublic(!addIsPublic)}
-                    className={`w-11 h-6 rounded-full p-1 transition-colors duration-200 focus:outline-none cursor-pointer ${
-                      addIsPublic ? "bg-primary" : "bg-border"
-                    }`}
-                  >
-                    <div
-                      className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                        addIsPublic ? "translate-x-5" : "translate-x-0"
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                <div className="pt-4 border-t border-border/80 flex items-center justify-end gap-3">
+                {/* Fixed Modal Footer */}
+                <div className="px-6 py-4 border-t border-border/80 flex items-center justify-end gap-3 shrink-0 bg-surface">
                   <button
                     type="button"
                     onClick={() => setIsAddProblemOpen(false)}
-                    className="px-4 py-2 rounded-xl border border-border hover:bg-surface-2 text-foreground font-bold font-sans cursor-pointer transition-colors"
+                    className="px-4 py-2.5 rounded-xl border border-border hover:bg-surface-2 text-foreground font-bold font-sans cursor-pointer transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSavingProblem}
-                    className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold font-sans cursor-pointer transition-all shadow-md shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-white font-bold font-sans cursor-pointer transition-all shadow-md shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {isSavingProblem ? (
                       <>
-                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>{editingProblemId !== null ? "Updating..." : "Adding..."}</span>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>{editingProblemId !== null ? "Updating Problem..." : "Adding Problem..."}</span>
                       </>
                     ) : (
                       <span>{editingProblemId !== null ? "Update Problem" : "Add Problem"}</span>
                     )}
                   </button>
                 </div>
-
               </form>
             </motion.div>
           </div>
