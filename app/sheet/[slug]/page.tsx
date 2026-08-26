@@ -164,9 +164,11 @@ export default function SharedSheetPage({ params }: { params: Promise<{ slug: st
                 <Library className="w-7 h-7 text-primary" />
                 {sheet.name}
               </h1>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-sans">
-                <Globe className="w-2.5 h-2.5" />
-                Public Shared Sheet
+              <span
+                className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0 shadow-sm"
+                title="Public Shared Sheet"
+              >
+                <Globe className="w-3.5 h-3.5" />
               </span>
             </div>
             <p className="font-sans text-xs text-muted max-w-xl">
