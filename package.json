@@ -4,9 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "NODE_OPTIONS='--no-deprecation' next dev",
-    "build": "prisma generate && tsx scripts/apply_rls.ts && tsx scripts/seed_demo_data.ts && NODE_OPTIONS='--no-deprecation' next build",
+    "build": "prisma generate && tsx scripts/apply_rls.ts && NODE_OPTIONS='--no-deprecation' next build",
     "db:rls": "tsx scripts/apply_rls.ts",
-    "db:seed": "tsx scripts/seed_demo_data.ts",
     "start": "NODE_OPTIONS='--no-deprecation' next start",
     "lint": "eslint"
   },
