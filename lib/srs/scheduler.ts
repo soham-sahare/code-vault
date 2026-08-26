@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { enqueueSRS, dequeueSRS, getDueFromQueue } from "@/lib/redis/srs-queue";
+import { enqueueSRS, enqueueManySRS, dequeueSRS, getDueFromQueue } from "@/lib/redis/srs-queue";
 import { computeDueDate } from "@/lib/timestamps/ist";
 
 const SRS_INTERVALS = [3, 7, 15, 30];
@@ -43,13 +43,12 @@ export async function initSchedule(
     select: { id: true, dueDate: true },
   });
 
-  // Parallel non-blocking Redis queue pushes
-  await Promise.allSettled(
-    createdReminders.map((r) => {
-      const score = Math.floor(r.dueDate.getTime() / 1000);
-      return enqueueSRS(userId, r.id, score);
-    })
-  );
+  // Single-roundtrip batch Redis queue push
+  const queueItems = createdReminders.map((r) => ({
+    reminderId: r.id,
+    dueTimeSec: Math.floor(r.dueDate.getTime() / 1000),
+  }));
+  await enqueueManySRS(userId, queueItems);
 }
 
 /**
