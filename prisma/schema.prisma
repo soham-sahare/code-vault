@@ -68,12 +68,14 @@ model Problem {
 
   // Performance & Query Indices
   @@unique([userId, num])                            // Instant lookup by problem number per user
+  @@index([userId, num(sort: Desc)])                 // Instant max-number lookup on problem creation
   @@index([userId, createdAt(sort: Desc)])          // Primary list fetch sorted by creation
   @@index([userId, status])                          // Filter by status
   @@index([userId, difficulty])                      // Filter by difficulty
   @@index([userId, topic])                           // Filter by topic/tag
   @@index([userId, isFavorite, createdAt(sort: Desc)]) // Favorites view
   @@index([userId, isPublic, createdAt(sort: Desc)]) // Public problems
+  @@index([userId, solvedAt])                        // Solved history and streak calculations
   @@index([isPublic, name])                          // Public problem slug & name lookup
 }
 
@@ -147,6 +149,7 @@ model Reminder {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // SRS Hot Path Indices
+  @@index([problemId, userId, cycle])              // Instant duplicate schedule check in initSchedule
   @@index([userId, status, dueDate])               // Fetch pending due items by user
   @@index([userId, dueDate])                       // Filter due items
   @@index([problemId, userId, cycle, status])      // Next pending reminder lookup per cycle
