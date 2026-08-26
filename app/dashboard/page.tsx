@@ -46,7 +46,7 @@ interface Problem {
 
 export default function DashboardPage() {
   // State for problems so they are mutable locally
-  const [problemsList, setProblemsList] = useState<Problem[]>([]);
+  const [problemsList, setProblemsList] = useState<any[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [showRevisitDaysPopup, setShowRevisitDaysPopup] = useState(false);
@@ -96,7 +96,11 @@ export default function DashboardPage() {
   const [filterDiff, setFilterDiff] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [filterTopic, setFilterTopic] = useState("ALL");
+  const [filterCompany, setFilterCompany] = useState("ALL");
+  const [filterPattern, setFilterPattern] = useState("ALL");
   const [topicSearchQuery, setTopicSearchQuery] = useState("");
+  const [companySearchQuery, setCompanySearchQuery] = useState("");
+  const [patternSearchQuery, setPatternSearchQuery] = useState("");
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const [filterPresets, setFilterPresets] = useState([
     { name: "All Problems", diff: "ALL", status: "ALL" },
@@ -115,7 +119,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, filterDiff, filterStatus, filterTopic, rowsPerPage]);
+  }, [searchQuery, filterDiff, filterStatus, filterTopic, filterCompany, filterPattern, rowsPerPage]);
 
   // Form input hooks for simulated problem adding
   const [addName, setAddName] = useState("");
@@ -133,12 +137,29 @@ export default function DashboardPage() {
   ];
   const [customPredefinedTopics, setCustomPredefinedTopics] = useState<string[]>([]);
 
+  const predefinedCompanies = [
+    "Google", "Meta", "Amazon", "Apple", "Microsoft",
+    "Uber", "Netflix", "Bloomberg", "Adobe", "Stripe", "Goldman Sachs", "Oracle"
+  ];
+
+  const predefinedPatterns = [
+    "Two Pointers", "Sliding Window", "Fast & Slow Pointers", "Merge Intervals",
+    "Monotonic Stack", "Tree BFS / Level Order", "Tree DFS / Postorder",
+    "Top K Elements / Heap", "0/1 Knapsack & DP", "Topological Sort",
+    "Binary Search On Answer", "Trie Prefix Search"
+  ];
+
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [customCompanyInput, setCustomCompanyInput] = useState("");
+  const [selectedPatterns, setSelectedPatterns] = useState<string[]>([]);
+  const [customPatternInput, setCustomPatternInput] = useState("");
+
   const getSelectableTopics = () => {
     const topicsSet = new Set(defaultTopics.map(t => t.toLowerCase()));
     customPredefinedTopics.forEach((t) => topicsSet.add(t.toLowerCase()));
     problemsList.forEach((p) => {
       if (p.topic) {
-        p.topic.split(",").forEach((t) => {
+        p.topic.split(",").forEach((t: string) => {
           const trimmed = t.trim().toLowerCase();
           if (trimmed) {
             topicsSet.add(trimmed);
@@ -246,7 +267,9 @@ export default function DashboardPage() {
         q: searchQuery,
         difficulty: filterDiff,
         status: filterStatus,
-        tag: filterTopic
+        tag: filterTopic,
+        company: filterCompany,
+        pattern: filterPattern,
       });
       setProblemsList(data.items);
       setTotalProblemsCount(data.totalCount || 0);
@@ -421,7 +444,9 @@ export default function DashboardPage() {
           difficulty: addDiff,
           topic: finalTopic,
           url: addUrl || "#",
-          isPublic: addIsPublic
+          isPublic: addIsPublic,
+          companyNames: selectedCompanies,
+          patternNames: selectedPatterns,
         });
         showToast("Problem updated successfully!", "success");
       } else {
@@ -430,7 +455,9 @@ export default function DashboardPage() {
           difficulty: addDiff,
           topic: finalTopic,
           url: addUrl || "#",
-          isPublic: addIsPublic
+          isPublic: addIsPublic,
+          companyNames: selectedCompanies,
+          patternNames: selectedPatterns,
         });
         showToast("Problem created successfully!", "success");
       }
@@ -442,6 +469,8 @@ export default function DashboardPage() {
       setAddNum("");
       setAddUrl("");
       setSelectedTopics([]);
+      setSelectedCompanies([]);
+      setSelectedPatterns([]);
       setAddDiff("EASY");
       setAddIsPublic(false);
 
@@ -699,15 +728,91 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        {(filterDiff !== "ALL" || filterStatus !== "ALL" || filterTopic !== "ALL" || searchQuery !== "") && (
+                        <div className="pt-2.5 border-t border-border/40">
+                          <span className="block font-semibold text-muted mb-1.5 uppercase tracking-wide text-[9px]">Company</span>
+                          <input
+                            type="text"
+                            placeholder="Search companies..."
+                            value={companySearchQuery}
+                            onChange={(e) => setCompanySearchQuery(e.target.value)}
+                            className="w-full px-2 py-1.5 mb-2 rounded bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-[10px] text-foreground placeholder:text-muted/65"
+                          />
+                          <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                            <button
+                              onClick={() => setFilterCompany("ALL")}
+                              className={`px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterCompany === "ALL"
+                                  ? "bg-primary/10 border-primary text-primary"
+                                  : "bg-surface-2 border-border text-muted hover:text-foreground"
+                                }`}
+                            >
+                              ALL
+                            </button>
+                            {predefinedCompanies
+                              .filter((c) => c.toLowerCase().includes(companySearchQuery.toLowerCase()))
+                              .map((comp) => (
+                                <button
+                                  key={comp}
+                                  onClick={() => setFilterCompany(comp)}
+                                  className={`px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterCompany === comp
+                                      ? "bg-amber-500/15 border-amber-500 text-amber-500 font-extrabold"
+                                      : "bg-surface-2 border-border text-muted hover:text-foreground"
+                                    }`}
+                                >
+                                  {comp}
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+
+                        <div className="pt-2.5 border-t border-border/40">
+                          <span className="block font-semibold text-muted mb-1.5 uppercase tracking-wide text-[9px]">Pattern</span>
+                          <input
+                            type="text"
+                            placeholder="Search patterns..."
+                            value={patternSearchQuery}
+                            onChange={(e) => setPatternSearchQuery(e.target.value)}
+                            className="w-full px-2 py-1.5 mb-2 rounded bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-[10px] text-foreground placeholder:text-muted/65"
+                          />
+                          <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                            <button
+                              onClick={() => setFilterPattern("ALL")}
+                              className={`px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterPattern === "ALL"
+                                  ? "bg-primary/10 border-primary text-primary"
+                                  : "bg-surface-2 border-border text-muted hover:text-foreground"
+                                }`}
+                            >
+                              ALL
+                            </button>
+                            {predefinedPatterns
+                              .filter((p) => p.toLowerCase().includes(patternSearchQuery.toLowerCase()))
+                              .map((pat) => (
+                                <button
+                                  key={pat}
+                                  onClick={() => setFilterPattern(pat)}
+                                  className={`px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterPattern === pat
+                                      ? "bg-cyan-500/15 border-cyan-500 text-cyan-500 font-extrabold"
+                                      : "bg-surface-2 border-border text-muted hover:text-foreground"
+                                    }`}
+                                >
+                                  {pat}
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+
+                        {(filterDiff !== "ALL" || filterStatus !== "ALL" || filterTopic !== "ALL" || filterCompany !== "ALL" || filterPattern !== "ALL" || searchQuery !== "") && (
                           <div className="pt-2 border-t border-border/40 flex justify-end">
                             <button
                               onClick={() => {
                                 setFilterDiff("ALL");
                                 setFilterStatus("ALL");
                                 setFilterTopic("ALL");
+                                setFilterCompany("ALL");
+                                setFilterPattern("ALL");
                                 setSearchQuery("");
                                 setTopicSearchQuery("");
+                                setCompanySearchQuery("");
+                                setPatternSearchQuery("");
                               }}
                               className="text-[9px] font-bold text-rose-500 hover:underline cursor-pointer"
                             >
@@ -804,7 +909,18 @@ export default function DashboardPage() {
               {/* Add Problem Button */}
               <motion.button
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setIsAddProblemOpen(true)}
+                onClick={() => {
+                  setEditingProblemId(null);
+                  setAddName("");
+                  setAddNum("");
+                  setAddUrl("");
+                  setSelectedTopics([]);
+                  setSelectedCompanies([]);
+                  setSelectedPatterns([]);
+                  setAddDiff("EASY");
+                  setAddIsPublic(false);
+                  setIsAddProblemOpen(true);
+                }}
                 className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-primary hover:bg-primary/95 text-white font-sans font-bold text-xs cursor-pointer transition-colors shadow-md shadow-primary/10"
               >
                 <Plus className="w-4 h-4" />
@@ -892,8 +1008,26 @@ export default function DashboardPage() {
                             const trimmed = topic.trim();
                             if (!trimmed) return null;
                             return (
-                              <span key={i} className="px-2 py-0.5 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 text-primary dark:text-primary-foreground font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                              <span key={`t-${i}`} className="px-2 py-0.5 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 text-primary dark:text-primary-foreground font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
                                 {trimmed}
+                              </span>
+                            );
+                          })}
+                          {prob.companies && prob.companies.map((c: any, i: number) => {
+                            const name = c.company?.name || c.name;
+                            if (!name) return null;
+                            return (
+                              <span key={`c-${i}`} className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                                🏢 {name}
+                              </span>
+                            );
+                          })}
+                          {prob.patterns && prob.patterns.map((p: any, i: number) => {
+                            const name = p.pattern?.name || p.name;
+                            if (!name) return null;
+                            return (
+                              <span key={`p-${i}`} className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                                🧩 {name}
                               </span>
                             );
                           })}
@@ -918,7 +1052,9 @@ export default function DashboardPage() {
                               setAddName(prob.name);
                               setAddUrl(prob.url === "#" ? "" : prob.url);
                               setAddDiff(prob.difficulty);
-                              setSelectedTopics(prob.topic.split(",").map((t) => t.trim()));
+                              setSelectedTopics(prob.topic.split(",").map((t: string) => t.trim()));
+                              setSelectedCompanies(prob.companies ? prob.companies.map((c: any) => c.company?.name || c.name || "").filter(Boolean) : []);
+                              setSelectedPatterns(prob.patterns ? prob.patterns.map((p: any) => p.pattern?.name || p.name || "").filter(Boolean) : []);
                               setAddIsPublic(!!prob.isPublic);
                               setIsAddProblemOpen(true);
                             }}
@@ -1095,8 +1231,28 @@ export default function DashboardPage() {
                       const trimmed = topic.trim();
                       if (!trimmed) return null;
                       return (
-                        <span key={i} className="px-2 py-0.5 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 text-primary dark:text-primary-foreground font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                        <span key={`dt-${i}`} className="px-2 py-0.5 rounded-lg bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 text-primary dark:text-primary-foreground font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
                           {trimmed}
+                        </span>
+                      );
+                    })}
+
+                    {activeProblem.companies && activeProblem.companies.map((c: any, i: number) => {
+                      const name = c.company?.name || c.name;
+                      if (!name) return null;
+                      return (
+                        <span key={`dc-${i}`} className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                          🏢 {name}
+                        </span>
+                      );
+                    })}
+
+                    {activeProblem.patterns && activeProblem.patterns.map((p: any, i: number) => {
+                      const name = p.pattern?.name || p.name;
+                      if (!name) return null;
+                      return (
+                        <span key={`dp-${i}`} className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                          🧩 {name}
                         </span>
                       );
                     })}
@@ -2290,6 +2446,146 @@ export default function DashboardPage() {
                       className="px-4 py-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-bold cursor-pointer transition-colors"
                     >
                       Create
+                    </button>
+                  </div>
+                </div>
+
+                {/* Target Company Tags (Asked by) */}
+                <div>
+                  <label className="block font-semibold text-muted mb-2 uppercase tracking-wide">
+                    Target Companies (Asked By)
+                  </label>
+
+                  {/* Select pill tag cloud */}
+                  <div className="flex flex-wrap gap-2 mb-3 max-h-36 overflow-y-auto p-2 rounded-xl border border-border bg-surface-2/40">
+                    {predefinedCompanies.map((comp) => {
+                      const isSelected = selectedCompanies.includes(comp);
+                      return (
+                        <button
+                          key={comp}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedCompanies(selectedCompanies.filter((c) => c !== comp));
+                            } else {
+                              setSelectedCompanies([...selectedCompanies, comp]);
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-xl border font-sans font-bold text-[10px] transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-amber-500/20 border-amber-500 text-amber-500 shadow-sm scale-[1.03]"
+                              : "border-border bg-surface-2/30 text-muted hover:bg-border/20 hover:text-foreground"
+                          }`}
+                        >
+                          🏢 {comp}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Inline company custom builder */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Add company (e.g. Airbnb, ByteDance, Atlassian)..."
+                      value={customCompanyInput}
+                      onChange={(e) => setCustomCompanyInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (!customCompanyInput.trim()) return;
+                          const newComp = customCompanyInput.trim();
+                          if (!selectedCompanies.includes(newComp)) {
+                            setSelectedCompanies([...selectedCompanies, newComp]);
+                          }
+                          setCustomCompanyInput("");
+                        }
+                      }}
+                      className="flex-1 px-3.5 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-foreground placeholder:text-muted/60"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!customCompanyInput.trim()) return;
+                        const newComp = customCompanyInput.trim();
+                        if (!selectedCompanies.includes(newComp)) {
+                          setSelectedCompanies([...selectedCompanies, newComp]);
+                        }
+                        setCustomCompanyInput("");
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20 font-bold cursor-pointer transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Algorithmic Patterns */}
+                <div>
+                  <label className="block font-semibold text-muted mb-2 uppercase tracking-wide">
+                    Algorithmic Patterns
+                  </label>
+
+                  {/* Select pill tag cloud */}
+                  <div className="flex flex-wrap gap-2 mb-3 max-h-36 overflow-y-auto p-2 rounded-xl border border-border bg-surface-2/40">
+                    {predefinedPatterns.map((pattern) => {
+                      const isSelected = selectedPatterns.includes(pattern);
+                      return (
+                        <button
+                          key={pattern}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setSelectedPatterns(selectedPatterns.filter((p) => p !== pattern));
+                            } else {
+                              setSelectedPatterns([...selectedPatterns, pattern]);
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-xl border font-sans font-bold text-[10px] transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-cyan-500/20 border-cyan-500 text-cyan-500 shadow-sm scale-[1.03]"
+                              : "border-border bg-surface-2/30 text-muted hover:bg-border/20 hover:text-foreground"
+                          }`}
+                        >
+                          🧩 {pattern}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Inline pattern custom builder */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Add pattern (e.g. Union Find, Line Sweep)..."
+                      value={customPatternInput}
+                      onChange={(e) => setCustomPatternInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (!customPatternInput.trim()) return;
+                          const newPat = customPatternInput.trim();
+                          if (!selectedPatterns.includes(newPat)) {
+                            setSelectedPatterns([...selectedPatterns, newPat]);
+                          }
+                          setCustomPatternInput("");
+                        }
+                      }}
+                      className="flex-1 px-3.5 py-2.5 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none text-foreground placeholder:text-muted/60"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!customPatternInput.trim()) return;
+                        const newPat = customPatternInput.trim();
+                        if (!selectedPatterns.includes(newPat)) {
+                          setSelectedPatterns([...selectedPatterns, newPat]);
+                        }
+                        setCustomPatternInput("");
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-500 border border-cyan-500/20 font-bold cursor-pointer transition-colors"
+                    >
+                      Add
                     </button>
                   </div>
                 </div>
