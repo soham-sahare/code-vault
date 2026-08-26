@@ -139,11 +139,24 @@ export default function SheetsPage() {
     setEditingSheetId(null);
     showToast(editingId ? "Sheet updated successfully!" : "Sheet created successfully!", "success");
 
+    // Optimistic UI updates
+    if (editingId) {
+      setSheetsList((prev) =>
+        prev.map((s) => (s.id === editingId ? { ...s, name, description: desc, isPublic: isPub } : s))
+      );
+      if (activeSheet && activeSheet.id === editingId) {
+        setActiveSheet((prev: any) => ({ ...prev, name, description: desc, isPublic: isPub }));
+      }
+    }
+
     try {
       if (editingId) {
         await updateSheet(editingId, name, desc, isPub);
       } else {
-        await createSheet(name, desc, isPub);
+        const created = await createSheet(name, desc, isPub);
+        if (created) {
+          setSheetsList((prev) => [{ ...created, problems: [] }, ...prev]);
+        }
       }
       await loadSheets();
     } catch (err) {
