@@ -310,14 +310,18 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                 </h1>
                 {problem.isFavorite && <Star className="w-4 h-4 text-amber-500 fill-amber-500" />}
                 {problem.isPublic ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-sans">
-                    <Globe className="w-2.5 h-2.5" />
-                    Public Shared Problem
+                  <span
+                    className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shrink-0 shadow-sm"
+                    title="Public Shared Problem"
+                  >
+                    <Globe className="w-3.5 h-3.5" />
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-500 font-sans">
-                    <Lock className="w-2.5 h-2.5" />
-                    Private Preview
+                  <span
+                    className="w-6 h-6 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shrink-0 shadow-sm"
+                    title="Private Preview"
+                  >
+                    <Lock className="w-3.5 h-3.5" />
                   </span>
                 )}
               </div>
