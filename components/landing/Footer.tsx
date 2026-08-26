@@ -103,10 +103,18 @@ export default function Footer() {
 
       <div className="max-w-7xl mx-auto border-t border-border/40 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <p className="font-sans text-[11px] text-muted">
-          © {new Date().getFullYear()} CodeVault. All rights reserved in stone.
+          © {new Date().getFullYear()} CodeVault.
         </p>
-        <p className="font-sans text-[10px] text-muted tracking-wider uppercase font-semibold">
-          Forged by Caveman hunters
+        <p className="font-sans text-xs text-muted">
+          Made with ❤️ by{" "}
+          <a
+            href="https://sohamsahare.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-foreground hover:text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary font-semibold transition-colors"
+          >
+            sohamsahare
+          </a>
         </p>
       </div>
 
