@@ -1460,7 +1460,7 @@ export async function getPublicProblemBySlug(slug: string) {
     });
   }
 
-  // Exact fallback check
+  // Exact fallback check for public problem
   if (!problem) {
     const getSlug = (name: string) => {
       if (!name) return "";
@@ -1479,8 +1479,80 @@ export async function getPublicProblemBySlug(slug: string) {
     }
   }
 
-  // Back-fill Redis cache
-  if (problem) {
+  // Owner preview fallback (if problem is private, owner can still preview)
+  if (!problem) {
+    try {
+      const session = await auth();
+      if (session?.user?.id) {
+        const ownerId = session.user.id;
+        const ownerInclude = {
+          solutions: {
+            include: {
+              notes: true,
+            }
+          },
+          notes: true,
+          reminders: true,
+          companies: { include: { company: true } },
+          patterns: { include: { pattern: true } },
+          user: {
+            select: {
+              id: true,
+              username: true,
+              name: true,
+              sheets: {
+                where: { isPublic: true },
+                include: {
+                  problems: {
+                    include: { problem: true }
+                  }
+                }
+              }
+            }
+          }
+        };
+
+        problem = await db.problem.findFirst({
+          where: { id: slug, userId: ownerId },
+          include: ownerInclude,
+        });
+
+        if (!problem) {
+          const searchName = slug.replace(/-/g, " ").trim();
+          problem = await db.problem.findFirst({
+            where: {
+              name: { equals: searchName, mode: "insensitive" },
+              userId: ownerId,
+            },
+            include: ownerInclude,
+          });
+        }
+
+        if (!problem) {
+          const getSlug = (name: string) => {
+            if (!name) return "";
+            return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+          };
+          const userList = await db.problem.findMany({
+            where: { userId: ownerId },
+            select: { id: true, name: true },
+          });
+          const match = userList.find((p) => getSlug(p.name) === slug);
+          if (match) {
+            problem = await db.problem.findUnique({
+              where: { id: match.id },
+              include: ownerInclude,
+            });
+          }
+        }
+      }
+    } catch {
+      // not authenticated
+    }
+  }
+
+  // Back-fill Redis cache (only for public problems)
+  if (problem && problem.isPublic) {
     await setCachedPublicProblem(slug, problem);
   }
 
