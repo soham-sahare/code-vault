@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
     if (existingEmail) {
       return NextResponse.json(
-        { error: "User with this email already exists" },
+        { error: "An account with this email already exists." },
         { status: 400 }
       );
     }
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
 
     if (existingUsername) {
       return NextResponse.json(
-        { error: "Username is already taken. Please choose another." },
+        { error: "This username is already taken. Please choose another." },
         { status: 400 }
       );
     }
