@@ -322,43 +322,58 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
                 )}
               </div>
               
-              <div className="flex flex-nowrap items-center gap-2 pt-1 max-w-full overflow-hidden select-none">
+              <div className="flex flex-wrap items-center gap-2 pt-2">
                 <span className={`font-display font-bold text-[9px] px-2 py-0.5 rounded whitespace-nowrap shrink-0 ${
                   problem.difficulty === "EASY" ? "text-emerald-500 bg-emerald-500/10" : problem.difficulty === "HARD" ? "text-rose-500 bg-rose-500/10" : "text-amber-500 bg-amber-500/10"
                 }`}>
                   {problem.difficulty === "MED" ? "MEDIUM" : problem.difficulty}
                 </span>
-                {(() => {
-                  const parts = (problem.topic || "").split(",").map((t: string) => t.trim()).filter(Boolean);
-                  const displayParts = parts.slice(0, 3);
-                  return (
-                    <>
-                      {displayParts.map((t: string, idx: number) => (
-                        <span key={idx} className="bg-surface-2 border border-border px-2 py-0.5 rounded text-[9px] font-bold text-muted whitespace-nowrap shrink-0">
-                          {t}
-                        </span>
-                      ))}
-                      {parts.length > 3 && (
-                        <span className="bg-surface-2 border border-border px-2 py-0.5 rounded text-[9px] font-bold text-muted whitespace-nowrap shrink-0">
-                          ...
-                        </span>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
 
-            <div className="flex items-center gap-3">
-              <a
-                href={problem.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center w-8 h-8 rounded-xl border border-border bg-surface-2 hover:bg-border/20 text-muted hover:text-foreground cursor-pointer transition-colors"
-                title="View Problem Source"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </a>
+                {/* All Topics */}
+                {problem.topic &&
+                  problem.topic.split(",").map((topic: string, i: number) => {
+                    const trimmed = topic.trim();
+                    if (!trimmed) return null;
+                    return (
+                      <span
+                        key={`t-${i}`}
+                        className="px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/20 text-primary font-bold text-[9px] font-sans whitespace-nowrap shadow-sm"
+                      >
+                        {trimmed}
+                      </span>
+                    );
+                  })}
+
+                {/* All Companies */}
+                {problem.companies &&
+                  problem.companies.map((c: any, i: number) => {
+                    const name = c.company?.name || c.name;
+                    if (!name) return null;
+                    return (
+                      <span
+                        key={`c-${i}`}
+                        className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm"
+                      >
+                        {name}
+                      </span>
+                    );
+                  })}
+
+                {/* All Algorithmic Patterns */}
+                {problem.patterns &&
+                  problem.patterns.map((p: any, i: number) => {
+                    const name = p.pattern?.name || p.name;
+                    if (!name) return null;
+                    return (
+                      <span
+                        key={`p-${i}`}
+                        className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm"
+                      >
+                        {name}
+                      </span>
+                    );
+                  })}
+              </div>
             </div>
           </div>
         </div>
