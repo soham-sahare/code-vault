@@ -1308,17 +1308,28 @@ export default function DashboardPage() {
                     <button
                       onClick={async () => {
                         try {
-                          const updated = await updateProblem(activeProblem.num, {
+                          const companyNames = activeProblem.companies
+                            ? activeProblem.companies.map((c: any) => c.company?.name || c.name).filter(Boolean)
+                            : undefined;
+                          const patternNames = activeProblem.patterns
+                            ? activeProblem.patterns.map((p: any) => p.pattern?.name || p.name).filter(Boolean)
+                            : undefined;
+
+                          const updated = await updateProblem(activeProblem.id, {
                             name: activeProblem.name,
                             difficulty: activeProblem.difficulty,
                             topic: activeProblem.topic,
                             url: activeProblem.url,
-                            isPublic: !activeProblem.isPublic
+                            isPublic: !activeProblem.isPublic,
+                            companyNames,
+                            patternNames,
                           });
+                          setActiveProblem((prev: any) => ({ ...prev, ...updated, isPublic: updated.isPublic }));
                           await loadProblems();
                           showToast(updated.isPublic ? "Public sharing enabled!" : "Public sharing disabled", "success");
                         } catch (err) {
-                          console.error(err);
+                          console.error("Failed to toggle public visibility:", err);
+                          showToast("Failed to update public visibility", "error");
                         }
                       }}
                       className={`w-10 h-10 rounded-xl border flex items-center justify-center active:scale-95 transition-all cursor-pointer ${
@@ -1391,17 +1402,28 @@ export default function DashboardPage() {
                             onClick={async () => {
                               setIsMoreMenuOpen(false);
                               try {
+                                const companyNames = activeProblem.companies
+                                  ? activeProblem.companies.map((c: any) => c.company?.name || c.name).filter(Boolean)
+                                  : undefined;
+                                const patternNames = activeProblem.patterns
+                                  ? activeProblem.patterns.map((p: any) => p.pattern?.name || p.name).filter(Boolean)
+                                  : undefined;
+
                                 const updated = await updateProblem(activeProblem.id, {
                                   name: activeProblem.name,
                                   difficulty: activeProblem.difficulty,
                                   topic: activeProblem.topic,
                                   url: activeProblem.url,
-                                  isPublic: !activeProblem.isPublic
+                                  isPublic: !activeProblem.isPublic,
+                                  companyNames,
+                                  patternNames,
                                 });
+                                setActiveProblem((prev: any) => ({ ...prev, ...updated, isPublic: updated.isPublic }));
                                 await loadProblems();
                                 showToast(updated.isPublic ? "Public sharing enabled!" : "Public sharing disabled", "success");
                               } catch (err) {
-                                console.error(err);
+                                console.error("Failed to toggle public visibility:", err);
+                                showToast("Failed to update public visibility", "error");
                               }
                             }}
                             className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-lg text-muted hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
