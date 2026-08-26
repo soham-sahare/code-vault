@@ -13,36 +13,6 @@ import { getInitials } from "@/lib/utils/formatters";
 import { highlightClientCode } from "@/lib/utils/clientHighlight";
 import { Skeleton } from "@/components/ui/Skeleton";
 
-export function getCompanyIcon(companyName: string) {
-  const norm = companyName.toLowerCase();
-  if (norm.includes("google")) return <Building2 className="w-3 h-3 text-blue-500 shrink-0" />;
-  if (norm.includes("meta") || norm.includes("facebook")) return <Globe className="w-3 h-3 text-sky-500 shrink-0" />;
-  if (norm.includes("amazon")) return <Briefcase className="w-3 h-3 text-amber-500 shrink-0" />;
-  if (norm.includes("apple")) return <Layers className="w-3 h-3 text-zinc-400 shrink-0" />;
-  if (norm.includes("microsoft")) return <Boxes className="w-3 h-3 text-cyan-500 shrink-0" />;
-  if (norm.includes("uber")) return <Activity className="w-3 h-3 text-emerald-500 shrink-0" />;
-  if (norm.includes("netflix")) return <Building2 className="w-3 h-3 text-rose-500 shrink-0" />;
-  if (norm.includes("bloomberg")) return <Building2 className="w-3 h-3 text-orange-500 shrink-0" />;
-  if (norm.includes("adobe")) return <Sparkles className="w-3 h-3 text-red-500 shrink-0" />;
-  if (norm.includes("stripe")) return <Zap className="w-3 h-3 text-indigo-500 shrink-0" />;
-  if (norm.includes("goldman")) return <Briefcase className="w-3 h-3 text-amber-400 shrink-0" />;
-  return <Building2 className="w-3 h-3 text-amber-500/80 shrink-0" />;
-}
-
-export function getPatternIcon(patternName: string) {
-  const norm = patternName.toLowerCase();
-  if (norm.includes("pointer")) return <GitMerge className="w-3 h-3 text-cyan-400 shrink-0" />;
-  if (norm.includes("window")) return <Layers className="w-3 h-3 text-teal-400 shrink-0" />;
-  if (norm.includes("interval")) return <Workflow className="w-3 h-3 text-violet-400 shrink-0" />;
-  if (norm.includes("stack") || norm.includes("queue")) return <Boxes className="w-3 h-3 text-indigo-400 shrink-0" />;
-  if (norm.includes("tree") || norm.includes("bfs") || norm.includes("dfs")) return <Network className="w-3 h-3 text-sky-400 shrink-0" />;
-  if (norm.includes("heap") || norm.includes("top k")) return <Cpu className="w-3 h-3 text-amber-400 shrink-0" />;
-  if (norm.includes("dp") || norm.includes("knapsack")) return <Zap className="w-3 h-3 text-purple-400 shrink-0" />;
-  if (norm.includes("topological") || norm.includes("graph")) return <Compass className="w-3 h-3 text-pink-400 shrink-0" />;
-  if (norm.includes("binary search") || norm.includes("search")) return <Search className="w-3 h-3 text-rose-400 shrink-0" />;
-  if (norm.includes("trie") || norm.includes("prefix")) return <Hash className="w-3 h-3 text-orange-400 shrink-0" />;
-  return <Workflow className="w-3 h-3 text-cyan-400 shrink-0" />;
-}
 
 function getCodePlaceholder(lang: string): string {
   const l = lang.toLowerCase();
@@ -784,13 +754,12 @@ export default function DashboardPage() {
                                 <button
                                   key={comp}
                                   onClick={() => setFilterCompany(comp)}
-                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterCompany === comp
+                                  className={`px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterCompany === comp
                                       ? "bg-amber-500/15 border-amber-500 text-amber-500 font-extrabold"
                                       : "bg-surface-2 border-border text-muted hover:text-foreground"
                                     }`}
                                 >
-                                  {getCompanyIcon(comp)}
-                                  <span>{comp}</span>
+                                  {comp}
                                 </button>
                               ))}
                           </div>
@@ -821,13 +790,12 @@ export default function DashboardPage() {
                                 <button
                                   key={pat}
                                   onClick={() => setFilterPattern(pat)}
-                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterPattern === pat
+                                  className={`px-2 py-1 rounded-lg border font-bold text-[9px] cursor-pointer transition-all ${filterPattern === pat
                                       ? "bg-cyan-500/15 border-cyan-500 text-cyan-500 font-extrabold"
                                       : "bg-surface-2 border-border text-muted hover:text-foreground"
                                     }`}
                                 >
-                                  {getPatternIcon(pat)}
-                                  <span>{pat}</span>
+                                  {pat}
                                 </button>
                               ))}
                           </div>
@@ -1050,9 +1018,8 @@ export default function DashboardPage() {
                             const name = c.company?.name || c.name;
                             if (!name) return null;
                             return (
-                              <span key={`c-${i}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
-                                {getCompanyIcon(name)}
-                                <span>{name}</span>
+                              <span key={`c-${i}`} className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                                {name}
                               </span>
                             );
                           })}
@@ -1060,9 +1027,8 @@ export default function DashboardPage() {
                             const name = p.pattern?.name || p.name;
                             if (!name) return null;
                             return (
-                              <span key={`p-${i}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
-                                {getPatternIcon(name)}
-                                <span>{name}</span>
+                              <span key={`p-${i}`} className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                                {name}
                               </span>
                             );
                           })}
@@ -1276,9 +1242,8 @@ export default function DashboardPage() {
                       const name = c.company?.name || c.name;
                       if (!name) return null;
                       return (
-                        <span key={`dc-${i}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
-                          {getCompanyIcon(name)}
-                          <span>{name}</span>
+                        <span key={`dc-${i}`} className="px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                          {name}
                         </span>
                       );
                     })}
@@ -1287,9 +1252,8 @@ export default function DashboardPage() {
                       const name = p.pattern?.name || p.name;
                       if (!name) return null;
                       return (
-                        <span key={`dp-${i}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
-                          {getPatternIcon(name)}
-                          <span>{name}</span>
+                        <span key={`dp-${i}`} className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/25 text-cyan-500 font-bold text-[9px] font-sans whitespace-nowrap shadow-sm">
+                          {name}
                         </span>
                       );
                     })}
@@ -2596,7 +2560,7 @@ export default function DashboardPage() {
                           <span className="text-muted font-normal text-[9px]">{selectedCompanies.length} selected</span>
                         </label>
 
-                        {/* Select pill tag cloud with SVG Icons */}
+                        {/* Select pill tag cloud without icons */}
                         <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2.5 rounded-xl border border-border bg-surface/50 custom-scrollbar">
                           {predefinedCompanies.map((comp) => {
                             const isSelected = selectedCompanies.includes(comp);
@@ -2611,14 +2575,13 @@ export default function DashboardPage() {
                                     setSelectedCompanies([...selectedCompanies, comp]);
                                   }
                                 }}
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-sans font-bold text-[10px] transition-all cursor-pointer ${
+                                className={`px-2.5 py-1 rounded-lg border font-sans font-bold text-[10px] transition-all cursor-pointer ${
                                   isSelected
                                     ? "bg-amber-500/20 border-amber-500 text-amber-500 shadow-sm scale-[1.02]"
                                     : "border-border bg-surface-2/40 text-muted hover:bg-border/30 hover:text-foreground"
                                 }`}
                               >
-                                {getCompanyIcon(comp)}
-                                <span>{comp}</span>
+                                {comp}
                               </button>
                             );
                           })}
@@ -2668,7 +2631,7 @@ export default function DashboardPage() {
                           <span className="text-muted font-normal text-[9px]">{selectedPatterns.length} selected</span>
                         </label>
 
-                        {/* Select pill tag cloud with SVG Icons */}
+                        {/* Select pill tag cloud without icons */}
                         <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2.5 rounded-xl border border-border bg-surface/50 custom-scrollbar">
                           {predefinedPatterns.map((pattern) => {
                             const isSelected = selectedPatterns.includes(pattern);
@@ -2683,14 +2646,13 @@ export default function DashboardPage() {
                                     setSelectedPatterns([...selectedPatterns, pattern]);
                                   }
                                 }}
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-sans font-bold text-[10px] transition-all cursor-pointer ${
+                                className={`px-2.5 py-1 rounded-lg border font-sans font-bold text-[10px] transition-all cursor-pointer ${
                                   isSelected
                                     ? "bg-cyan-500/20 border-cyan-500 text-cyan-500 shadow-sm scale-[1.02]"
                                     : "border-border bg-surface-2/40 text-muted hover:bg-border/30 hover:text-foreground"
                                 }`}
                               >
-                                {getPatternIcon(pattern)}
-                                <span>{pattern}</span>
+                                {pattern}
                               </button>
                             );
                           })}
