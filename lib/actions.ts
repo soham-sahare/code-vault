@@ -1411,9 +1411,20 @@ export async function getPublicSheetBySlug(slug: string) {
 }
 
 export async function getPublicProblemBySlug(slug: string) {
+  let sessionUserId: string | null = null;
+  try {
+    const session = await auth();
+    if (session?.user?.id) sessionUserId = session.user.id;
+  } catch {
+    // not authenticated
+  }
+
   // 1. Check Redis cache first (24h TTL)
   const cached = await getCachedPublicProblem(slug);
-  if (cached) return cached;
+  if (cached) {
+    const isOwner = sessionUserId ? cached.userId === sessionUserId : false;
+    return { status: "FOUND" as const, problem: cached, isOwner };
+  }
 
   const problemInclude = {
     solutions: {
@@ -1442,13 +1453,13 @@ export async function getPublicProblemBySlug(slug: string) {
     }
   };
 
-  // Direct ID match
+  // Direct ID match (public)
   let problem = await db.problem.findFirst({
     where: { id: slug, isPublic: true },
     include: problemInclude,
   });
 
-  // Formatted slug-to-name match
+  // Formatted slug-to-name match (public)
   if (!problem) {
     const searchName = slug.replace(/-/g, " ").trim();
     problem = await db.problem.findFirst({
@@ -1479,84 +1490,97 @@ export async function getPublicProblemBySlug(slug: string) {
     }
   }
 
+  // Found public problem
+  if (problem) {
+    await setCachedPublicProblem(slug, problem);
+    const isOwner = sessionUserId ? problem.userId === sessionUserId : false;
+    return { status: "FOUND" as const, problem, isOwner };
+  }
+
   // Owner preview fallback (if problem is private, owner can still preview)
-  if (!problem) {
-    try {
-      const session = await auth();
-      if (session?.user?.id) {
-        const ownerId = session.user.id;
-        const ownerInclude = {
-          solutions: {
-            include: {
-              notes: true,
-            }
-          },
+  if (sessionUserId) {
+    const ownerInclude = {
+      solutions: {
+        include: {
           notes: true,
-          reminders: true,
-          companies: { include: { company: true } },
-          patterns: { include: { pattern: true } },
-          user: {
-            select: {
-              id: true,
-              username: true,
-              name: true,
-              sheets: {
-                where: { isPublic: true },
-                include: {
-                  problems: {
-                    include: { problem: true }
-                  }
-                }
+        }
+      },
+      notes: true,
+      reminders: true,
+      companies: { include: { company: true } },
+      patterns: { include: { pattern: true } },
+      user: {
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          sheets: {
+            where: { isPublic: true },
+            include: {
+              problems: {
+                include: { problem: true }
               }
             }
           }
-        };
-
-        problem = await db.problem.findFirst({
-          where: { id: slug, userId: ownerId },
-          include: ownerInclude,
-        });
-
-        if (!problem) {
-          const searchName = slug.replace(/-/g, " ").trim();
-          problem = await db.problem.findFirst({
-            where: {
-              name: { equals: searchName, mode: "insensitive" },
-              userId: ownerId,
-            },
-            include: ownerInclude,
-          });
-        }
-
-        if (!problem) {
-          const getSlug = (name: string) => {
-            if (!name) return "";
-            return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-          };
-          const userList = await db.problem.findMany({
-            where: { userId: ownerId },
-            select: { id: true, name: true },
-          });
-          const match = userList.find((p) => getSlug(p.name) === slug);
-          if (match) {
-            problem = await db.problem.findUnique({
-              where: { id: match.id },
-              include: ownerInclude,
-            });
-          }
         }
       }
-    } catch {
-      // not authenticated
+    };
+
+    let ownerProblem = await db.problem.findFirst({
+      where: { id: slug, userId: sessionUserId },
+      include: ownerInclude,
+    });
+
+    if (!ownerProblem) {
+      const searchName = slug.replace(/-/g, " ").trim();
+      ownerProblem = await db.problem.findFirst({
+        where: {
+          name: { equals: searchName, mode: "insensitive" },
+          userId: sessionUserId,
+        },
+        include: ownerInclude,
+      });
+    }
+
+    if (!ownerProblem) {
+      const getSlug = (name: string) => {
+        if (!name) return "";
+        return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      };
+      const userList = await db.problem.findMany({
+        where: { userId: sessionUserId },
+        select: { id: true, name: true },
+      });
+      const match = userList.find((p) => getSlug(p.name) === slug);
+      if (match) {
+        ownerProblem = await db.problem.findUnique({
+          where: { id: match.id },
+          include: ownerInclude,
+        });
+      }
+    }
+
+    if (ownerProblem) {
+      return { status: "FOUND" as const, problem: ownerProblem, isOwner: true };
     }
   }
 
-  // Back-fill Redis cache (only for public problems)
-  if (problem && problem.isPublic) {
-    await setCachedPublicProblem(slug, problem);
+  // Check if problem exists in DB but is private (non-owner visitor)
+  const privateCheck = await db.problem.findFirst({
+    where: {
+      OR: [
+        { id: slug },
+        { name: { equals: slug.replace(/-/g, " ").trim(), mode: "insensitive" } },
+      ]
+    },
+    select: { id: true, name: true }
+  });
+
+  if (privateCheck) {
+    return { status: "PRIVATE" as const, problem: null, isOwner: false, problemName: privateCheck.name };
   }
 
-  return problem;
+  return { status: "NOT_FOUND" as const, problem: null, isOwner: false };
 }
 
 export async function addProblemToSheet(sheetId: string, problemId: string) {
