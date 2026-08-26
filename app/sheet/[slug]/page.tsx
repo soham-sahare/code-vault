@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { Library, Globe, ArrowLeft, ExternalLink, Star, Copy, Check, Calendar, AlertCircle, AlertTriangle, CheckCircle2, FileText, Lock } from "lucide-react";
+import { Library, Globe, ArrowLeft, ExternalLink, Star, Copy, Check, Calendar, AlertCircle, AlertTriangle, CheckCircle2, FileText, Lock, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatISTDate } from "@/lib/timestamps/ist";
 import { getPublicSheetBySlug, getHighlightedHtml } from "@/lib/actions";
@@ -23,7 +23,12 @@ export default function SharedSheetPage({ params }: { params: Promise<{ slug: st
   const [copiedCode, setCopiedCode] = useState(false);
   const [highlightedSolHtml, setHighlightedSolHtml] = useState("");
 
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [themeMounted, setThemeMounted] = useState(false);
+  useEffect(() => {
+    setThemeMounted(true);
+  }, []);
+
   const selectedSol = activeProblem?.solutions?.[selSolIdx];
 
   useEffect(() => {
@@ -129,13 +134,27 @@ export default function SharedSheetPage({ params }: { params: Promise<{ slug: st
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* Navigation back link */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 font-bold text-primary hover:underline"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to CodeVault Home
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 font-bold text-primary hover:underline"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to CodeVault Home
+          </Link>
+          <button
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-muted hover:text-foreground hover:bg-surface-2 transition-all cursor-pointer shadow-sm"
+            title="Toggle Theme"
+            aria-label="Toggle Theme"
+          >
+            {themeMounted && resolvedTheme === "dark" ? (
+              <Sun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <Moon className="w-4 h-4 text-muted" />
+            )}
+          </button>
+        </div>
 
         {/* Sheet Banner */}
         <div className="p-6 rounded-3xl bg-surface border border-border flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-sm">
