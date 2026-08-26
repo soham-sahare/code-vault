@@ -19,7 +19,7 @@ export default function Footer() {
         {/* Branding & Logo */}
         <div className="flex flex-col items-center md:items-start gap-3">
           <a href="#" className="flex items-center gap-2.5 group">
-            <div className="w-7.5 h-7.5 rounded-lg bg-primary flex items-center justify-center text-white overflow-hidden shadow-sm group-hover:scale-105 transition-transform duration-200">
+            <div className="w-7.5 h-7.5 rounded-lg bg-[#7C3AED] flex items-center justify-center text-white overflow-hidden shadow-sm shadow-[#7C3AED]/20 group-hover:scale-105 transition-transform duration-200">
               <svg
                 className="w-4 h-4 text-white"
                 fill="none"

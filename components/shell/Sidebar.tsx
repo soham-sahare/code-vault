@@ -61,7 +61,7 @@ export default function Sidebar() {
         {/* Brand Header */}
         <div className={`flex items-center gap-2.5 mb-8 group ${isCollapsed ? "justify-center" : "px-3 justify-between"}`}>
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="w-7.5 h-7.5 rounded-lg bg-primary flex items-center justify-center text-white overflow-hidden shadow-sm">
+            <div className="w-7.5 h-7.5 rounded-lg bg-[#7C3AED] flex items-center justify-center text-white overflow-hidden shadow-sm shadow-[#7C3AED]/20">
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 17L2 12l4-5M18 7l4 5-4 5" />
                 <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.1" />

@@ -19,7 +19,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <a href="/" className="flex items-center gap-2.5 group">
-          <div className="relative w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white overflow-hidden shadow-md shadow-primary/30 group-hover:scale-105 transition-transform duration-200">
+          <div className="relative w-8 h-8 rounded-lg bg-[#7C3AED] flex items-center justify-center text-white overflow-hidden shadow-md shadow-[#7C3AED]/30 group-hover:scale-105 transition-transform duration-200">
             {/* Premium CodeVault Logo Layout - Safe Dial locked inside brackets */}
             <svg
               className="w-5 h-5 text-white"

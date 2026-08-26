@@ -138,7 +138,7 @@ export default function SignupPage() {
         {/* Logo and Brand */}
         <div className="flex flex-col items-center text-center">
           <Link href="/" className="flex items-center gap-2 group mb-6">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white shadow-md">
+            <div className="w-8 h-8 rounded-lg bg-[#7C3AED] flex items-center justify-center text-white shadow-md shadow-[#7C3AED]/30">
               <svg className="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 17L2 12l4-5M18 7l4 5-4 5" />
                 <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2" fill="currentColor" fillOpacity="0.1" />
