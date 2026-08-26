@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
-import { Star, Globe, ArrowLeft, ExternalLink, Calendar, Copy, Check, AlertCircle, AlertTriangle, CheckCircle2, FileText, Lock, Library } from "lucide-react";
+import { Star, Globe, ArrowLeft, ExternalLink, Calendar, Copy, Check, AlertCircle, AlertTriangle, CheckCircle2, FileText, Lock, Library, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatISTDate } from "@/lib/timestamps/ist";
 import { getPublicProblemBySlug, getHighlightedHtml, updateProblem } from "@/lib/actions";
@@ -24,7 +24,12 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
   const [activeTab, setActiveTab] = useState<"solutions" | "notes" | "history">("solutions");
   const [highlightedSolHtml, setHighlightedSolHtml] = useState("");
 
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const [themeMounted, setThemeMounted] = useState(false);
+  useEffect(() => {
+    setThemeMounted(true);
+  }, []);
+
   const selectedSol = problem?.solutions?.[selSolIdx];
 
   useEffect(() => {
@@ -244,14 +249,28 @@ export default function SharedProblemPage({ params }: { params: Promise<{ slug: 
             <ArrowLeft className="w-4 h-4" />
             Back to CodeVault Home
           </Link>
-          {isOwner && (
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-1.5 font-bold text-muted hover:text-foreground"
+          <div className="flex items-center gap-3">
+            {isOwner && (
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-1.5 font-bold text-muted hover:text-foreground text-xs"
+              >
+                Open in Dashboard
+              </Link>
+            )}
+            <button
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              className="w-8 h-8 rounded-xl bg-surface border border-border flex items-center justify-center text-muted hover:text-foreground hover:bg-surface-2 transition-all cursor-pointer shadow-sm"
+              title="Toggle Theme"
+              aria-label="Toggle Theme"
             >
-              Open in Dashboard
-            </Link>
-          )}
+              {themeMounted && resolvedTheme === "dark" ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-muted" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Private Owner Preview Banner */}
