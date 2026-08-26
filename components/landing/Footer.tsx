@@ -44,17 +44,14 @@ export default function Footer() {
 
         {/* Quick Links */}
         <nav className="flex flex-wrap justify-center gap-6 md:gap-10 font-sans font-semibold text-xs text-muted">
+          <a href="#about" className="hover:text-foreground transition-colors">
+            About
+          </a>
           <a href="#features" className="hover:text-foreground transition-colors">
             Features
           </a>
           <a href="#how-it-works" className="hover:text-foreground transition-colors">
             How It Works
-          </a>
-          <a href="#spaced-timeline" className="hover:text-foreground transition-colors">
-            Timeline
-          </a>
-          <a href="#pricing" className="hover:text-foreground transition-colors">
-            Pricing
           </a>
         </nav>
 
