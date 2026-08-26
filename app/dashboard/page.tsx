@@ -138,17 +138,19 @@ export default function DashboardPage() {
   ];
   const [customPredefinedTopics, setCustomPredefinedTopics] = useState<string[]>([]);
 
-  const predefinedCompanies = [
+  const defaultCompanies = [
     "Google", "Meta", "Amazon", "Apple", "Microsoft",
     "Uber", "Netflix", "Bloomberg", "Adobe", "Stripe", "Goldman Sachs", "Oracle"
   ];
+  const [customPredefinedCompanies, setCustomPredefinedCompanies] = useState<string[]>([]);
 
-  const predefinedPatterns = [
+  const defaultPatterns = [
     "Two Pointers", "Sliding Window", "Fast & Slow Pointers", "Merge Intervals",
     "Monotonic Stack", "Tree BFS / Level Order", "Tree DFS / Postorder",
     "Top K Elements / Heap", "0/1 Knapsack & DP", "Topological Sort",
     "Binary Search On Answer", "Trie Prefix Search"
   ];
+  const [customPredefinedPatterns, setCustomPredefinedPatterns] = useState<string[]>([]);
 
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [customCompanyInput, setCustomCompanyInput] = useState("");
@@ -171,7 +173,43 @@ export default function DashboardPage() {
     return Array.from(topicsSet);
   };
 
+  const getSelectableCompanies = () => {
+    const map = new Map<string, string>();
+    defaultCompanies.forEach((c) => map.set(c.toLowerCase(), c));
+    customPredefinedCompanies.forEach((c) => map.set(c.toLowerCase(), c));
+    problemsList.forEach((p) => {
+      if (p.companies && Array.isArray(p.companies)) {
+        p.companies.forEach((c: any) => {
+          const name = c.company?.name || c.name;
+          if (name && name.trim()) {
+            map.set(name.trim().toLowerCase(), name.trim());
+          }
+        });
+      }
+    });
+    return Array.from(map.values());
+  };
+
+  const getSelectablePatterns = () => {
+    const map = new Map<string, string>();
+    defaultPatterns.forEach((p) => map.set(p.toLowerCase(), p));
+    customPredefinedPatterns.forEach((p) => map.set(p.toLowerCase(), p));
+    problemsList.forEach((prob) => {
+      if (prob.patterns && Array.isArray(prob.patterns)) {
+        prob.patterns.forEach((pat: any) => {
+          const name = pat.pattern?.name || pat.name;
+          if (name && name.trim()) {
+            map.set(name.trim().toLowerCase(), name.trim());
+          }
+        });
+      }
+    });
+    return Array.from(map.values());
+  };
+
   const predefinedTopics = getSelectableTopics();
+  const predefinedCompanies = getSelectableCompanies();
+  const predefinedPatterns = getSelectablePatterns();
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [customTopicInput, setCustomTopicInput] = useState("");
 
@@ -2599,8 +2637,11 @@ export default function DashboardPage() {
                                 e.preventDefault();
                                 if (!customCompanyInput.trim()) return;
                                 const newComp = customCompanyInput.trim();
-                                if (!selectedCompanies.includes(newComp)) {
-                                  setSelectedCompanies([...selectedCompanies, newComp]);
+                                if (!customPredefinedCompanies.some(c => c.toLowerCase() === newComp.toLowerCase())) {
+                                  setCustomPredefinedCompanies((prev) => [...prev, newComp]);
+                                }
+                                if (!selectedCompanies.some(c => c.toLowerCase() === newComp.toLowerCase())) {
+                                  setSelectedCompanies((prev) => [...prev, newComp]);
                                 }
                                 setCustomCompanyInput("");
                               }
@@ -2612,8 +2653,11 @@ export default function DashboardPage() {
                             onClick={() => {
                               if (!customCompanyInput.trim()) return;
                               const newComp = customCompanyInput.trim();
-                              if (!selectedCompanies.includes(newComp)) {
-                                setSelectedCompanies([...selectedCompanies, newComp]);
+                              if (!customPredefinedCompanies.some(c => c.toLowerCase() === newComp.toLowerCase())) {
+                                setCustomPredefinedCompanies((prev) => [...prev, newComp]);
+                              }
+                              if (!selectedCompanies.some(c => c.toLowerCase() === newComp.toLowerCase())) {
+                                setSelectedCompanies((prev) => [...prev, newComp]);
                               }
                               setCustomCompanyInput("");
                             }}
@@ -2670,8 +2714,11 @@ export default function DashboardPage() {
                                 e.preventDefault();
                                 if (!customPatternInput.trim()) return;
                                 const newPat = customPatternInput.trim();
-                                if (!selectedPatterns.includes(newPat)) {
-                                  setSelectedPatterns([...selectedPatterns, newPat]);
+                                if (!customPredefinedPatterns.some(p => p.toLowerCase() === newPat.toLowerCase())) {
+                                  setCustomPredefinedPatterns((prev) => [...prev, newPat]);
+                                }
+                                if (!selectedPatterns.some(p => p.toLowerCase() === newPat.toLowerCase())) {
+                                  setSelectedPatterns((prev) => [...prev, newPat]);
                                 }
                                 setCustomPatternInput("");
                               }
@@ -2683,8 +2730,11 @@ export default function DashboardPage() {
                             onClick={() => {
                               if (!customPatternInput.trim()) return;
                               const newPat = customPatternInput.trim();
-                              if (!selectedPatterns.includes(newPat)) {
-                                setSelectedPatterns([...selectedPatterns, newPat]);
+                              if (!customPredefinedPatterns.some(p => p.toLowerCase() === newPat.toLowerCase())) {
+                                setCustomPredefinedPatterns((prev) => [...prev, newPat]);
+                              }
+                              if (!selectedPatterns.some(p => p.toLowerCase() === newPat.toLowerCase())) {
+                                setSelectedPatterns((prev) => [...prev, newPat]);
                               }
                               setCustomPatternInput("");
                             }}
