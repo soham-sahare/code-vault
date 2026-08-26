@@ -339,6 +339,12 @@ export async function getUserProblemSummaries() {
       solvedAt: true,
       createdAt: true,
       isPublic: true,
+      companies: {
+        include: { company: true },
+      },
+      patterns: {
+        include: { pattern: true },
+      },
       solutions: {
         select: {
           id: true,
