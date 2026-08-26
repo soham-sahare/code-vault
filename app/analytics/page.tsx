@@ -18,6 +18,21 @@ import {
   Check,
   Code2,
   Calendar,
+  Building2,
+  Briefcase,
+  GitMerge,
+  Network,
+  Workflow,
+  Boxes,
+  Cpu,
+  Compass,
+  Hash,
+  Activity,
+  Target,
+  ShieldCheck,
+  Sparkles,
+  Globe,
+  ArrowUpRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getUserProblemSummaries, getUserProfile } from "@/lib/actions";
@@ -26,6 +41,37 @@ import Link from "next/link";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import { getInitials } from "@/lib/utils/formatters";
 import { Skeleton } from "@/components/ui/Skeleton";
+
+function getCompanyIcon(companyName: string) {
+  const norm = companyName.toLowerCase();
+  if (norm.includes("google")) return <Building2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />;
+  if (norm.includes("meta") || norm.includes("facebook")) return <Globe className="w-3.5 h-3.5 text-sky-500 shrink-0" />;
+  if (norm.includes("amazon")) return <Briefcase className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
+  if (norm.includes("apple")) return <Layers className="w-3.5 h-3.5 text-zinc-400 shrink-0" />;
+  if (norm.includes("microsoft")) return <Boxes className="w-3.5 h-3.5 text-cyan-500 shrink-0" />;
+  if (norm.includes("uber")) return <Activity className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
+  if (norm.includes("netflix")) return <Building2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />;
+  if (norm.includes("bloomberg")) return <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />;
+  if (norm.includes("adobe")) return <Sparkles className="w-3.5 h-3.5 text-red-500 shrink-0" />;
+  if (norm.includes("stripe")) return <Zap className="w-3.5 h-3.5 text-indigo-500 shrink-0" />;
+  if (norm.includes("goldman")) return <Briefcase className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
+  return <Building2 className="w-3.5 h-3.5 text-amber-500/80 shrink-0" />;
+}
+
+function getPatternIcon(patternName: string) {
+  const norm = patternName.toLowerCase();
+  if (norm.includes("pointer")) return <GitMerge className="w-3.5 h-3.5 text-cyan-400 shrink-0" />;
+  if (norm.includes("window")) return <Layers className="w-3.5 h-3.5 text-teal-400 shrink-0" />;
+  if (norm.includes("interval")) return <Workflow className="w-3.5 h-3.5 text-violet-400 shrink-0" />;
+  if (norm.includes("stack") || norm.includes("queue")) return <Boxes className="w-3.5 h-3.5 text-indigo-400 shrink-0" />;
+  if (norm.includes("tree") || norm.includes("bfs") || norm.includes("dfs")) return <Network className="w-3.5 h-3.5 text-sky-400 shrink-0" />;
+  if (norm.includes("heap") || norm.includes("top k")) return <Cpu className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
+  if (norm.includes("dp") || norm.includes("knapsack")) return <Zap className="w-3.5 h-3.5 text-purple-400 shrink-0" />;
+  if (norm.includes("topological") || norm.includes("graph")) return <Compass className="w-3.5 h-3.5 text-pink-400 shrink-0" />;
+  if (norm.includes("binary search") || norm.includes("search")) return <Search className="w-3.5 h-3.5 text-rose-400 shrink-0" />;
+  if (norm.includes("trie") || norm.includes("prefix")) return <Hash className="w-3.5 h-3.5 text-orange-400 shrink-0" />;
+  return <Workflow className="w-3.5 h-3.5 text-cyan-400 shrink-0" />;
+}
 
 export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
@@ -191,6 +237,115 @@ export default function AnalyticsPage() {
       }))
       .sort((a, b) => b.total - a.total);
   }, [filteredData]);
+
+  // Target Companies Aggregation
+  const companiesData = useMemo(() => {
+    const compMap: Record<string, { solved: number; total: number }> = {};
+    filteredData.forEach((p) => {
+      if (p.companies && Array.isArray(p.companies)) {
+        p.companies.forEach((c: any) => {
+          const name = c.company?.name || c.name;
+          if (!name) return;
+          if (!compMap[name]) compMap[name] = { solved: 0, total: 0 };
+          compMap[name].total += 1;
+          if (p.status === "Solved") compMap[name].solved += 1;
+        });
+      }
+    });
+    return Object.entries(compMap)
+      .map(([name, stat]) => ({
+        name,
+        solved: stat.solved,
+        total: stat.total,
+        percent: stat.total > 0 ? Math.round((stat.solved / stat.total) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [filteredData]);
+
+  // Algorithmic Patterns Aggregation
+  const patternsData = useMemo(() => {
+    const patMap: Record<string, { solved: number; total: number }> = {};
+    filteredData.forEach((p) => {
+      if (p.patterns && Array.isArray(p.patterns)) {
+        p.patterns.forEach((pat: any) => {
+          const name = pat.pattern?.name || pat.name;
+          if (!name) return;
+          if (!patMap[name]) patMap[name] = { solved: 0, total: 0 };
+          patMap[name].total += 1;
+          if (p.status === "Solved") patMap[name].solved += 1;
+        });
+      }
+    });
+    return Object.entries(patMap)
+      .map(([name, stat]) => ({
+        name,
+        solved: stat.solved,
+        total: stat.total,
+        percent: stat.total > 0 ? Math.round((stat.solved / stat.total) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [filteredData]);
+
+  // Multiple Actionable Insights & Intelligence
+  const actionableInsights = useMemo(() => {
+    const topCompany = companiesData[0];
+    const topPattern = patternsData[0];
+
+    // Find pattern needing practice
+    const patternNeedingWork = [...patternsData].sort((a, b) => a.percent - b.percent)[0];
+
+    // Company Readiness Calculation
+    const totalCompSolves = companiesData.reduce((acc, c) => acc + c.solved, 0);
+    const totalCompProblems = companiesData.reduce((acc, c) => acc + c.total, 0);
+    const companyReadinessPct = totalCompProblems > 0 
+      ? Math.round((totalCompSolves / totalCompProblems) * 100)
+      : Math.min(100, Math.round((totalSolved / Math.max(1, totalProblemsCount)) * 85));
+
+    // Pattern Breadth Score
+    const corePatternsCount = 12;
+    const patternCoveragePct = Math.min(100, Math.round((patternsData.length / corePatternsCount) * 100));
+
+    return [
+      {
+        title: "Target Tech Readiness",
+        value: `${companyReadinessPct}%`,
+        description: topCompany 
+          ? `Top company footprint: ${topCompany.name} (${topCompany.solved}/${topCompany.total} solved, ${topCompany.percent}%)`
+          : "Tag problems with target companies to unlock dedicated readiness metrics.",
+        badge: "Interview Index",
+        icon: <Building2 className="w-4 h-4 text-amber-500" />,
+        accentColor: "border-amber-500/20 bg-amber-500/5 text-amber-500",
+      },
+      {
+        title: "Pattern Versatility",
+        value: `${patternsData.length} Patterns`,
+        description: `${patternCoveragePct}% core pattern coverage across ${topics.length} DSA topic categories.`,
+        badge: "Algorithmic Breadth",
+        icon: <GitMerge className="w-4 h-4 text-cyan-500" />,
+        accentColor: "border-cyan-500/20 bg-cyan-500/5 text-cyan-500",
+      },
+      {
+        title: "Top Pattern Strength",
+        value: topPattern ? topPattern.name : "N/A",
+        description: topPattern 
+          ? `${topPattern.solved}/${topPattern.total} problems solved with ${topPattern.percent}% mastery completion.`
+          : "Add pattern tags to track algorithmic mastery across problem sets.",
+        badge: "High Competence",
+        icon: <Award className="w-4 h-4 text-emerald-500" />,
+        accentColor: "border-emerald-500/20 bg-emerald-500/5 text-emerald-500",
+      },
+      {
+        title: "Practice Recommendation",
+        value: patternNeedingWork ? patternNeedingWork.name : "Active Review",
+        description: patternNeedingWork 
+          ? `Lowest solve rate (${patternNeedingWork.percent}% solved). Prioritize practice in this pattern.`
+          : "Continue clearing pending reviews in your Spaced Repetition queue.",
+        badge: "Strategic Focus",
+        icon: <Zap className="w-4 h-4 text-purple-500" />,
+        accentColor: "border-purple-500/20 bg-purple-500/5 text-purple-500",
+      },
+    ];
+  }, [companiesData, patternsData, totalSolved, totalProblemsCount, topics]);
 
   // Streak Calculation
   const streakData = useMemo(() => {
@@ -873,14 +1028,45 @@ export default function AnalyticsPage() {
                       transition={{ duration: 0.8, delay: 0.1 + idx * 0.1 }}
                       className={`h-full rounded-full ${stageColors[idx]}`}
                     />
-                  </div>
-
-                  <p className="font-sans text-[10px] text-muted">{stage.desc}</p>
+                  </div>                    <p className="font-sans text-[10px] text-muted">{stage.desc}</p>
                 </div>
               );
             })}
           </div>
         </motion.div>
+
+        {/* Actionable Intelligence & Interview Insights Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {actionableInsights.map((insight, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.12 + idx * 0.05 }}
+              className="p-5 rounded-2xl bg-surface border border-border/80 shadow-sm flex flex-col justify-between hover:border-border transition-colors"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className={`px-2 py-0.5 rounded-md font-sans font-extrabold text-[9px] uppercase tracking-wider ${insight.accentColor}`}>
+                  {insight.badge}
+                </span>
+                <div className="w-8 h-8 rounded-lg bg-surface-2 flex items-center justify-center border border-border/60 shrink-0">
+                  {insight.icon}
+                </div>
+              </div>
+              <div className="mt-4">
+                <span className="text-[11px] font-semibold text-muted font-sans block">
+                  {insight.title}
+                </span>
+                <h3 className="font-display font-extrabold text-xl sm:text-2xl text-foreground mt-0.5 tracking-tight truncate">
+                  {insight.value}
+                </h3>
+                <p className="font-sans text-[11px] text-muted/90 mt-1.5 leading-relaxed">
+                  {insight.description}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
 
         {/* Topic Breakdown Treemap */}
         <motion.div
@@ -943,6 +1129,151 @@ export default function AnalyticsPage() {
             </div>
           )}
         </motion.div>
+
+        {/* 2-Column Grid: Target Companies Breakdown & Algorithmic Patterns Mastery */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          {/* Target Company Breakdown */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.18 }}
+            className="p-6 sm:p-8 rounded-3xl bg-surface border border-border shadow-sm flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-display font-bold text-base text-foreground flex items-center gap-2">
+                    <Building2 className="w-4.5 h-4.5 text-amber-500" />
+                    Target Company Distribution
+                  </h3>
+                  <p className="font-sans text-[11px] text-muted mt-0.5">
+                    Problem solve rate by company interview tags
+                  </p>
+                </div>
+                {companiesData.length > 0 && (
+                  <span className="font-sans text-xs text-muted">
+                    {companiesData.length} Companies Tagged
+                  </span>
+                )}
+              </div>
+
+              {companiesData.length === 0 ? (
+                <div className="py-12 text-center rounded-2xl bg-surface-2/30 border border-border/60">
+                  <Building2 className="w-8 h-8 text-muted/40 mx-auto mb-2" />
+                  <p className="text-xs text-muted font-sans">No company-tagged problems recorded yet.</p>
+                  <p className="text-[10px] text-muted/70 font-sans mt-1">Tag problems with FAANG and tech companies in your dashboard to view company analytics.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+                  {companiesData.map((comp, idx) => (
+                    <div
+                      key={comp.name}
+                      className="p-3 rounded-2xl bg-surface-2/40 border border-border/50 space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-surface flex items-center justify-center border border-border/60">
+                            {getCompanyIcon(comp.name)}
+                          </div>
+                          <span className="font-display font-bold text-xs text-foreground">
+                            {comp.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-muted">
+                            {comp.solved}/{comp.total} solved
+                          </span>
+                          <span className="font-sans font-bold text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                            {comp.percent}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-surface-2 rounded-full h-1.5 overflow-hidden border border-border/40">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${comp.percent}%` }}
+                          transition={{ duration: 0.8, delay: idx * 0.05 }}
+                          className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-400"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Algorithmic Patterns Mastery */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="p-6 sm:p-8 rounded-3xl bg-surface border border-border shadow-sm flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-display font-bold text-base text-foreground flex items-center gap-2">
+                    <GitMerge className="w-4.5 h-4.5 text-cyan-500" />
+                    Algorithmic Patterns Breakdown
+                  </h3>
+                  <p className="font-sans text-[11px] text-muted mt-0.5">
+                    Mastery depth across algorithmic technique patterns
+                  </p>
+                </div>
+                {patternsData.length > 0 && (
+                  <span className="font-sans text-xs text-muted">
+                    {patternsData.length} Patterns Active
+                  </span>
+                )}
+              </div>
+
+              {patternsData.length === 0 ? (
+                <div className="py-12 text-center rounded-2xl bg-surface-2/30 border border-border/60">
+                  <GitMerge className="w-8 h-8 text-muted/40 mx-auto mb-2" />
+                  <p className="text-xs text-muted font-sans">No pattern-tagged problems recorded yet.</p>
+                  <p className="text-[10px] text-muted/70 font-sans mt-1">Tag problems with algorithmic patterns like Two Pointers or Sliding Window to track mastery.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+                  {patternsData.map((pat, idx) => (
+                    <div
+                      key={pat.name}
+                      className="p-3 rounded-2xl bg-surface-2/40 border border-border/50 space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-surface flex items-center justify-center border border-border/60">
+                            {getPatternIcon(pat.name)}
+                          </div>
+                          <span className="font-display font-bold text-xs text-foreground">
+                            {pat.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-muted">
+                            {pat.solved}/{pat.total} solved
+                          </span>
+                          <span className="font-sans font-bold text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-500 border border-cyan-500/20">
+                            {pat.percent}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-surface-2 rounded-full h-1.5 overflow-hidden border border-border/40">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pat.percent}%` }}
+                          transition={{ duration: 0.8, delay: idx * 0.05 }}
+                          className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-teal-400"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
 
         {/* 3-Card Distribution Grid: Difficulty, Language, Complexity */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
