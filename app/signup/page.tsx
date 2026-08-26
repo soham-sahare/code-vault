@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Check, AlertCircle, Info } from "lucide-react";
+import { ArrowRight, Check, AlertCircle, Info, Loader2, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -14,7 +14,48 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<{
+    state: "idle" | "checking" | "available" | "taken" | "invalid";
+    message?: string;
+  }>({ state: "idle" });
   const router = useRouter();
+
+  // Debounced live username availability check
+  useEffect(() => {
+    const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, "");
+    if (!cleanUsername) {
+      setUsernameStatus({ state: "idle" });
+      return;
+    }
+
+    if (cleanUsername.length < 2) {
+      setUsernameStatus({
+        state: "invalid",
+        message: "Username must be at least 2 characters",
+      });
+      return;
+    }
+
+    setUsernameStatus({ state: "checking" });
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/users/check-username?username=${encodeURIComponent(cleanUsername)}`);
+        const data = await res.json();
+        if (data.available) {
+          setUsernameStatus({ state: "available", message: "Username is available" });
+        } else {
+          setUsernameStatus({
+            state: "taken",
+            message: data.reason || "Username is already taken",
+          });
+        }
+      } catch (err) {
+        setUsernameStatus({ state: "idle" });
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [username]);
 
   // Toast notifications state
   const [toasts, setToasts] = useState<{ id: string; message: string; type: "success" | "info" | "error" }[]>([]);
@@ -123,14 +164,55 @@ export default function SignupPage() {
             <label className="block font-sans font-semibold text-xs text-muted mb-2 uppercase tracking-wide">
               Username
             </label>
-            <input
-              type="text"
-              required
-              placeholder="hunter"
-              value={username}
-              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-              className="w-full px-4 py-3 rounded-xl bg-surface-2 border border-border focus:border-primary/50 focus:outline-none font-sans text-sm text-foreground transition-all placeholder:text-muted/60"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                required
+                placeholder="hunter"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                className={`w-full px-4 py-3 rounded-xl bg-surface-2 border focus:outline-none font-sans text-sm text-foreground transition-all placeholder:text-muted/60 ${
+                  usernameStatus.state === "available"
+                    ? "border-emerald-500/50 focus:border-emerald-500"
+                    : usernameStatus.state === "taken" || usernameStatus.state === "invalid"
+                    ? "border-rose-500/50 focus:border-rose-500"
+                    : "border-border focus:border-primary/50"
+                }`}
+              />
+              {usernameStatus.state === "checking" && (
+                <div className="absolute right-3.5 top-3.5">
+                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                </div>
+              )}
+            </div>
+            {usernameStatus.state !== "idle" && (
+              <div className="flex items-center gap-1.5 mt-1.5 font-sans text-[11px]">
+                {usernameStatus.state === "checking" && (
+                  <span className="text-muted flex items-center gap-1">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                    Checking availability...
+                  </span>
+                )}
+                {usernameStatus.state === "available" && (
+                  <span className="text-emerald-500 font-semibold flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" />
+                    {usernameStatus.message}
+                  </span>
+                )}
+                {usernameStatus.state === "taken" && (
+                  <span className="text-rose-500 font-semibold flex items-center gap-1">
+                    <X className="w-3.5 h-3.5" />
+                    {usernameStatus.message}
+                  </span>
+                )}
+                {usernameStatus.state === "invalid" && (
+                  <span className="text-amber-500 font-semibold flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    {usernameStatus.message}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
